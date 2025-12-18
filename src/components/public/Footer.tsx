@@ -25,11 +25,11 @@ export function Footer() {
             <div className="space-y-3 text-[#999999] text-sm">
               <p className="flex items-center">
                 <MapPin className="h-4 w-4 mr-3 text-[#4DB6AC]" />
-                埼玉県川口市八幡木3-7-1
+                埼玉県さいたま市緑区東浦和8-2-12
               </p>
               <p className="flex items-center">
                 <Phone className="h-4 w-4 mr-3 text-[#4DB6AC]" />
-                048-XXX-XXXX
+                048-711-1359
               </p>
               <p className="flex items-center">
                 <Mail className="h-4 w-4 mr-3 text-[#4DB6AC]" />

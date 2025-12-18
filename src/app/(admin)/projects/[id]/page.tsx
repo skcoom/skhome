@@ -17,7 +17,7 @@ import {
   EyeOff,
   Plus,
 } from 'lucide-react';
-import type { Project, ProjectMedia } from '@/types/database';
+import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
@@ -40,6 +40,7 @@ const phaseLabels = {
 
 export default function ProjectDetailPage() {
   const params = useParams();
+  const projectId = params.id as string;
   const supabase = createClient();
   const [project, setProject] = useState<Project | null>(null);
   const [media, setMedia] = useState<ProjectMedia[]>([]);
@@ -47,52 +48,53 @@ export default function ProjectDetailPage() {
   const [selectedPhase, setSelectedPhase] = useState<'before' | 'during' | 'after'>('before');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // デモ用のダミーデータ
-  useEffect(() => {
-    // Supabase設定後に実際のデータ取得に置き換え
-    setProject({
-      id: params.id as string,
-      name: '大橋邸 リフォーム工事',
-      client_name: '大橋様',
-      address: '東京都世田谷区',
-      category: 'remodeling',
-      status: 'completed',
-      start_date: '2022-04-01',
-      end_date: '2022-04-30',
-      description: 'キッチン・浴室のリフォーム工事。お客様のご要望に合わせて、最新の設備を導入しました。',
-      is_public: true,
-      created_by: '1',
-      created_at: '2022-03-15',
-      updated_at: '2022-04-30',
-    });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    setMedia([
-      {
-        id: '1',
-        project_id: params.id as string,
-        type: 'image',
-        phase: 'before',
-        file_url: '/placeholder-before.jpg',
-        thumbnail_url: '/placeholder-before.jpg',
-        caption: 'リフォーム前のキッチン',
-        uploaded_by: '1',
-        is_featured: true,
-        created_at: '2022-04-07',
-      },
-      {
-        id: '2',
-        project_id: params.id as string,
-        type: 'image',
-        phase: 'after',
-        file_url: '/placeholder-after.jpg',
-        thumbnail_url: '/placeholder-after.jpg',
-        caption: 'リフォーム後のキッチン',
-        uploaded_by: '1',
-        is_featured: true,
-        created_at: '2022-04-20',
-      },
-    ]);
-  }, [params.id]);
+  // Supabaseからプロジェクトとメディアデータを取得
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // プロジェクト情報を取得
+        const { data: projectData, error: projectError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', projectId)
+          .single();
+
+        if (projectError) {
+          throw new Error('プロジェクトの取得に失敗しました');
+        }
+
+        setProject(projectData);
+
+        // メディア情報を取得
+        const { data: mediaData, error: mediaError } = await supabase
+          .from('project_media')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false });
+
+        if (mediaError) {
+          console.error('Media fetch error:', mediaError);
+        }
+
+        setMedia(mediaData || []);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError(err instanceof Error ? err.message : '読み込みに失敗しました');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (projectId) {
+      fetchData();
+    }
+  }, [projectId, supabase]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -103,7 +105,7 @@ export default function ProjectDetailPage() {
     try {
       for (const file of Array.from(files)) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${params.id}/${Date.now()}.${fileExt}`;
+        const fileName = `${projectId}/${Date.now()}.${fileExt}`;
 
         // Supabase Storageにアップロード
         const { error: uploadError } = await supabase.storage
@@ -120,27 +122,31 @@ export default function ProjectDetailPage() {
           .from('project-media')
           .getPublicUrl(fileName);
 
-        // メディアレコードを作成（Supabase設定後に有効化）
-        // const isVideo = file.type.startsWith('video/');
-        // await supabase.from('project_media').insert([
-        //   {
-        //     project_id: params.id,
-        //     type: isVideo ? 'video' : 'image',
-        //     phase: selectedPhase,
-        //     file_url: publicUrlData.publicUrl,
-        //     is_featured: false,
-        //   },
-        // ]);
-        console.log('File uploaded:', publicUrlData.publicUrl);
+        // メディアレコードを作成
+        const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
+        const insertData = {
+          project_id: projectId,
+          type: mediaType,
+          phase: selectedPhase as MediaPhase,
+          file_url: publicUrlData.publicUrl,
+          is_featured: false,
+        };
+        const { error: insertError } = await supabase
+          .from('project_media')
+          .insert(insertData as never);
+
+        if (insertError) {
+          console.error('Insert error:', insertError);
+        }
       }
 
       // メディア一覧を再取得
-      // const { data } = await supabase
-      //   .from('project_media')
-      //   .select('*')
-      //   .eq('project_id', params.id)
-      //   .order('created_at', { ascending: false });
-      // setMedia(data || []);
+      const { data } = await supabase
+        .from('project_media')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      setMedia(data || []);
 
       setShowUploadModal(false);
     } catch (err) {
@@ -154,18 +160,37 @@ export default function ProjectDetailPage() {
     if (!project) return;
 
     const newIsPublic = !project.is_public;
-    // await supabase
-    //   .from('projects')
-    //   .update({ is_public: newIsPublic })
-    //   .eq('id', project.id);
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({ is_public: newIsPublic } as never)
+      .eq('id', project.id);
+
+    if (updateError) {
+      console.error('Update error:', updateError);
+      return;
+    }
 
     setProject({ ...project, is_public: newIsPublic });
   };
 
-  if (!project) {
+  if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-gray-500">読み込み中...</div>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center">
+        <div className="text-red-500 mb-4">{error || 'プロジェクトが見つかりません'}</div>
+        <Link href="/projects">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            一覧に戻る
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -299,13 +324,29 @@ export default function ProjectDetailPage() {
                 className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100"
               >
                 {item.type === 'image' ? (
-                  <div className="flex h-full items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-gray-400" />
-                  </div>
+                  item.file_url ? (
+                    <img
+                      src={item.file_url}
+                      alt={item.caption || '施工写真'}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <ImageIcon className="h-12 w-12 text-gray-400" />
+                    </div>
+                  )
                 ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <Video className="h-12 w-12 text-gray-400" />
-                  </div>
+                  item.file_url ? (
+                    <video
+                      src={item.file_url}
+                      className="h-full w-full object-cover"
+                      muted
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Video className="h-12 w-12 text-gray-400" />
+                    </div>
+                  )
                 )}
                 {item.caption && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">

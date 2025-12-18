@@ -254,11 +254,11 @@ export default function BlogPage() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a
-              href="tel:048-XXX-XXXX"
+              href="tel:048-711-1359"
               className="inline-flex items-center justify-center border border-[#26A69A] text-[#26A69A] px-8 py-4 text-sm tracking-wide hover:bg-[#26A69A] hover:text-white transition-colors"
             >
               <Phone className="mr-3 h-4 w-4" />
-              048-XXX-XXXX
+              048-711-1359
             </a>
             <Link
               href="/contact"

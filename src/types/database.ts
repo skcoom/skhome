@@ -42,7 +42,7 @@ export interface ProjectMedia {
   file_url: string;
   thumbnail_url?: string;
   caption?: string;
-  uploaded_by: string;
+  uploaded_by?: string;
   is_featured: boolean;
   created_at: string;
 }

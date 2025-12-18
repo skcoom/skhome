@@ -17,7 +17,7 @@ export default function CompanyPage() {
                 信頼のリフォーム。
               </h1>
               <p className="text-[#666666] leading-relaxed mb-6">
-                私たちSKコームは、埼玉県川口市を拠点に、
+                私たちSKコームは、埼玉県さいたま市を拠点に、
                 リフォーム・内装工事を手がける会社です。
               </p>
               <p className="text-[#666666] leading-relaxed">
@@ -147,14 +147,14 @@ export default function CompanyPage() {
                 <tbody>
                   {[
                     ['会社名', '株式会社SKコーム'],
-                    ['代表者', '末武 剛'],
-                    ['設立', '2015年'],
-                    ['従業員数', '7名'],
-                    ['事業内容', 'リフォーム工事、内装工事、看板工事、住宅工事'],
-                    ['許可・資格', '建設業許可 埼玉県知事許可'],
-                    ['所在地', '〒333-0846 埼玉県川口市八幡木3-7-1'],
-                    ['電話番号', '048-XXX-XXXX'],
+                    ['代表者', '末武 修平'],
+                    ['設立', '2021年3月'],
+                    ['資本金', '100万円'],
+                    ['事業内容', '内装リフォーム'],
+                    ['所在地', '〒336-0926 埼玉県さいたま市緑区東浦和8-2-12'],
+                    ['電話番号', '048-711-1359'],
                     ['メール', 'info@skcoom.co.jp'],
+                    ['営業時間', '8:00〜19:00（日曜定休）'],
                   ].map(([label, value], index) => (
                     <tr key={label} className={index !== 0 ? 'border-t border-[#E5E4E0]' : ''}>
                       <th className="px-6 lg:px-8 py-5 text-left text-sm font-medium text-[#26A69A] bg-[#FAF9F6] w-1/4 lg:w-1/5">
@@ -190,8 +190,8 @@ export default function CompanyPage() {
                   <div>
                     <p className="font-medium text-[#333333] mb-1">所在地</p>
                     <p className="text-[#666666] text-sm">
-                      〒333-0846<br />
-                      埼玉県川口市八幡木3-7-1
+                      〒336-0926<br />
+                      埼玉県さいたま市緑区東浦和8-2-12
                     </p>
                   </div>
                 </div>
@@ -202,7 +202,7 @@ export default function CompanyPage() {
                   </div>
                   <div>
                     <p className="font-medium text-[#333333] mb-1">電話番号</p>
-                    <p className="text-[#666666] text-sm">048-XXX-XXXX</p>
+                    <p className="text-[#666666] text-sm">048-711-1359</p>
                   </div>
                 </div>
 
@@ -222,7 +222,7 @@ export default function CompanyPage() {
                   </div>
                   <div>
                     <p className="font-medium text-[#333333] mb-1">営業時間</p>
-                    <p className="text-[#666666] text-sm">9:00〜18:00（土日祝休み）</p>
+                    <p className="text-[#666666] text-sm">8:00〜19:00（日曜定休）</p>
                   </div>
                 </div>
               </div>
@@ -236,7 +236,7 @@ export default function CompanyPage() {
                 </div>
               </div>
               <p className="mt-4 text-sm text-[#666666]">
-                埼玉高速鉄道「鳩ヶ谷駅」より徒歩15分
+                JR武蔵野線「東浦和駅」より徒歩5分
               </p>
             </div>
           </div>
@@ -256,11 +256,11 @@ export default function CompanyPage() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a
-              href="tel:048-XXX-XXXX"
+              href="tel:048-711-1359"
               className="inline-flex items-center justify-center border border-[#26A69A] text-[#26A69A] px-8 py-4 text-sm tracking-wide hover:bg-[#26A69A] hover:text-white transition-colors"
             >
               <Phone className="mr-3 h-4 w-4" />
-              048-XXX-XXXX
+              048-711-1359
             </a>
             <Link
               href="/contact"

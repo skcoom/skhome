@@ -124,8 +124,8 @@ export default function ContactPage() {
                 <Phone className="h-5 w-5 text-[#26A69A]" />
               </div>
               <h3 className="text-sm font-medium text-[#999999] mb-2">お電話</h3>
-              <p className="text-xl font-medium text-[#26A69A] mb-1">048-XXX-XXXX</p>
-              <p className="text-xs text-[#999999]">受付: 9:00〜18:00（土日祝休）</p>
+              <p className="text-xl font-medium text-[#26A69A] mb-1">048-711-1359</p>
+              <p className="text-xs text-[#999999]">受付: 8:00〜19:00（日曜定休）</p>
             </div>
 
             <div className="bg-[#FAF9F6] rounded-xl p-6 lg:p-8">
@@ -142,8 +142,8 @@ export default function ContactPage() {
                 <MapPin className="h-5 w-5 text-[#26A69A]" />
               </div>
               <h3 className="text-sm font-medium text-[#999999] mb-2">所在地</h3>
-              <p className="text-sm text-[#333333] mb-1">埼玉県川口市八幡木3-7-1</p>
-              <p className="text-xs text-[#999999]">鳩ヶ谷駅より徒歩15分</p>
+              <p className="text-sm text-[#333333] mb-1">埼玉県さいたま市緑区東浦和8-2-12</p>
+              <p className="text-xs text-[#999999]">東浦和駅より徒歩5分</p>
             </div>
           </div>
         </div>
@@ -280,11 +280,11 @@ export default function ContactPage() {
                   お急ぎの場合は、お電話でのお問い合わせをおすすめします。
                 </p>
                 <a
-                  href="tel:048-XXX-XXXX"
+                  href="tel:048-711-1359"
                   className="inline-flex items-center text-[#26A69A] font-medium text-sm"
                 >
                   <Phone className="mr-2 h-4 w-4" />
-                  048-XXX-XXXX
+                  048-711-1359
                 </a>
               </div>
 
@@ -296,12 +296,12 @@ export default function ContactPage() {
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-[#666666]">平日</span>
-                    <span className="text-[#333333]">9:00〜18:00</span>
+                    <span className="text-[#666666]">月〜土</span>
+                    <span className="text-[#333333]">8:00〜19:00</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#666666]">土日祝</span>
-                    <span className="text-[#333333]">休業</span>
+                    <span className="text-[#666666]">日曜</span>
+                    <span className="text-[#333333]">定休</span>
                   </div>
                 </div>
               </div>
@@ -310,7 +310,7 @@ export default function ContactPage() {
               <div className="bg-[#F0EFE9] rounded-xl p-6">
                 <h3 className="text-sm font-medium text-[#333333] mb-4">対応エリア</h3>
                 <p className="text-sm text-[#666666] leading-relaxed">
-                  埼玉県川口市を中心に、東京都・埼玉県・千葉県の広いエリアに対応しております。
+                  埼玉県さいたま市を中心に、東京都・埼玉県・千葉県の広いエリアに対応しております。
                 </p>
               </div>
             </div>

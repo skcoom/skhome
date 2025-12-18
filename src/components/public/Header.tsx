@@ -47,10 +47,10 @@ export function Header() {
           {/* CTA */}
           <div className="hidden md:flex items-center space-x-6">
             <a
-              href="tel:048-XXX-XXXX"
+              href="tel:048-711-1359"
               className="text-sm text-[#666666] hover:text-[#26A69A] transition-colors"
             >
-              Tel. 048-XXX-XXXX
+              Tel. 048-711-1359
             </a>
             <Link
               href="/contact"
@@ -92,10 +92,10 @@ export function Header() {
             ))}
             <div className="pt-4 border-t border-[#E5E4E0]">
               <a
-                href="tel:048-XXX-XXXX"
+                href="tel:048-711-1359"
                 className="block text-sm text-[#666666] py-2"
               >
-                Tel. 048-XXX-XXXX
+                Tel. 048-711-1359
               </a>
             </div>
           </nav>
