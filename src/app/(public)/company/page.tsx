@@ -1,0 +1,276 @@
+import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import Link from 'next/link';
+
+export default function CompanyPage() {
+  return (
+    <div className="bg-[#FAF9F6]">
+      {/* Hero section */}
+      <section className="relative py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <p className="text-sm tracking-widest text-[#26A69A] mb-4">
+                ABOUT US
+              </p>
+              <h1 className="text-3xl lg:text-4xl font-medium leading-relaxed text-[#333333] mb-8">
+                つくり手が直接届ける、<br />
+                信頼のリフォーム。
+              </h1>
+              <p className="text-[#666666] leading-relaxed mb-6">
+                私たちSKコームは、埼玉県川口市を拠点に、
+                リフォーム・内装工事を手がける会社です。
+              </p>
+              <p className="text-[#666666] leading-relaxed">
+                「つくり手が直接お客様と向き合う」をモットーに、
+                中間マージンのない適正価格と、
+                細部までこだわった丁寧な施工をお届けしています。
+              </p>
+            </div>
+            <div className="relative">
+              <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
+                <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                  会社写真
+                </div>
+              </div>
+              {/* Accent badge */}
+              <div className="absolute -bottom-6 -left-6 lg:-left-12">
+                <div className="w-28 h-28 bg-[#26A69A] rounded-full flex items-center justify-center text-center">
+                  <div className="text-xs font-medium text-white leading-tight">
+                    Since<br />
+                    2015
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Vertical text */}
+        <div className="hidden lg:block absolute right-8 top-1/2 -translate-y-1/2">
+          <p className="vertical-text text-2xl tracking-widest text-[#E5E4E0] font-medium">
+            会社概要
+          </p>
+        </div>
+      </section>
+
+      {/* Philosophy section */}
+      <section className="py-24 lg:py-32 bg-[#F0EFE9]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <p className="text-sm tracking-widest text-[#26A69A] mb-4">PHILOSOPHY</p>
+            <h2 className="text-2xl lg:text-3xl font-medium text-[#333333]">
+              私たちの想い
+            </h2>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-[#FAF9F6] rounded-xl p-8 lg:p-12">
+              <p className="text-[#666666] leading-loose text-center mb-8">
+                住まいは、人生の大切な時間を過ごす場所。<br />
+                だからこそ、私たちは一つひとつの現場に<br />
+                真摯に向き合います。
+              </p>
+              <p className="text-[#666666] leading-loose text-center mb-8">
+                大手にはできない小回りの良さと、<br />
+                職人が直接対応するからこその細やかな気配り。<br />
+                お客様の「こうしたい」を、カタチにします。
+              </p>
+              <p className="text-[#666666] leading-loose text-center">
+                暮らしの「つづき」をつくる。<br />
+                それが、私たちSKコームの仕事です。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CEO Message section */}
+      <section className="py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-5">
+              <div className="aspect-[3/4] bg-[#E5E4E0] rounded-lg overflow-hidden">
+                <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                  代表写真
+                </div>
+              </div>
+            </div>
+            <div className="lg:col-span-7">
+              <p className="text-sm tracking-widest text-[#26A69A] mb-4">MESSAGE</p>
+              <h2 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-8">
+                代表挨拶
+              </h2>
+              <div className="space-y-6 text-[#666666] leading-relaxed">
+                <p>
+                  株式会社SKコームのホームページをご覧いただき、
+                  ありがとうございます。
+                </p>
+                <p>
+                  私は20代から内装工事の世界に入り、
+                  数多くの現場で経験を積んできました。
+                  その中で感じたのは、お客様と職人の間に
+                  「距離」があることへの違和感でした。
+                </p>
+                <p>
+                  お客様の本当のご要望は、直接お話しすることでしか
+                  分からないことがたくさんあります。
+                  だからこそ、つくり手が直接ご要望をお伺いし、
+                  責任を持って施工する体制を整えました。
+                </p>
+                <p>
+                  リフォームのことなら、何でもお気軽にご相談ください。
+                  お客様の理想の住まいづくりを、全力でサポートいたします。
+                </p>
+              </div>
+              <div className="mt-8 pt-8 border-t border-[#E5E4E0]">
+                <p className="text-sm text-[#999999] mb-1">代表取締役</p>
+                <p className="text-xl font-medium text-[#333333]">末武 剛</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Company Info section */}
+      <section className="py-24 lg:py-32 bg-[#F0EFE9]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <p className="text-sm tracking-widest text-[#26A69A] mb-4">COMPANY</p>
+            <h2 className="text-2xl lg:text-3xl font-medium text-[#333333]">
+              会社情報
+            </h2>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-[#FAF9F6] rounded-xl overflow-hidden">
+              <table className="w-full">
+                <tbody>
+                  {[
+                    ['会社名', '株式会社SKコーム'],
+                    ['代表者', '末武 剛'],
+                    ['設立', '2015年'],
+                    ['従業員数', '7名'],
+                    ['事業内容', 'リフォーム工事、内装工事、看板工事、住宅工事'],
+                    ['許可・資格', '建設業許可 埼玉県知事許可'],
+                    ['所在地', '〒333-0846 埼玉県川口市八幡木3-7-1'],
+                    ['電話番号', '048-XXX-XXXX'],
+                    ['メール', 'info@skcoom.co.jp'],
+                  ].map(([label, value], index) => (
+                    <tr key={label} className={index !== 0 ? 'border-t border-[#E5E4E0]' : ''}>
+                      <th className="px-6 lg:px-8 py-5 text-left text-sm font-medium text-[#26A69A] bg-[#FAF9F6] w-1/4 lg:w-1/5">
+                        {label}
+                      </th>
+                      <td className="px-6 lg:px-8 py-5 text-sm text-[#333333]">
+                        {value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Access section */}
+      <section className="py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div>
+              <p className="text-sm tracking-widest text-[#26A69A] mb-4">ACCESS</p>
+              <h2 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-8">
+                アクセス
+              </h2>
+
+              <div className="space-y-6">
+                <div className="flex items-start">
+                  <div className="w-10 h-10 bg-[#E0F2F1] rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                    <MapPin className="h-5 w-5 text-[#26A69A]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#333333] mb-1">所在地</p>
+                    <p className="text-[#666666] text-sm">
+                      〒333-0846<br />
+                      埼玉県川口市八幡木3-7-1
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <div className="w-10 h-10 bg-[#E0F2F1] rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                    <Phone className="h-5 w-5 text-[#26A69A]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#333333] mb-1">電話番号</p>
+                    <p className="text-[#666666] text-sm">048-XXX-XXXX</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <div className="w-10 h-10 bg-[#E0F2F1] rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                    <Mail className="h-5 w-5 text-[#26A69A]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#333333] mb-1">メール</p>
+                    <p className="text-[#666666] text-sm">info@skcoom.co.jp</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <div className="w-10 h-10 bg-[#E0F2F1] rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                    <Clock className="h-5 w-5 text-[#26A69A]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#333333] mb-1">営業時間</p>
+                    <p className="text-[#666666] text-sm">9:00〜18:00（土日祝休み）</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              {/* Map */}
+              <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
+                <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                  Google Map
+                </div>
+              </div>
+              <p className="mt-4 text-sm text-[#666666]">
+                埼玉高速鉄道「鳩ヶ谷駅」より徒歩15分
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA section */}
+      <section className="py-24 lg:py-32 bg-[#F0EFE9]">
+        <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
+          <p className="text-sm tracking-widest text-[#26A69A] mb-4">CONTACT</p>
+          <h2 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-6">
+            お気軽にご相談ください
+          </h2>
+          <p className="text-[#666666] mb-12 leading-relaxed">
+            リフォームのことなら何でもお気軽にご相談ください。<br />
+            現地調査・お見積りは無料です。
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <a
+              href="tel:048-XXX-XXXX"
+              className="inline-flex items-center justify-center border border-[#26A69A] text-[#26A69A] px-8 py-4 text-sm tracking-wide hover:bg-[#26A69A] hover:text-white transition-colors"
+            >
+              <Phone className="mr-3 h-4 w-4" />
+              048-XXX-XXXX
+            </a>
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center bg-[#26A69A] text-white px-8 py-4 text-sm font-medium tracking-wide hover:bg-[#009688] transition-colors"
+            >
+              お問い合わせフォーム
+            </Link>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

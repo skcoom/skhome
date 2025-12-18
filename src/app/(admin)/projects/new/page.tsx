@@ -1,0 +1,214 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+
+export default function NewProjectPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const [formData, setFormData] = useState({
+    name: '',
+    client_name: '',
+    address: '',
+    category: 'remodeling',
+    status: 'planning',
+    start_date: '',
+    end_date: '',
+    description: '',
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Supabase設定後に有効化
+      // const { error } = await supabase.from('projects').insert([
+      //   {
+      //     name: formData.name,
+      //     client_name: formData.client_name || null,
+      //     address: formData.address || null,
+      //     category: formData.category,
+      //     status: formData.status,
+      //     start_date: formData.start_date || null,
+      //     end_date: formData.end_date || null,
+      //     description: formData.description || null,
+      //     is_public: false,
+      //   },
+      // ]);
+
+      // if (error) {
+      //   setError(error.message);
+      //   return;
+      // }
+
+      // デモ用: 仮の成功処理
+      console.log('Project created:', formData);
+      router.push('/projects');
+      router.refresh();
+    } catch (err) {
+      setError('現場の登録に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center space-x-4">
+        <Link
+          href="/projects"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">新規現場を登録</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            施工現場の基本情報を入力してください
+          </p>
+        </div>
+      </div>
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="rounded-lg bg-white p-6 shadow">
+          {error && (
+            <div className="mb-6 rounded-md bg-red-50 p-4">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Input
+                id="name"
+                name="name"
+                label="工事名 *"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="例: 山田邸 キッチンリフォーム工事"
+                required
+              />
+            </div>
+
+            <Input
+              id="client_name"
+              name="client_name"
+              label="施主名"
+              value={formData.client_name}
+              onChange={handleChange}
+              placeholder="例: 山田太郎"
+            />
+
+            <Input
+              id="address"
+              name="address"
+              label="施工場所"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="例: 東京都世田谷区○○町1-2-3"
+            />
+
+            <div className="space-y-1">
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                カテゴリ *
+              </label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="remodeling">リフォーム</option>
+                <option value="apartment">マンション</option>
+                <option value="new_construction">新築</option>
+                <option value="house">住宅</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                ステータス *
+              </label>
+              <select
+                id="status"
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="planning">計画中</option>
+                <option value="in_progress">施工中</option>
+                <option value="completed">完了</option>
+              </select>
+            </div>
+
+            <Input
+              id="start_date"
+              name="start_date"
+              type="date"
+              label="開始日"
+              value={formData.start_date}
+              onChange={handleChange}
+            />
+
+            <Input
+              id="end_date"
+              name="end_date"
+              type="date"
+              label="完了日"
+              value={formData.end_date}
+              onChange={handleChange}
+            />
+
+            <div className="md:col-span-2 space-y-1">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                工事概要
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="工事の概要や特記事項を入力してください"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end space-x-4">
+          <Link href="/projects">
+            <Button type="button" variant="outline">
+              キャンセル
+            </Button>
+          </Link>
+          <Button type="submit" isLoading={isLoading}>
+            登録する
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

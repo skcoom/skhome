@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* SKコーム コーポレートカラー */
+  --background: #FAF9F6;
+  --foreground: #333333;
+  --cream: #FAF9F6;
+  --cream-dark: #F0EFE9;
+  /* ティール/ターコイズ - コーポレートカラー */
+  --primary: #26A69A;
+  --primary-light: #4DB6AC;
+  --primary-dark: #009688;
+  --primary-pale: #E0F2F1;
+  /* アクセントカラー */
+  --accent: #26A69A;
+  --accent-light: #80CBC4;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --border: #E5E4E0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-cream-dark: var(--cream-dark);
+  --color-yellow: var(--yellow);
+  --color-yellow-dark: var(--yellow-dark);
+  --color-brown: var(--brown);
+  --color-brown-light: var(--brown-light);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  letter-spacing: 0.05em;
+  line-height: 1.8;
+}
+
+/* 縦書きテキスト */
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* アクセントバッジ */
+.accent-badge {
+  background-color: var(--primary);
+  color: white;
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* リンクスタイル */
+.link-underline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: var(--text-primary);
+}
+
+/* セクションタイトル */
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
 }
