@@ -1,30 +1,70 @@
 import Link from 'next/link';
 import { ArrowRight, Phone } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import type { Project, ProjectMedia, BlogPost } from '@/types/database';
 
-export default function HomePage() {
-  const featuredWorks = [
-    {
-      id: '1',
-      name: '大橋邸 キッチンリフォーム',
-      category: 'リフォーム',
-      description: 'システムキッチンの入れ替えと背面収納の新設',
-      image: '/placeholder-work-1.jpg',
-    },
-    {
-      id: '2',
-      name: '東京医療商事 事務所内装',
-      category: 'リフォーム',
-      description: '事務所全体の内装リニューアル',
-      image: '/placeholder-work-2.jpg',
-    },
-    {
-      id: '3',
-      name: '浦安 マンションリノベーション',
-      category: 'マンション',
-      description: '3LDKマンションのフルリノベーション',
-      image: '/placeholder-work-3.jpg',
-    },
-  ];
+const categoryLabels: Record<string, string> = {
+  remodeling: 'リフォーム',
+  apartment: 'マンション',
+  new_construction: '新築',
+  house: '住宅',
+};
+
+const blogCategoryLabels: Record<string, { label: string; style: string }> = {
+  news: { label: 'ニュース', style: 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]' },
+  column: { label: 'コラム', style: 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]' },
+  case_study: { label: '施工事例', style: 'bg-[#26A69A] text-white' },
+};
+
+export default async function HomePage() {
+  const supabase = await createClient();
+
+  // 公開されているプロジェクトを3件取得
+  const { data: projects } = await supabase
+    .from('projects')
+    .select(`
+      *,
+      project_media (*)
+    `)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+    .limit(3);
+
+  // 公開されているブログ記事を2件取得
+  const { data: blogPosts } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(2);
+
+  // プロジェクトデータを整形
+  const featuredWorks = (projects || []).map((project: Project & { project_media: ProjectMedia[] }) => {
+    const featuredMedia = project.project_media?.find((m) => m.is_featured && m.type === 'image');
+    const afterMedia = project.project_media?.find((m) => m.phase === 'after' && m.type === 'image');
+    const anyMedia = project.project_media?.find((m) => m.type === 'image');
+    const thumbnail = featuredMedia || afterMedia || anyMedia;
+
+    return {
+      id: project.id,
+      name: project.name,
+      category: categoryLabels[project.category] || project.category,
+      description: project.description || '',
+      thumbnailUrl: thumbnail?.file_url || null,
+    };
+  });
+
+  // ブログデータを整形
+  const latestPosts = (blogPosts || []).map((post: BlogPost) => ({
+    id: post.id,
+    slug: post.slug,
+    title: post.title,
+    category: post.category,
+    categoryLabel: blogCategoryLabels[post.category]?.label || post.category,
+    categoryStyle: blogCategoryLabels[post.category]?.style || 'bg-gray-100 text-gray-600',
+    publishedAt: post.published_at ? new Date(post.published_at).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.') : '',
+    featuredImage: post.featured_image || null,
+  }));
 
   return (
     <div className="bg-[#FAF9F6]">
@@ -63,21 +103,33 @@ export default function HomePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-4">
                   <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                      施工写真
-                    </div>
+                    {featuredWorks[0]?.thumbnailUrl ? (
+                      <img src={featuredWorks[0].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                        施工写真
+                      </div>
+                    )}
                   </div>
                   <div className="aspect-square bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                      施工写真
-                    </div>
+                    {featuredWorks[1]?.thumbnailUrl ? (
+                      <img src={featuredWorks[1].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                        施工写真
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="pt-12">
                   <div className="aspect-[3/4] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                      施工写真
-                    </div>
+                    {featuredWorks[2]?.thumbnailUrl ? (
+                      <img src={featuredWorks[2].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                        施工写真
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -164,31 +216,45 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {featuredWorks.map((work) => (
-              <Link
-                key={work.id}
-                href={`/works/${work.id}`}
-                className="group"
-              >
-                <div className="relative aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden mb-4">
-                  <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                    準備中
+          {featuredWorks.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              {featuredWorks.map((work) => (
+                <Link
+                  key={work.id}
+                  href={`/works/${work.id}`}
+                  className="group"
+                >
+                  <div className="relative aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden mb-4">
+                    {work.thumbnailUrl ? (
+                      <img
+                        src={work.thumbnailUrl}
+                        alt={work.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                        準備中
+                      </div>
+                    )}
+                    {/* Category badge */}
+                    <div className="absolute top-4 left-4">
+                      <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full">
+                        {work.category}
+                      </span>
+                    </div>
                   </div>
-                  {/* Category badge */}
-                  <div className="absolute top-4 left-4">
-                    <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full">
-                      {work.category}
-                    </span>
-                  </div>
-                </div>
-                <h3 className="text-lg font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors mb-2">
-                  {work.name}
-                </h3>
-                <p className="text-sm text-[#666666]">{work.description}</p>
-              </Link>
-            ))}
-          </div>
+                  <h3 className="text-lg font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors mb-2">
+                    {work.name}
+                  </h3>
+                  <p className="text-sm text-[#666666] line-clamp-2">{work.description}</p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-[#999999]">施工実績を準備中です</p>
+            </div>
+          )}
 
           <div className="text-center mt-12 md:hidden">
             <Link
@@ -225,37 +291,36 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-            <Link href="/blog/urayasu-kitchen-remodel" className="group flex gap-6">
-              <div className="w-32 h-24 bg-[#E5E4E0] rounded-lg flex-shrink-0 flex items-center justify-center text-[#999999] text-xs">
-                準備中
-              </div>
-              <div className="flex-1">
-                <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-2 py-0.5 rounded-full mb-2">
-                  施工事例
-                </span>
-                <h3 className="text-base font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors mb-1">
-                  浦安マンション キッチンリフォーム完了
-                </h3>
-                <p className="text-xs text-[#999999]">2024.01.15</p>
-              </div>
-            </Link>
-
-            <Link href="/blog/remodel-tips-5" className="group flex gap-6">
-              <div className="w-32 h-24 bg-[#E5E4E0] rounded-lg flex-shrink-0 flex items-center justify-center text-[#999999] text-xs">
-                準備中
-              </div>
-              <div className="flex-1">
-                <span className="inline-block bg-[#FAF9F6] text-[#666666] text-xs font-medium px-2 py-0.5 rounded-full mb-2 border border-[#E5E4E0]">
-                  コラム
-                </span>
-                <h3 className="text-base font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors mb-1">
-                  リフォームで失敗しないためのポイント5選
-                </h3>
-                <p className="text-xs text-[#999999]">2024.01.08</p>
-              </div>
-            </Link>
-          </div>
+          {latestPosts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+              {latestPosts.map((post) => (
+                <Link key={post.id} href={`/blog/${post.slug}`} className="group flex gap-6">
+                  <div className="w-32 h-24 bg-[#E5E4E0] rounded-lg flex-shrink-0 overflow-hidden">
+                    {post.featuredImage ? (
+                      <img src={post.featuredImage} alt={post.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#999999] text-xs">
+                        準備中
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${post.categoryStyle}`}>
+                      {post.categoryLabel}
+                    </span>
+                    <h3 className="text-base font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors mb-1 line-clamp-2">
+                      {post.title}
+                    </h3>
+                    <p className="text-xs text-[#999999]">{post.publishedAt}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-[#999999]">ブログ記事を準備中です</p>
+            </div>
+          )}
         </div>
       </section>
 
