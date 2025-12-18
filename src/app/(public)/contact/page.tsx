@@ -7,6 +7,7 @@ import { Phone, Mail, Clock, MapPin, CheckCircle, ArrowRight } from 'lucide-reac
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,13 +26,37 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
 
-    // デモ用: 2秒後に成功表示
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    console.log('Contact submitted:', formData);
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || null,
+          message: formData.type
+            ? `【${formData.type}】\n${formData.message}`
+            : formData.message,
+        }),
+      });
 
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || '送信に失敗しました');
+        return;
+      }
+
+      setIsSubmitted(true);
+    } catch {
+      setError('送信に失敗しました。しばらく経ってからお試しください。');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -136,6 +161,12 @@ export default function ContactPage() {
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {error && (
+                    <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-[#333333] mb-2">

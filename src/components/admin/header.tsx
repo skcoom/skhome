@@ -7,15 +7,15 @@ import { Bell, User as UserIcon } from 'lucide-react';
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     const getUser = async () => {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
     };
     getUser();
-  }, [supabase.auth]);
+  }, []);
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-white px-6">

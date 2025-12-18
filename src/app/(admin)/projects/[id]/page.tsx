@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
   ArrowLeft,
   Edit,
-  Trash2,
   Upload,
   Image as ImageIcon,
   Video,
@@ -41,7 +40,6 @@ const phaseLabels = {
 
 export default function ProjectDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const supabase = createClient();
   const [project, setProject] = useState<Project | null>(null);
   const [media, setMedia] = useState<ProjectMedia[]>([]);
@@ -108,7 +106,7 @@ export default function ProjectDetailPage() {
         const fileName = `${params.id}/${Date.now()}.${fileExt}`;
 
         // Supabase Storageにアップロード
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('project-media')
           .upload(fileName, file);
 
@@ -171,10 +169,6 @@ export default function ProjectDetailPage() {
       </div>
     );
   }
-
-  const beforeMedia = media.filter((m) => m.phase === 'before');
-  const duringMedia = media.filter((m) => m.phase === 'during');
-  const afterMedia = media.filter((m) => m.phase === 'after');
 
   return (
     <div className="space-y-6">

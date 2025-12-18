@@ -120,14 +120,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
 CREATE TRIGGER update_users_updated_at
   BEFORE UPDATE ON public.users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_projects_updated_at ON public.projects;
 CREATE TRIGGER update_projects_updated_at
   BEFORE UPDATE ON public.projects
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_blog_posts_updated_at ON public.blog_posts;
 CREATE TRIGGER update_blog_posts_updated_at
   BEFORE UPDATE ON public.blog_posts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -143,46 +146,58 @@ ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
 
 -- ユーザーポリシー（認証済みユーザーは全員閲覧可能、自分のプロファイルのみ編集可能）
+DROP POLICY IF EXISTS "Users can view all users" ON public.users;
 CREATE POLICY "Users can view all users" ON public.users
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
 CREATE POLICY "Users can update own profile" ON public.users
   FOR UPDATE TO authenticated USING (auth_user_id = auth.uid());
 
 -- プロジェクトポリシー（認証済みユーザーは全操作可能、公開プロジェクトは誰でも閲覧可能）
+DROP POLICY IF EXISTS "Authenticated users can manage projects" ON public.projects;
 CREATE POLICY "Authenticated users can manage projects" ON public.projects
   FOR ALL TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Public projects are viewable by everyone" ON public.projects;
 CREATE POLICY "Public projects are viewable by everyone" ON public.projects
   FOR SELECT TO anon USING (is_public = true);
 
 -- メディアポリシー
+DROP POLICY IF EXISTS "Authenticated users can manage media" ON public.project_media;
 CREATE POLICY "Authenticated users can manage media" ON public.project_media
   FOR ALL TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Public project media is viewable" ON public.project_media;
 CREATE POLICY "Public project media is viewable" ON public.project_media
   FOR SELECT TO anon USING (
     EXISTS (SELECT 1 FROM public.projects WHERE id = project_id AND is_public = true)
   );
 
 -- 進捗ポリシー
+DROP POLICY IF EXISTS "Authenticated users can manage progress" ON public.project_progress;
 CREATE POLICY "Authenticated users can manage progress" ON public.project_progress
   FOR ALL TO authenticated USING (true);
 
 -- ブログポリシー
+DROP POLICY IF EXISTS "Authenticated users can manage blog posts" ON public.blog_posts;
 CREATE POLICY "Authenticated users can manage blog posts" ON public.blog_posts
   FOR ALL TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Published posts are viewable by everyone" ON public.blog_posts;
 CREATE POLICY "Published posts are viewable by everyone" ON public.blog_posts
   FOR SELECT TO anon USING (status = 'published');
 
 -- お問い合わせポリシー
+DROP POLICY IF EXISTS "Authenticated users can view contacts" ON public.contacts;
 CREATE POLICY "Authenticated users can view contacts" ON public.contacts
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can update contacts" ON public.contacts;
 CREATE POLICY "Authenticated users can update contacts" ON public.contacts
   FOR UPDATE TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Anyone can insert contacts" ON public.contacts;
 CREATE POLICY "Anyone can insert contacts" ON public.contacts
   FOR INSERT TO anon WITH CHECK (true);
 

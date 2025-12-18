@@ -1,20 +1,34 @@
-import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
 import { FolderKanban, ImageIcon, FileText, MessageSquare } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  // 統計情報を取得（Supabase設定後に有効化）
-  // const { count: projectCount } = await supabase.from('projects').select('*', { count: 'exact', head: true });
-  // const { count: mediaCount } = await supabase.from('project_media').select('*', { count: 'exact', head: true });
-  // const { count: blogCount } = await supabase.from('blog_posts').select('*', { count: 'exact', head: true });
-  // const { count: contactCount } = await supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+  // 統計情報を取得
+  const { count: projectCount } = await supabase
+    .from('projects')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'in_progress');
+
+  const { count: mediaCount } = await supabase
+    .from('project_media')
+    .select('*', { count: 'exact', head: true });
+
+  const { count: blogCount } = await supabase
+    .from('blog_posts')
+    .select('*', { count: 'exact', head: true });
+
+  const { count: contactCount } = await supabase
+    .from('contacts')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending');
 
   const stats = [
-    { name: '進行中の現場', value: '-', icon: FolderKanban, color: 'bg-blue-500' },
-    { name: '登録メディア', value: '-', icon: ImageIcon, color: 'bg-green-500' },
-    { name: 'ブログ記事', value: '-', icon: FileText, color: 'bg-purple-500' },
-    { name: '未対応の問い合わせ', value: '-', icon: MessageSquare, color: 'bg-orange-500' },
+    { name: '進行中の現場', value: projectCount ?? 0, icon: FolderKanban, color: 'bg-blue-500' },
+    { name: '登録メディア', value: mediaCount ?? 0, icon: ImageIcon, color: 'bg-green-500' },
+    { name: 'ブログ記事', value: blogCount ?? 0, icon: FileText, color: 'bg-purple-500' },
+    { name: '未対応の問い合わせ', value: contactCount ?? 0, icon: MessageSquare, color: 'bg-orange-500' },
   ];
 
   return (
@@ -51,7 +65,7 @@ export default async function DashboardPage() {
       <div className="rounded-lg bg-white p-6 shadow">
         <h2 className="text-lg font-medium text-gray-900 mb-4">クイックアクション</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <a
+          <Link
             href="/projects/new"
             className="flex items-center rounded-lg border-2 border-dashed border-gray-300 p-6 hover:border-blue-500 hover:bg-blue-50 transition-colors"
           >
@@ -60,8 +74,8 @@ export default async function DashboardPage() {
               <p className="text-sm font-medium text-gray-900">新規現場を登録</p>
               <p className="text-sm text-gray-500">現場情報を追加します</p>
             </div>
-          </a>
-          <a
+          </Link>
+          <Link
             href="/projects"
             className="flex items-center rounded-lg border-2 border-dashed border-gray-300 p-6 hover:border-green-500 hover:bg-green-50 transition-colors"
           >
@@ -70,8 +84,8 @@ export default async function DashboardPage() {
               <p className="text-sm font-medium text-gray-900">写真/動画をアップロード</p>
               <p className="text-sm text-gray-500">施工写真を追加します</p>
             </div>
-          </a>
-          <a
+          </Link>
+          <Link
             href="/admin/blog/new"
             className="flex items-center rounded-lg border-2 border-dashed border-gray-300 p-6 hover:border-purple-500 hover:bg-purple-50 transition-colors"
           >
@@ -80,22 +94,8 @@ export default async function DashboardPage() {
               <p className="text-sm font-medium text-gray-900">ブログ記事を作成</p>
               <p className="text-sm text-gray-500">AIで記事を生成します</p>
             </div>
-          </a>
+          </Link>
         </div>
-      </div>
-
-      {/* Setup guide */}
-      <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-6">
-        <h2 className="text-lg font-medium text-yellow-800 mb-2">セットアップガイド</h2>
-        <p className="text-sm text-yellow-700 mb-4">
-          システムを利用開始するには、以下の設定が必要です：
-        </p>
-        <ol className="list-decimal list-inside space-y-2 text-sm text-yellow-700">
-          <li>Supabaseプロジェクトを作成し、環境変数を設定</li>
-          <li>データベーステーブルを作成</li>
-          <li>ストレージバケットを設定</li>
-          <li>初期ユーザーを登録</li>
-        </ol>
       </div>
     </div>
   );

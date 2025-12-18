@@ -107,7 +107,7 @@ export async function generateBlogPost(project: {
       excerpt: parsed.excerpt || '',
       content: parsed.content || '',
     };
-  } catch (e) {
+  } catch {
     throw new Error('Failed to parse generated blog post');
   }
 }

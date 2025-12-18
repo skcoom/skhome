@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft } from 'lucide-react';
@@ -10,7 +9,6 @@ import Link from 'next/link';
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,31 +36,34 @@ export default function NewProjectPage() {
     setError('');
 
     try {
-      // Supabase設定後に有効化
-      // const { error } = await supabase.from('projects').insert([
-      //   {
-      //     name: formData.name,
-      //     client_name: formData.client_name || null,
-      //     address: formData.address || null,
-      //     category: formData.category,
-      //     status: formData.status,
-      //     start_date: formData.start_date || null,
-      //     end_date: formData.end_date || null,
-      //     description: formData.description || null,
-      //     is_public: false,
-      //   },
-      // ]);
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          client_name: formData.client_name || null,
+          address: formData.address || null,
+          category: formData.category,
+          status: formData.status,
+          start_date: formData.start_date || null,
+          end_date: formData.end_date || null,
+          description: formData.description || null,
+          is_public: false,
+        }),
+      });
 
-      // if (error) {
-      //   setError(error.message);
-      //   return;
-      // }
+      const data = await response.json();
 
-      // デモ用: 仮の成功処理
-      console.log('Project created:', formData);
+      if (!response.ok) {
+        setError(data.error || '現場の登録に失敗しました');
+        return;
+      }
+
       router.push('/projects');
       router.refresh();
-    } catch (err) {
+    } catch {
       setError('現場の登録に失敗しました');
     } finally {
       setIsLoading(false);

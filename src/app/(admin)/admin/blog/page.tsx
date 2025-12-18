@@ -1,45 +1,18 @@
-'use client';
-
 import Link from 'next/link';
 import { Plus, Edit, Trash2, Eye, EyeOff, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { createClient } from '@/lib/supabase/server';
 
-// デモ用のブログ記事データ
-const demoBlogPosts = [
-  {
-    id: '1',
-    title: '浦安マンション キッチンリフォーム完了',
-    slug: 'urayasu-kitchen-remodel',
-    excerpt: '築15年のマンションのキッチンを最新のシステムキッチンにリフォームしました。',
-    category: 'case_study',
-    status: 'published',
-    ai_generated: true,
-    published_at: '2024-01-15',
-    created_at: '2024-01-10',
-  },
-  {
-    id: '2',
-    title: 'リフォームで失敗しないためのポイント5選',
-    slug: 'remodel-tips-5',
-    excerpt: 'リフォームを検討中の方必見！失敗しないための重要なポイントをご紹介します。',
-    category: 'column',
-    status: 'published',
-    ai_generated: false,
-    published_at: '2024-01-08',
-    created_at: '2024-01-05',
-  },
-  {
-    id: '3',
-    title: '年末年始の営業のお知らせ',
-    slug: 'new-year-2024',
-    excerpt: '2024年の年末年始の営業日程についてお知らせいたします。',
-    category: 'news',
-    status: 'draft',
-    ai_generated: false,
-    published_at: null,
-    created_at: '2024-01-03',
-  },
-];
+interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  category: string;
+  status: string;
+  ai_generated: boolean;
+  published_at: string | null;
+  created_at: string;
+}
 
 const categoryLabels: Record<string, string> = {
   news: 'ニュース',
@@ -52,8 +25,19 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   published: { label: '公開中', color: 'bg-green-100 text-green-800' },
 };
 
-export default function BlogListPage() {
-  const [posts] = useState(demoBlogPosts);
+export default async function BlogListPage() {
+  const supabase = await createClient();
+
+  const { data: posts, error } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Blog posts fetch error:', error);
+  }
+
+  const blogPosts = (posts || []) as BlogPost[];
 
   return (
     <div className="space-y-6">
@@ -105,7 +89,7 @@ export default function BlogListPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {posts.map((post) => (
+            {blogPosts.map((post) => (
               <tr key={post.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <div className="flex items-center">
@@ -159,7 +143,6 @@ export default function BlogListPage() {
                     </Link>
                     <button
                       className="text-red-600 hover:text-red-900"
-                      onClick={() => alert('削除機能は準備中です')}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -170,7 +153,7 @@ export default function BlogListPage() {
           </tbody>
         </table>
 
-        {posts.length === 0 && (
+        {blogPosts.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">まだ記事がありません</p>
             <Link

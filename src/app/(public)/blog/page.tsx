@@ -1,78 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Calendar, Sparkles, Phone } from 'lucide-react';
 
-// デモ用のブログ記事データ（公開済みのみ）
-const blogPosts = [
-  {
-    id: '1',
-    title: '浦安マンション キッチンリフォーム完了',
-    slug: 'urayasu-kitchen-remodel',
-    excerpt:
-      '築15年のマンションのキッチンを最新のシステムキッチンにリフォームしました。使い勝手と収納力が大幅にアップ。お客様に大変喜んでいただけました。',
-    category: 'case_study',
-    ai_generated: true,
-    published_at: '2024-01-15',
-    featured_image: null,
-  },
-  {
-    id: '2',
-    title: 'リフォームで失敗しないためのポイント5選',
-    slug: 'remodel-tips-5',
-    excerpt:
-      'リフォームを検討中の方必見！失敗しないための重要なポイントをご紹介します。業者選びから予算の考え方まで、プロが解説します。',
-    category: 'column',
-    ai_generated: false,
-    published_at: '2024-01-08',
-    featured_image: null,
-  },
-  {
-    id: '3',
-    title: '大橋邸 キッチンリフォーム施工事例',
-    slug: 'ohashi-kitchen',
-    excerpt:
-      '世田谷区の戸建て住宅でキッチンリフォームを行いました。システムキッチンの入れ替えと背面収納の新設で、快適なキッチン空間が完成しました。',
-    category: 'case_study',
-    ai_generated: true,
-    published_at: '2024-01-05',
-    featured_image: null,
-  },
-  {
-    id: '4',
-    title: '川口市で人気のリフォーム事例TOP3',
-    slug: 'kawaguchi-popular-remodel',
-    excerpt:
-      '川口市エリアで特に人気の高いリフォーム事例をご紹介。キッチン、お風呂、トイレなど、水回りのリフォームが人気です。',
-    category: 'column',
-    ai_generated: false,
-    published_at: '2024-01-02',
-    featured_image: null,
-  },
-  {
-    id: '5',
-    title: '年末年始の営業について',
-    slug: 'new-year-2024',
-    excerpt:
-      '平素より株式会社SKコームをご愛顧いただき誠にありがとうございます。年末年始の営業日程についてお知らせいたします。',
-    category: 'news',
-    ai_generated: false,
-    published_at: '2023-12-25',
-    featured_image: null,
-  },
-  {
-    id: '6',
-    title: '東京医療商事 事務所内装リニューアル',
-    slug: 'tokyo-medical-office',
-    excerpt:
-      '中央区の事務所全体の内装リニューアルを行いました。壁紙・床・照明の交換により、清潔感のある快適なオフィス空間が完成しました。',
-    category: 'case_study',
-    ai_generated: true,
-    published_at: '2023-12-20',
-    featured_image: null,
-  },
-];
+interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  category: string;
+  ai_generated: boolean;
+  published_at: string;
+  featured_image: string | null;
+}
 
 const categoryLabels: Record<string, string> = {
   all: 'すべて',
@@ -83,6 +24,25 @@ const categoryLabels: Record<string, string> = {
 
 export default function BlogPage() {
   const [activeCategory, setActiveCategory] = useState('all');
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        const response = await fetch('/api/blog?status=published');
+        if (response.ok) {
+          const data = await response.json();
+          setBlogPosts(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch blog posts:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchPosts();
+  }, []);
 
   const filteredPosts = activeCategory === 'all'
     ? blogPosts
@@ -139,16 +99,28 @@ export default function BlogPage() {
       {/* Blog posts grid */}
       <section className="py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          {filteredPosts.length > 0 ? (
+          {isLoading ? (
+            <div className="text-center py-16">
+              <p className="text-[#999999]">読み込み中...</p>
+            </div>
+          ) : filteredPosts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredPosts.map((post) => (
                 <article key={post.id} className="group">
                   <Link href={`/blog/${post.slug}`}>
                     {/* Featured image */}
                     <div className="relative aspect-[16/10] bg-[#E5E4E0] rounded-lg overflow-hidden mb-4">
-                      <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                        準備中
-                      </div>
+                      {post.featured_image ? (
+                        <img
+                          src={post.featured_image}
+                          alt={post.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
+                          準備中
+                        </div>
+                      )}
                       {/* Category badge */}
                       <div className="absolute top-4 left-4">
                         <span className={`inline-block text-xs font-medium px-3 py-1 rounded-full ${
@@ -177,11 +149,11 @@ export default function BlogPage() {
                       {/* Date */}
                       <div className="flex items-center text-xs text-[#999999]">
                         <Calendar className="mr-1.5 h-3.5 w-3.5" />
-                        {new Date(post.published_at).toLocaleDateString('ja-JP', {
+                        {post.published_at ? new Date(post.published_at).toLocaleDateString('ja-JP', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
-                        })}
+                        }) : ''}
                       </div>
 
                       {/* Title */}

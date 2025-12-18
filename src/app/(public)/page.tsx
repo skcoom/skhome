@@ -131,8 +131,8 @@ export default function HomePage() {
                 title: '確かな技術',
                 description: '経験豊富な職人が丁寧に施工。細部にまでこだわり、長く愛される住まいをお届けします。',
               },
-            ].map((feature, index) => (
-              <div key={index} className="bg-[#FAF9F6] rounded-xl p-8 lg:p-10">
+            ].map((feature) => (
+              <div key={feature.num} className="bg-[#FAF9F6] rounded-xl p-8 lg:p-10">
                 <span className="text-4xl font-light text-[#E5E4E0] mb-4 block">
                   {feature.num}
                 </span>
@@ -165,7 +165,7 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {featuredWorks.map((work, index) => (
+            {featuredWorks.map((work) => (
               <Link
                 key={work.id}
                 href={`/works/${work.id}`}

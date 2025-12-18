@@ -8,7 +8,6 @@ import {
   FileText,
   Users,
   MessageSquare,
-  Settings,
   LogOut,
   Home,
 } from 'lucide-react';

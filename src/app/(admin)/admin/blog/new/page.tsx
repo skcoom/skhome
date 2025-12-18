@@ -7,33 +7,14 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-// デモ用のプロジェクトデータ
-const demoProjects = [
-  {
-    id: '1',
-    name: '大橋邸 キッチンリフォーム',
-    category: 'remodeling',
-    client_name: '大橋様',
-    address: '東京都世田谷区',
-    description: 'システムキッチンの入れ替えと、背面収納の新設工事',
-  },
-  {
-    id: '2',
-    name: '東京医療商事 事務所内装',
-    category: 'remodeling',
-    client_name: '東京医療商事株式会社',
-    address: '東京都中央区',
-    description: '事務所全体の内装リニューアル。壁紙・床・照明の交換',
-  },
-  {
-    id: '3',
-    name: '浦安 マンションリノベーション',
-    category: 'apartment',
-    client_name: '鈴木様',
-    address: '千葉県浦安市',
-    description: '3LDKマンションのフルリノベーション。間取り変更含む',
-  },
-];
+interface Project {
+  id: string;
+  name: string;
+  category: string;
+  client_name: string | null;
+  address: string | null;
+  description: string | null;
+}
 
 const categoryLabels: Record<string, string> = {
   news: 'ニュース',
@@ -50,6 +31,8 @@ function NewBlogPostContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -60,6 +43,27 @@ function NewBlogPostContent() {
     status: 'draft' as 'draft' | 'published',
     featured_image: '',
   });
+
+  // プロジェクト一覧を取得
+  useEffect(() => {
+    async function fetchProjects() {
+      setIsLoadingProjects(true);
+      try {
+        const response = await fetch('/api/projects');
+        if (response.ok) {
+          const data = await response.json();
+          setProjects(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects:', err);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    }
+    if (isAIMode) {
+      fetchProjects();
+    }
+  }, [isAIMode]);
 
   // AIモードの場合、カテゴリを施工事例に設定
   useEffect(() => {
@@ -88,7 +92,7 @@ function NewBlogPostContent() {
       return;
     }
 
-    const project = demoProjects.find((p) => p.id === selectedProjectId);
+    const project = projects.find((p) => p.id === selectedProjectId);
     if (!project) return;
 
     setIsGenerating(true);
@@ -103,9 +107,9 @@ function NewBlogPostContent() {
         body: JSON.stringify({
           name: project.name,
           category: project.category,
-          description: project.description,
-          clientName: project.client_name,
-          address: project.address,
+          description: project.description || '',
+          clientName: project.client_name || '',
+          address: project.address || '',
         }),
       });
 
@@ -137,22 +141,43 @@ function NewBlogPostContent() {
       return;
     }
 
+    if (!formData.slug) {
+      setError('URLスラッグは必須です');
+      return;
+    }
+
     setIsSaving(true);
     setError('');
 
     try {
-      // デモモード: 実際の保存は行わない
-      console.log('Saving blog post:', {
-        ...formData,
-        status: publish ? 'published' : 'draft',
-        ai_generated: isAIMode,
-        project_id: selectedProjectId || null,
+      const response = await fetch('/api/blog', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          slug: formData.slug,
+          content: formData.content,
+          excerpt: formData.excerpt || null,
+          featured_image: formData.featured_image || null,
+          category: formData.category,
+          status: publish ? 'published' : 'draft',
+          ai_generated: isAIMode,
+          project_id: selectedProjectId || null,
+        }),
       });
 
-      // 成功メッセージを表示して一覧に戻る
-      alert(publish ? '記事を公開しました' : '下書きを保存しました');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || '保存に失敗しました');
+        return;
+      }
+
       router.push('/admin/blog');
-    } catch (err) {
+      router.refresh();
+    } catch {
       setError('保存に失敗しました');
     } finally {
       setIsSaving(false);
@@ -221,14 +246,22 @@ function NewBlogPostContent() {
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value)}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                    disabled={isLoadingProjects}
                   >
-                    <option value="">選択してください</option>
-                    {demoProjects.map((project) => (
+                    <option value="">
+                      {isLoadingProjects ? '読み込み中...' : '選択してください'}
+                    </option>
+                    {projects.map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.name}
                       </option>
                     ))}
                   </select>
+                  {projects.length === 0 && !isLoadingProjects && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      施工事例が登録されていません。先に現場を登録してください。
+                    </p>
+                  )}
                 </div>
                 <Button
                   onClick={handleAIGenerate}
