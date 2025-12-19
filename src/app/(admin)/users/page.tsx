@@ -85,6 +85,7 @@ export default function UsersPage() {
 
     setIsSaving(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
