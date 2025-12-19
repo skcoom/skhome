@@ -88,3 +88,45 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
+
+// メディアのis_featuredを更新
+export async function PATCH(request: NextRequest, { params }: { params: Params }) {
+  try {
+    await params; // paramsを使用（lintエラー回避）
+    const supabase = await createClient();
+
+    // 認証チェック
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { mediaIds, is_featured } = body;
+
+    if (!mediaIds || !Array.isArray(mediaIds)) {
+      return NextResponse.json({ error: 'mediaIdsは配列で指定してください' }, { status: 400 });
+    }
+
+    // 複数のメディアを一括更新
+    const { data, error } = await supabase
+      .from('project_media')
+      .update({ is_featured: is_featured ?? true })
+      .in('id', mediaIds)
+      .select();
+
+    if (error) {
+      console.error('Media update error:', error);
+      return NextResponse.json({ error: 'メディアの更新に失敗しました' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      updated: data,
+      message: `${data.length}件のメディアを更新しました`,
+    });
+  } catch (error) {
+    console.error('Media PATCH error:', error);
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
+  }
+}
