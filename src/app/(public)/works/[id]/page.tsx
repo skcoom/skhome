@@ -4,6 +4,9 @@ import { ArrowLeft, MapPin, Calendar, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia } from '@/types/database';
 import { WorkDetailGallery } from './gallery';
+import type { Metadata } from 'next';
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
 
 const categoryLabels: Record<string, string> = {
   remodeling: 'リフォーム',
@@ -14,6 +17,70 @@ const categoryLabels: Record<string, string> = {
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select(`
+      name,
+      description,
+      category,
+      address,
+      project_media (file_url, is_featured, phase, type)
+    `)
+    .eq('id', id)
+    .eq('is_public', true)
+    .single();
+
+  if (!project) {
+    return {
+      title: '施工実績が見つかりません',
+    };
+  }
+
+  const typedProject = project as Project & { project_media: ProjectMedia[] };
+  const categoryLabel = categoryLabels[typedProject.category] || typedProject.category;
+  const description = typedProject.description ||
+    `${typedProject.name}の施工実績です。${categoryLabel}工事の詳細をご覧いただけます。`;
+
+  // OG画像を取得（featured > after > 最初の画像）
+  const media = typedProject.project_media || [];
+  const featuredMedia = media.find((m) => m.is_featured && m.type === 'image');
+  const afterMedia = media.find((m) => m.phase === 'after' && m.type === 'image');
+  const firstImage = media.find((m) => m.type === 'image');
+  const ogImage = featuredMedia?.file_url || afterMedia?.file_url || firstImage?.file_url || '/og-image.png';
+
+  return {
+    title: `${typedProject.name} | 施工実績`,
+    description,
+    alternates: {
+      canonical: `/works/${id}`,
+    },
+    openGraph: {
+      title: `${typedProject.name} | 施工実績`,
+      description,
+      type: 'article',
+      url: `${siteUrl}/works/${id}`,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: typedProject.name,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${typedProject.name} | 施工実績`,
+      description,
+      images: [ogImage],
+    },
+  };
 }
 
 export default async function WorkDetailPage({ params }: PageProps) {

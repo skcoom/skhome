@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, Calendar, Sparkles, Share2, Phone, ArrowRight } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import type { Metadata } from 'next';
 
 interface BlogPost {
   id: string;
@@ -14,6 +15,62 @@ interface BlogPost {
   published_at: string | null;
   featured_image: string | null;
   status: string;
+}
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data: post } = await supabase
+    .from('blog_posts')
+    .select('title, excerpt, featured_image, published_at')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .single();
+
+  if (!post) {
+    return {
+      title: '記事が見つかりません',
+    };
+  }
+
+  const description = post.excerpt || `${post.title} - SKコームのブログ記事です。`;
+  const ogImage = post.featured_image || '/og-image.png';
+
+  return {
+    title: post.title,
+    description,
+    alternates: {
+      canonical: `/blog/${slug}`,
+    },
+    openGraph: {
+      title: post.title,
+      description,
+      type: 'article',
+      url: `${siteUrl}/blog/${slug}`,
+      publishedTime: post.published_at || undefined,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description,
+      images: [ogImage],
+    },
+  };
 }
 
 const categoryLabels: Record<string, string> = {
