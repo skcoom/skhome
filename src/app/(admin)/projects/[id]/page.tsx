@@ -104,31 +104,59 @@ export default function ProjectDetailPage() {
 
     try {
       for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${projectId}/${Date.now()}.${fileExt}`;
+        const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
 
-        // Supabase Storageにアップロード
-        const { error: uploadError } = await supabase.storage
-          .from('project-media')
-          .upload(fileName, file);
+        let fileUrl: string;
+        let thumbnailUrl: string | undefined;
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          continue;
+        if (mediaType === 'image') {
+          // 画像の場合：処理APIでリサイズ・WebP変換
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('projectId', projectId);
+
+          const response = await fetch('/api/media/process', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Process API error:', errorData);
+            continue;
+          }
+
+          const result = await response.json();
+          fileUrl = result.file_url;
+          thumbnailUrl = result.thumbnail_url;
+        } else {
+          // 動画の場合：従来通り直接アップロード
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${projectId}/${Date.now()}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('project-media')
+            .upload(fileName, file);
+
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            continue;
+          }
+
+          const { data: publicUrlData } = supabase.storage
+            .from('project-media')
+            .getPublicUrl(fileName);
+
+          fileUrl = publicUrlData.publicUrl;
         }
 
-        // 公開URLを取得
-        const { data: publicUrlData } = supabase.storage
-          .from('project-media')
-          .getPublicUrl(fileName);
-
         // メディアレコードを作成
-        const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
         const insertData = {
           project_id: projectId,
           type: mediaType,
           phase: selectedPhase as MediaPhase,
-          file_url: publicUrlData.publicUrl,
+          file_url: fileUrl,
+          thumbnail_url: thumbnailUrl,
           is_featured: false,
         };
         const { error: insertError } = await supabase
