@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         role,
         company_name: company_name || null,
       },
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/set-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?type=invite`,
     });
 
     if (inviteError) {
