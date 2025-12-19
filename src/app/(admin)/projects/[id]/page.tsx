@@ -18,6 +18,7 @@ import {
   Plus,
 } from 'lucide-react';
 import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
+import { PickupSuggestions } from '@/components/admin/PickupSuggestions';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
