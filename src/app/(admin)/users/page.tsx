@@ -182,6 +182,18 @@ export default function UsersPage() {
         </div>
       )}
 
+      {successMessage && (
+        <div className="rounded-md bg-green-50 p-4">
+          <p className="text-sm text-green-600">{successMessage}</p>
+          <button
+            onClick={() => setSuccessMessage('')}
+            className="mt-2 text-xs text-green-700 underline"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
       {/* Role summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {(Object.keys(roleConfig) as UserRole[]).map((role) => {
