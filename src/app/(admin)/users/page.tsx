@@ -113,6 +113,10 @@ export default function UsersPage() {
         setUsers((prev) => prev.map((u) => (u.id === data.id ? data : u)));
       } else {
         setUsers((prev) => [data, ...prev]);
+        // 招待メール送信成功メッセージを表示
+        if (data.message) {
+          setSuccessMessage(data.message);
+        }
       }
 
       setShowModal(false);
