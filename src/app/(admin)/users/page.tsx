@@ -29,6 +29,7 @@ export default function UsersPage() {
     role: 'staff' as UserRole,
     company_name: '',
   });
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchUsers();
