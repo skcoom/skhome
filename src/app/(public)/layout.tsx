@@ -1,5 +1,6 @@
 import { Header } from '@/components/public/Header';
 import { Footer } from '@/components/public/Footer';
+import { LineFloatingButton } from '@/components/ui/LineFloatingButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export default function PublicLayout({
         {children}
       </main>
       <Footer />
+      <LineFloatingButton />
     </div>
   );
 }
