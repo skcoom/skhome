@@ -415,6 +415,20 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
+      {/* AI Pickup Suggestions */}
+      <PickupSuggestions
+        projectId={projectId}
+        onApproved={async () => {
+          // メディア一覧を再取得
+          const { data } = await supabase
+            .from('project_media')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false });
+          setMedia(data || []);
+        }}
+      />
+
       {/* Upload modal */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
