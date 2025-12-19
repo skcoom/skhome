@@ -354,7 +354,7 @@ export default function ProjectDetailPage() {
                 {item.type === 'image' ? (
                   item.file_url ? (
                     <img
-                      src={item.file_url}
+                      src={item.thumbnail_url || item.file_url}
                       alt={item.caption || '施工写真'}
                       className="h-full w-full object-cover"
                     />
