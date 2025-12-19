@@ -99,6 +99,11 @@ const jsonLd = {
     geoRadius: '50000',
   },
   serviceType: ['リフォーム', '建築', 'リノベーション', '住宅改修'],
+  founder: {
+    '@type': 'Person',
+    name: '末武修平',
+    jobTitle: '代表取締役',
+  },
   sameAs: [],
 };
 
