@@ -1,5 +1,6 @@
 'use client';
 
+// Header component with navigation menu
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
