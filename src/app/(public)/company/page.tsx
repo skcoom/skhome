@@ -124,7 +124,7 @@ export default function CompanyPage() {
               </div>
               <div className="mt-8 pt-8 border-t border-[#E5E4E0]">
                 <p className="text-sm text-[#999999] mb-1">代表取締役</p>
-                <p className="text-xl font-medium text-[#333333]">末武 剛</p>
+                <p className="text-xl font-medium text-[#333333]">末武 修平</p>
               </div>
             </div>
           </div>

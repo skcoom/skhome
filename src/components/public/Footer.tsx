@@ -48,6 +48,7 @@ export function Footer() {
               {[
                 { href: '/', label: 'ホーム' },
                 { href: '/company', label: '会社概要' },
+                { href: '/members', label: 'メンバー' },
                 { href: '/works', label: '施工実績' },
                 { href: '/blog', label: 'ブログ' },
                 { href: '/contact', label: 'お問い合わせ' },
