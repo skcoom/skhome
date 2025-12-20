@@ -180,7 +180,7 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
                           <Film className="h-6 w-6 text-gray-400" />
                         </div>
                       )}
-                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded">
+                      <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1 rounded">
                         <Film className="h-3 w-3" />
                       </div>
                     </div>
