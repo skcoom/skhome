@@ -10,6 +10,7 @@ import {
   Check,
   X,
   AlertCircle,
+  MessageSquare,
 } from 'lucide-react';
 import type { ExtractedProjectData } from '@/types/document-analysis';
 
@@ -30,9 +31,13 @@ const statusLabels: Record<string, string> = {
   completed: '完了',
 };
 
+type InputMode = 'file' | 'text';
+
 export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [inputMode, setInputMode] = useState<InputMode>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [textInput, setTextInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractedProjectData | null>(null);
@@ -93,19 +98,30 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
   };
 
   const handleAnalyze = async () => {
-    if (!selectedFile) return;
+    if (inputMode === 'file' && !selectedFile) return;
+    if (inputMode === 'text' && !textInput.trim()) return;
 
     setIsAnalyzing(true);
     setError(null);
 
     try {
-      const fileType = getFileType(selectedFile);
+      let fileType: 'pdf' | 'text' | 'image';
       let content: string;
+      let fileName: string;
 
-      if (fileType === 'text') {
-        content = await selectedFile.text();
+      if (inputMode === 'file' && selectedFile) {
+        fileType = getFileType(selectedFile);
+        fileName = selectedFile.name;
+
+        if (fileType === 'text') {
+          content = await selectedFile.text();
+        } else {
+          content = await fileToBase64(selectedFile);
+        }
       } else {
-        content = await fileToBase64(selectedFile);
+        fileType = 'text';
+        content = textInput;
+        fileName = 'input.txt';
       }
 
       const response = await fetch('/api/projects/analyze-document', {
@@ -114,7 +130,7 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
         body: JSON.stringify({
           fileType,
           content,
-          fileName: selectedFile.name,
+          fileName,
         }),
       });
 
@@ -141,6 +157,7 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
 
     setShowPreview(false);
     setSelectedFile(null);
+    setTextInput('');
     setResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -161,6 +178,10 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
     return <Image className="h-5 w-5" />;
   };
 
+  const canAnalyze =
+    (inputMode === 'file' && selectedFile) ||
+    (inputMode === 'text' && textInput.trim());
+
   const fields = [
     { key: 'name', label: '工事名' },
     { key: 'client_name', label: '施主名' },
@@ -177,47 +198,93 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
       <div className="flex items-center space-x-2 mb-3">
         <FileText className="h-5 w-5 text-blue-600" />
         <h3 className="text-sm font-medium text-blue-900">
-          要件定義書からAI自動入力
+          AIで現場情報を自動入力
         </h3>
       </div>
 
       <p className="text-xs text-blue-700 mb-4">
-        PDF、テキスト、または画像ファイルをアップロードすると、AIが内容を解析してフォームに自動入力します。
+        ファイルまたはテキストを入力すると、AIが内容を解析してフォームに自動入力します。
       </p>
 
-      <div className="flex items-center space-x-3">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.txt,.md,image/*"
-          onChange={handleFileChange}
-          className="hidden"
-        />
+      {/* 入力モード切替タブ */}
+      <div className="flex space-x-1 mb-4 bg-blue-100 rounded-lg p-1">
+        <button
+          type="button"
+          onClick={() => setInputMode('file')}
+          className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            inputMode === 'file'
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-blue-600 hover:bg-blue-50'
+          }`}
+        >
+          <Upload className="h-4 w-4" />
+          <span>ファイル</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setInputMode('text')}
+          className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            inputMode === 'text'
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-blue-600 hover:bg-blue-50'
+          }`}
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span>テキスト入力</span>
+        </button>
+      </div>
 
+      {/* ファイル選択モード */}
+      {inputMode === 'file' && (
+        <div className="flex items-center space-x-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.txt,.md,image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-white"
+          >
+            {getFileIcon()}
+            <span className="ml-2">
+              {selectedFile ? selectedFile.name : 'ファイルを選択'}
+            </span>
+          </Button>
+        </div>
+      )}
+
+      {/* テキスト入力モード */}
+      {inputMode === 'text' && (
+        <textarea
+          value={textInput}
+          onChange={(e) => setTextInput(e.target.value)}
+          placeholder="ヒアリング内容や要件定義をここに入力してください..."
+          className="w-full h-32 px-3 py-2 text-sm border border-blue-200 rounded-md bg-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+        />
+      )}
+
+      {/* 解析ボタン */}
+      <div className="mt-3">
         <Button
           type="button"
-          variant="outline"
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-white"
+          onClick={handleAnalyze}
+          disabled={isAnalyzing || !canAnalyze}
         >
-          {getFileIcon()}
-          <span className="ml-2">
-            {selectedFile ? selectedFile.name : 'ファイルを選択'}
-          </span>
+          {isAnalyzing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              解析中...
+            </>
+          ) : (
+            'AIで解析する'
+          )}
         </Button>
-
-        {selectedFile && (
-          <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing}>
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                解析中...
-              </>
-            ) : (
-              '解析する'
-            )}
-          </Button>
-        )}
       </div>
 
       {error && (
