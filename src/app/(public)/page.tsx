@@ -19,6 +19,13 @@ const blogCategoryLabels: Record<string, { label: string; style: string }> = {
 export default async function HomePage() {
   const supabase = await createClient();
 
+  // ファーストビュー用：hero_positionが設定されているメディアを取得
+  const { data: heroMedia } = await supabase
+    .from('project_media')
+    .select('*')
+    .not('hero_position', 'is', null)
+    .order('hero_position', { ascending: true });
+
   // 公開されているプロジェクトを3件取得
   const { data: projects } = await supabase
     .from('projects')
@@ -53,6 +60,27 @@ export default async function HomePage() {
       thumbnailUrl: thumbnail?.file_url || null,
     };
   });
+
+  // ファーストビュー用メディアを整形（hero設定があればそれを使用、なければfeaturedWorksから）
+  const heroItems: { url: string; type: 'image' | 'video'; thumbnailUrl?: string }[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const heroItem = heroMedia?.find((m) => m.hero_position === i);
+    if (heroItem) {
+      heroItems.push({
+        url: heroItem.file_url,
+        type: heroItem.type,
+        thumbnailUrl: heroItem.thumbnail_url || undefined,
+      });
+    } else {
+      // フォールバック：featuredWorksの順番をずらして使用
+      const fallbackIndex = [2, 0, 1][i - 1];
+      const fallbackUrl = featuredWorks[fallbackIndex]?.thumbnailUrl;
+      heroItems.push({
+        url: fallbackUrl || '',
+        type: 'image',
+      });
+    }
+  }
 
   // ブログデータを整形
   const latestPosts = (blogPosts || []).map((post: BlogPost) => ({
