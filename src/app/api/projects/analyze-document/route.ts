@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pdfParse from 'pdf-parse';
+import * as pdfParseModule from 'pdf-parse';
 import { createClaudeClient } from '@/lib/claude/client';
+
+const pdfParse = pdfParseModule.default || pdfParseModule;
 import { analyzeWithClaude } from '@/lib/claude/document-analyzer';
 import type { AnalyzeDocumentRequest } from '@/types/document-analysis';
 
