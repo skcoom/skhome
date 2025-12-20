@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { FolderKanban, ImageIcon, FileText, MessageSquare } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { HeroSettings } from '@/components/admin/HeroSettings';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
