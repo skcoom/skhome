@@ -130,7 +130,7 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
                       </button>
                     </div>
                     {media.type === 'video' && (
-                      <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                      <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
                         <Film className="h-3 w-3 inline mr-1" />
                         動画
                       </div>
