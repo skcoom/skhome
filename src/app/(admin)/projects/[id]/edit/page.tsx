@@ -76,6 +76,20 @@ export default function EditProjectPage() {
     }
   };
 
+  const handleApplyExtractedData = (data: Partial<ExtractedProjectData>) => {
+    setFormData((prev) => ({
+      ...prev,
+      name: data.name ?? prev.name,
+      client_name: data.client_name ?? prev.client_name,
+      address: data.address ?? prev.address,
+      category: data.category ?? prev.category,
+      status: data.status ?? prev.status,
+      start_date: data.start_date ?? prev.start_date,
+      end_date: data.end_date ?? prev.end_date,
+      description: data.description ?? prev.description,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
