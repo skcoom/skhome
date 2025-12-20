@@ -114,7 +114,31 @@ export default async function BlogPostPage({
 
   const related = (relatedPosts || []) as BlogPost[];
 
+  // 構造化データを生成
+  const blogPostingJsonLd = generateBlogPostingData({
+    title: blogPost.title,
+    description: blogPost.excerpt || `${blogPost.title} - SKコームのブログ記事です。`,
+    slug: blogPost.slug,
+    publishedAt: blogPost.published_at,
+    featuredImage: blogPost.featured_image,
+  });
+
+  const breadcrumbJsonLd = generateBreadcrumbData([
+    { name: 'ホーム', url: '/' },
+    { name: 'ブログ', url: '/blog' },
+    { name: blogPost.title, url: `/blog/${blogPost.slug}` },
+  ]);
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
     <div className="bg-[#FAF9F6]">
       {/* Hero section */}
       <section className="relative py-16 lg:py-24 bg-[#F0EFE9]">
