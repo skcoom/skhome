@@ -20,6 +20,10 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  Star,
+  Globe,
+  Lock,
+  ExternalLink,
 } from 'lucide-react';
 import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
 import { PickupSuggestions } from '@/components/admin/PickupSuggestions';
