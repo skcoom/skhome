@@ -594,11 +594,19 @@ export default function ProjectDetailPage() {
                   )
                 ) : (
                   item.file_url ? (
-                    <video
-                      src={item.file_url}
-                      className="h-full w-full object-cover"
-                      muted
-                    />
+                    <div className="relative h-full w-full">
+                      <video
+                        src={item.file_url}
+                        className="h-full w-full object-cover"
+                        muted
+                      />
+                      {/* 動画プレイアイコン */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="bg-black bg-opacity-50 rounded-full p-3">
+                          <Play className="h-8 w-8 text-white" />
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex h-full items-center justify-center">
                       <Video className="h-12 w-12 text-gray-400" />
@@ -612,13 +620,24 @@ export default function ProjectDetailPage() {
                 )}
                 {/* HP掲載バッジ */}
                 {item.is_featured && (
-                  <div className="absolute top-2 right-2">
+                  <div className="absolute top-2 right-2 z-10">
                     <span className="rounded bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white flex items-center">
                       <Star className="h-3 w-3 mr-1" />
                       HP掲載
                     </span>
                   </div>
                 )}
+                {/* 削除ボタン（常に表示） */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteMedia(item.id);
+                  }}
+                  className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity"
+                  title="削除"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
                 {/* ホバー時のHP掲載トグルボタン */}
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <button
