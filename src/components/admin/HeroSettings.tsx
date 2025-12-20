@@ -121,11 +121,6 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
                       alt=""
                       className="w-full h-full object-cover object-center"
                     />
-                    {!media.thumbnail_url && media.type === 'video' && (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                        <Film className="h-8 w-8 text-gray-400" />
-                      </div>
-                    )}
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
                       <button
                         onClick={() => handleSelect(index, null)}
