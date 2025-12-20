@@ -121,7 +121,7 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
                       alt=""
                       className="w-full h-full object-cover object-center"
                     />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                       <button
                         onClick={() => handleSelect(index, null)}
                         className="opacity-0 group-hover:opacity-100 p-2 bg-red-500 text-white rounded-full transition-opacity"
