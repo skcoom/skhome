@@ -3,6 +3,7 @@ import { ArrowLeft, Calendar, Sparkles, Share2, Phone, ArrowRight } from 'lucide
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Metadata } from 'next';
+import { generateBlogPostingData, generateBreadcrumbData } from '@/lib/structured-data';
 
 interface BlogPost {
   id: string;
