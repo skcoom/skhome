@@ -112,71 +112,104 @@ export default function ProjectDetailPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const fileArray = Array.from(files);
     setIsUploading(true);
+    setUploadError(null);
+    setUploadProgress({
+      currentFile: 0,
+      totalFiles: fileArray.length,
+      currentFileName: '',
+      startTime: Date.now(),
+      uploadedFiles: [],
+      failedFiles: [],
+    });
+
+    const uploadedFiles: string[] = [];
+    const failedFiles: { name: string; error: string }[] = [];
 
     try {
-      for (const file of Array.from(files)) {
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
         const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
+
+        setUploadProgress((prev) => ({
+          ...prev,
+          currentFile: i + 1,
+          currentFileName: file.name,
+        }));
 
         let fileUrl: string;
         let thumbnailUrl: string | undefined;
 
-        if (mediaType === 'image') {
-          // 画像の場合：処理APIでリサイズ・WebP変換
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('projectId', projectId);
+        try {
+          if (mediaType === 'image') {
+            // 画像の場合：処理APIでリサイズ・WebP変換
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('projectId', projectId);
 
-          const response = await fetch('/api/media/process', {
-            method: 'POST',
-            body: formData,
-          });
+            const response = await fetch('/api/media/process', {
+              method: 'POST',
+              body: formData,
+            });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Process API error:', errorData);
-            continue;
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || '画像処理に失敗しました');
+            }
+
+            const result = await response.json();
+            fileUrl = result.file_url;
+            thumbnailUrl = result.thumbnail_url;
+          } else {
+            // 動画の場合：従来通り直接アップロード
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${projectId}/${Date.now()}.${fileExt}`;
+
+            const { error: storageError } = await supabase.storage
+              .from('project-media')
+              .upload(fileName, file);
+
+            if (storageError) {
+              throw new Error(storageError.message || '動画アップロードに失敗しました');
+            }
+
+            const { data: publicUrlData } = supabase.storage
+              .from('project-media')
+              .getPublicUrl(fileName);
+
+            fileUrl = publicUrlData.publicUrl;
           }
 
-          const result = await response.json();
-          fileUrl = result.file_url;
-          thumbnailUrl = result.thumbnail_url;
-        } else {
-          // 動画の場合：従来通り直接アップロード
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${projectId}/${Date.now()}.${fileExt}`;
+          // メディアレコードを作成
+          const insertData = {
+            project_id: projectId,
+            type: mediaType,
+            phase: selectedPhase as MediaPhase,
+            file_url: fileUrl,
+            thumbnail_url: thumbnailUrl,
+            is_featured: false,
+          };
+          const { error: insertError } = await supabase
+            .from('project_media')
+            .insert(insertData as never);
 
-          const { error: uploadError } = await supabase.storage
-            .from('project-media')
-            .upload(fileName, file);
-
-          if (uploadError) {
-            console.error('Upload error:', uploadError);
-            continue;
+          if (insertError) {
+            throw new Error(insertError.message || 'データベース登録に失敗しました');
           }
 
-          const { data: publicUrlData } = supabase.storage
-            .from('project-media')
-            .getPublicUrl(fileName);
-
-          fileUrl = publicUrlData.publicUrl;
-        }
-
-        // メディアレコードを作成
-        const insertData = {
-          project_id: projectId,
-          type: mediaType,
-          phase: selectedPhase as MediaPhase,
-          file_url: fileUrl,
-          thumbnail_url: thumbnailUrl,
-          is_featured: false,
-        };
-        const { error: insertError } = await supabase
-          .from('project_media')
-          .insert(insertData as never);
-
-        if (insertError) {
-          console.error('Insert error:', insertError);
+          uploadedFiles.push(file.name);
+          setUploadProgress((prev) => ({
+            ...prev,
+            uploadedFiles: [...prev.uploadedFiles, file.name],
+          }));
+        } catch (fileError) {
+          const errorMessage = fileError instanceof Error ? fileError.message : '不明なエラー';
+          failedFiles.push({ name: file.name, error: errorMessage });
+          setUploadProgress((prev) => ({
+            ...prev,
+            failedFiles: [...prev.failedFiles, { name: file.name, error: errorMessage }],
+          }));
         }
       }
 
@@ -188,9 +221,17 @@ export default function ProjectDetailPage() {
         .order('created_at', { ascending: false });
       setMedia(data || []);
 
-      setShowUploadModal(false);
+      // 結果に応じてモーダルを閉じるか、エラー表示
+      if (failedFiles.length === 0) {
+        setShowUploadModal(false);
+      } else if (failedFiles.length === fileArray.length) {
+        setUploadError('すべてのファイルのアップロードに失敗しました');
+      } else {
+        setUploadError(`${failedFiles.length}件のファイルがアップロードに失敗しました`);
+      }
     } catch (err) {
       console.error('Upload failed:', err);
+      setUploadError(err instanceof Error ? err.message : 'アップロードに失敗しました');
     } finally {
       setIsUploading(false);
     }
