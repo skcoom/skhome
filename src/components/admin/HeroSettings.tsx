@@ -116,19 +116,12 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
               <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
                 {media ? (
                   <div className="relative w-full h-full group">
-                    {media.thumbnail_url ? (
-                      <img
-                        src={media.thumbnail_url}
-                        alt=""
-                        className="w-full h-full object-cover object-center"
-                      />
-                    ) : media.type === 'image' ? (
-                      <img
-                        src={media.file_url}
-                        alt=""
-                        className="w-full h-full object-contain bg-gray-200"
-                      />
-                    ) : (
+                    <img
+                      src={media.thumbnail_url || media.file_url}
+                      alt=""
+                      className="w-full h-full object-cover object-center"
+                    />
+                    {!media.thumbnail_url && media.type === 'video' && (
                       <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                         <Film className="h-8 w-8 text-gray-400" />
                       </div>
