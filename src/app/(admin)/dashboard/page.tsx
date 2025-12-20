@@ -25,6 +25,31 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending');
 
+  // ファーストビュー設定用：全メディアを取得
+  const { data: allMedia } = await supabase
+    .from('project_media')
+    .select(`
+      *,
+      projects:project_id (
+        id,
+        name
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  // 現在のhero設定を取得
+  const { data: heroMedia } = await supabase
+    .from('project_media')
+    .select(`
+      *,
+      projects:project_id (
+        id,
+        name
+      )
+    `)
+    .not('hero_position', 'is', null)
+    .order('hero_position', { ascending: true });
+
   const stats = [
     { name: '進行中の現場', value: projectCount ?? 0, icon: FolderKanban, color: 'bg-blue-500' },
     { name: '登録メディア', value: mediaCount ?? 0, icon: ImageIcon, color: 'bg-green-500' },
