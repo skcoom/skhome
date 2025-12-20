@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
+import { contactFormSchema, formatZodErrors, sanitizeInput } from '@/lib/validations';
 
 // お問い合わせ一覧取得（管理者用）
 export async function GET() {
@@ -32,37 +34,55 @@ export async function GET() {
 // お問い合わせ送信（公開）
 export async function POST(request: NextRequest) {
   try {
+    // Rate Limitチェック
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(
+      `contact:${clientIP}`,
+      RATE_LIMITS.contact
+    );
+
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000);
+      return NextResponse.json(
+        { error: 'お問い合わせの送信回数が上限に達しました。しばらく経ってからお試しください。' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': retryAfter.toString(),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+          },
+        }
+      );
+    }
+
     const supabase = await createClient();
     const body = await request.json();
 
-    const { name, email, phone, message } = body;
-
-    // バリデーション
-    if (!name || !email || !message) {
+    // Zodバリデーション
+    const validationResult = contactFormSchema.safeParse(body);
+    if (!validationResult.success) {
+      const errors = formatZodErrors(validationResult.error);
       return NextResponse.json(
-        { error: '名前、メールアドレス、メッセージは必須です' },
+        { error: errors[0], errors },
         { status: 400 }
       );
     }
 
-    // メールアドレスの簡易バリデーション
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: '有効なメールアドレスを入力してください' },
-        { status: 400 }
-      );
-    }
+    const { name, email, phone, message } = validationResult.data;
+
+    // 入力値をサニタイズ
+    const sanitizedData = {
+      name: sanitizeInput(name.trim()),
+      email: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : null,
+      message: sanitizeInput(message.trim()),
+      status: 'pending' as const,
+    };
 
     const { data, error } = await supabase
       .from('contacts')
-      .insert({
-        name,
-        email,
-        phone: phone || null,
-        message,
-        status: 'pending',
-      })
+      .insert(sanitizedData)
       .select()
       .single();
 
@@ -71,7 +91,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'お問い合わせの送信に失敗しました' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data },
+      {
+        status: 201,
+        headers: {
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+        },
+      }
+    );
   } catch (error) {
     console.error('Contact API error:', error);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
