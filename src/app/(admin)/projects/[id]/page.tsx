@@ -24,6 +24,8 @@ import {
   Globe,
   Lock,
   ExternalLink,
+  Trash2,
+  Play,
 } from 'lucide-react';
 import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
 import { PickupSuggestions } from '@/components/admin/PickupSuggestions';
