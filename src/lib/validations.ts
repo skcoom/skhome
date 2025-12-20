@@ -53,10 +53,10 @@ export const blogPostSchema = z.object({
     .optional()
     .nullable(),
   category: z.enum(['news', 'column', 'case_study'], {
-    errorMap: () => ({ message: '有効なカテゴリを選択してください' }),
+    message: '有効なカテゴリを選択してください',
   }),
   status: z.enum(['draft', 'published'], {
-    errorMap: () => ({ message: '有効なステータスを選択してください' }),
+    message: '有効なステータスを選択してください',
   }),
   featured_image: z
     .string()
