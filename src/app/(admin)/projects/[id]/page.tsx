@@ -16,6 +16,10 @@ import {
   Eye,
   EyeOff,
   Plus,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
 import { PickupSuggestions } from '@/components/admin/PickupSuggestions';
