@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as pdfParseModule from 'pdf-parse';
 import { createClaudeClient } from '@/lib/claude/client';
-
-const pdfParse = pdfParseModule.default || pdfParseModule;
 import { analyzeWithClaude } from '@/lib/claude/document-analyzer';
 import type { AnalyzeDocumentRequest } from '@/types/document-analysis';
+
+async function extractTextFromPdf(buffer: Buffer): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pdfParse = require('pdf-parse');
+  const data = await pdfParse(buffer);
+  return data.text;
+}
 
 export async function POST(request: NextRequest) {
   try {
