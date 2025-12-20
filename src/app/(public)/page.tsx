@@ -126,13 +126,24 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            {/* Center/Right images */}
+            {/* Center/Right images/videos */}
             <div className="lg:col-span-7 relative">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-4">
                   <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    {featuredWorks[2]?.thumbnailUrl ? (
-                      <img src={featuredWorks[2].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    {heroItems[0]?.url ? (
+                      heroItems[0].type === 'video' ? (
+                        <video
+                          src={heroItems[0].url}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                        />
+                      ) : (
+                        <img src={heroItems[0].url} alt="施工写真" className="w-full h-full object-cover" />
+                      )
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
                         施工写真
@@ -140,8 +151,19 @@ export default async function HomePage() {
                     )}
                   </div>
                   <div className="aspect-square bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    {featuredWorks[0]?.thumbnailUrl ? (
-                      <img src={featuredWorks[0].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    {heroItems[1]?.url ? (
+                      heroItems[1].type === 'video' ? (
+                        <video
+                          src={heroItems[1].url}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                        />
+                      ) : (
+                        <img src={heroItems[1].url} alt="施工写真" className="w-full h-full object-cover" />
+                      )
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
                         施工写真
@@ -151,8 +173,19 @@ export default async function HomePage() {
                 </div>
                 <div className="pt-12">
                   <div className="aspect-[3/4] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    {featuredWorks[1]?.thumbnailUrl ? (
-                      <img src={featuredWorks[1].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    {heroItems[2]?.url ? (
+                      heroItems[2].type === 'video' ? (
+                        <video
+                          src={heroItems[2].url}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                        />
+                      ) : (
+                        <img src={heroItems[2].url} alt="施工写真" className="w-full h-full object-cover" />
+                      )
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
                         施工写真
