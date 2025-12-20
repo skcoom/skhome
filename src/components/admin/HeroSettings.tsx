@@ -120,13 +120,13 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
                       <img
                         src={media.thumbnail_url}
                         alt=""
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover object-center"
                       />
                     ) : media.type === 'image' ? (
                       <img
                         src={media.file_url}
                         alt=""
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain bg-gray-200"
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-200 flex items-center justify-center">
