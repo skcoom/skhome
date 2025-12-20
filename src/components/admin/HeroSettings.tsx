@@ -116,21 +116,11 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
               <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
                 {media ? (
                   <div className="relative w-full h-full group">
-                    {media.type === 'video' ? (
-                      <video
-                        src={media.file_url}
-                        className="w-full h-full object-cover"
-                        muted
-                        loop
-                        playsInline
-                      />
-                    ) : (
-                      <img
-                        src={media.thumbnail_url || media.file_url}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    )}
+                    <img
+                      src={media.thumbnail_url || media.file_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
                       <button
                         onClick={() => handleSelect(index, null)}
