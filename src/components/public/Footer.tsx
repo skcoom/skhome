@@ -88,10 +88,16 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-[#444444] mt-12 pt-8 text-center">
+        <div className="border-t border-[#444444] mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-[#666666] text-xs tracking-wider">
             &copy; {new Date().getFullYear()} 株式会社SKコーム All rights reserved.
           </p>
+          <Link
+            href="/privacy"
+            className="text-[#666666] text-xs hover:text-white transition-colors"
+          >
+            プライバシーポリシー
+          </Link>
         </div>
       </div>
     </footer>
