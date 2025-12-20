@@ -130,3 +130,73 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
+
+// メディアを削除
+export async function DELETE(request: NextRequest, { params }: { params: Params }) {
+  try {
+    const { id } = await params;
+    const supabase = await createClient();
+
+    // 認証チェック
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const mediaId = searchParams.get('mediaId');
+
+    if (!mediaId) {
+      return NextResponse.json({ error: 'mediaIdは必須です' }, { status: 400 });
+    }
+
+    // メディア情報を取得（ストレージのファイルパスを特定するため）
+    const { data: mediaData, error: fetchError } = await supabase
+      .from('project_media')
+      .select('*')
+      .eq('id', mediaId)
+      .eq('project_id', id)
+      .single();
+
+    if (fetchError || !mediaData) {
+      return NextResponse.json({ error: 'メディアが見つかりません' }, { status: 404 });
+    }
+
+    // ストレージからファイルを削除（file_urlからパスを抽出）
+    const fileUrl = mediaData.file_url;
+    if (fileUrl) {
+      const pathMatch = fileUrl.match(/project-media\/(.+)$/);
+      if (pathMatch) {
+        const filePath = pathMatch[1];
+        await supabase.storage.from('project-media').remove([filePath]);
+      }
+    }
+
+    // サムネイルも削除
+    const thumbnailUrl = mediaData.thumbnail_url;
+    if (thumbnailUrl) {
+      const thumbMatch = thumbnailUrl.match(/project-media\/(.+)$/);
+      if (thumbMatch) {
+        const thumbPath = thumbMatch[1];
+        await supabase.storage.from('project-media').remove([thumbPath]);
+      }
+    }
+
+    // DBからレコードを削除
+    const { error: deleteError } = await supabase
+      .from('project_media')
+      .delete()
+      .eq('id', mediaId)
+      .eq('project_id', id);
+
+    if (deleteError) {
+      console.error('Media delete error:', deleteError);
+      return NextResponse.json({ error: 'メディアの削除に失敗しました' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: 'メディアを削除しました' });
+  } catch (error) {
+    console.error('Media DELETE error:', error);
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
+  }
+}
