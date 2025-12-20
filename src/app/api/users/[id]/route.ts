@@ -92,6 +92,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
+    // usersテーブルから削除
     const { error } = await supabase
       .from('users')
       .delete()
@@ -100,6 +101,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
     if (error) {
       console.error('User delete error:', error);
       return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 });
+    }
+
+    // Supabase Authからも削除
+    const adminClient = createAdminClient();
+    const { error: authError } = await adminClient.auth.admin.deleteUser(id);
+
+    if (authError) {
+      console.error('Auth user delete error:', authError);
+      // usersテーブルからは既に削除されているので、エラーをログに残すが成功とする
     }
 
     return NextResponse.json({ success: true });
