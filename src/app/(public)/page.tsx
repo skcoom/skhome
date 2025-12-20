@@ -103,8 +103,8 @@ export default async function HomePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-4">
                   <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    {featuredWorks[0]?.thumbnailUrl ? (
-                      <img src={featuredWorks[0].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    {featuredWorks[2]?.thumbnailUrl ? (
+                      <img src={featuredWorks[2].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
                         施工写真
@@ -112,8 +112,8 @@ export default async function HomePage() {
                     )}
                   </div>
                   <div className="aspect-square bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    {featuredWorks[1]?.thumbnailUrl ? (
-                      <img src={featuredWorks[1].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    {featuredWorks[0]?.thumbnailUrl ? (
+                      <img src={featuredWorks[0].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
                         施工写真
@@ -123,8 +123,8 @@ export default async function HomePage() {
                 </div>
                 <div className="pt-12">
                   <div className="aspect-[3/4] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                    {featuredWorks[2]?.thumbnailUrl ? (
-                      <img src={featuredWorks[2].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
+                    {featuredWorks[1]?.thumbnailUrl ? (
+                      <img src={featuredWorks[1].thumbnailUrl} alt="施工写真" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
                         施工写真
