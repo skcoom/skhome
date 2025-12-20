@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import type { Project } from '@/types/database';
+import { DocumentAnalyzer } from '@/components/admin/DocumentAnalyzer';
+import type { ExtractedProjectData } from '@/types/document-analysis';
 
 export default function EditProjectPage() {
   const router = useRouter();
