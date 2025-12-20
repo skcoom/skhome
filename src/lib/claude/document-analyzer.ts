@@ -4,6 +4,7 @@ import type { ExtractedProjectData } from '@/types/document-analysis';
 interface AnalyzeInput {
   text: string;
   imageBase64: string | null;
+  pdfBase64?: string | null;
   fileName: string;
 }
 
@@ -100,6 +101,17 @@ export async function analyzeWithClaude(
         type: 'base64',
         media_type: mediaType,
         data: input.imageBase64,
+      },
+    });
+  }
+
+  if (input.pdfBase64) {
+    messageContent.push({
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: input.pdfBase64,
       },
     });
   }
