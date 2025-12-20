@@ -393,6 +393,7 @@ export default async function BlogPostPage({
         </section>
       )}
     </div>
+    </>
   );
 }
 
