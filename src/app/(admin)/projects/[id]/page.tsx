@@ -468,13 +468,38 @@ export default function ProjectDetailPage() {
                     <p className="truncate text-xs text-white">{item.caption}</p>
                   </div>
                 )}
+                {/* HP掲載バッジ */}
                 {item.is_featured && (
                   <div className="absolute top-2 right-2">
-                    <span className="rounded bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white">
+                    <span className="rounded bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white flex items-center">
+                      <Star className="h-3 w-3 mr-1" />
                       HP掲載
                     </span>
                   </div>
                 )}
+                {/* ホバー時のHP掲載トグルボタン */}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <button
+                    onClick={() => toggleFeatured(item.id, item.is_featured)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      item.is_featured
+                        ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                        : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    }`}
+                  >
+                    {item.is_featured ? (
+                      <>
+                        <Star className="h-4 w-4 inline mr-1" />
+                        HP掲載解除
+                      </>
+                    ) : (
+                      <>
+                        <Star className="h-4 w-4 inline mr-1" />
+                        HP掲載に設定
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
 
