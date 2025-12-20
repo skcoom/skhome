@@ -93,7 +93,7 @@ export type ProjectInput = z.infer<typeof projectSchema>;
 
 // バリデーションエラーをフォーマット
 export function formatZodErrors(error: z.ZodError): string[] {
-  return error.errors.map((err) => err.message);
+  return error.issues.map((issue) => issue.message);
 }
 
 // XSS対策: HTMLタグをエスケープ
