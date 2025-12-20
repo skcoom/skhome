@@ -113,7 +113,7 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
           {selectedMedia.map((media, index) => (
             <div key={index} className="relative">
               <p className="text-xs text-gray-500 mb-1">{positionLabels[index]}</p>
-              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
+              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
                 {media ? (
                   <div className="relative w-full h-full group">
                     <img
