@@ -193,6 +193,8 @@ export default function EditProjectPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        <DocumentAnalyzer onApply={handleApplyExtractedData} />
+
         <div className="rounded-lg bg-white p-6 shadow">
           {error && (
             <div className="mb-6 rounded-md bg-red-50 p-4">
