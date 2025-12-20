@@ -523,9 +523,82 @@ export default function ProjectDetailPage() {
                 />
               </div>
 
-              {isUploading && (
-                <div className="text-center">
-                  <p className="text-sm text-gray-500">アップロード中...</p>
+              {isUploading && uploadProgress.totalFiles > 0 && (
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-blue-900 font-medium">
+                      {uploadProgress.currentFile} / {uploadProgress.totalFiles} 件
+                    </span>
+                    <span className="text-blue-700">
+                      {Math.round((uploadProgress.currentFile / uploadProgress.totalFiles) * 100)}%
+                    </span>
+                  </div>
+
+                  {/* プログレスバー */}
+                  <div className="h-2 w-full rounded-full bg-blue-200 overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                      style={{
+                        width: `${(uploadProgress.currentFile / uploadProgress.totalFiles) * 100}%`,
+                      }}
+                    />
+                  </div>
+
+                  {/* 現在処理中のファイル名 */}
+                  <div className="flex items-center space-x-2 text-sm text-blue-700">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="truncate">{uploadProgress.currentFileName}</span>
+                  </div>
+
+                  {/* 残り時間推定 */}
+                  {uploadProgress.currentFile > 0 && (
+                    <div className="text-xs text-blue-600">
+                      {(() => {
+                        const elapsed = Date.now() - uploadProgress.startTime;
+                        const avgTimePerFile = elapsed / uploadProgress.currentFile;
+                        const remainingFiles = uploadProgress.totalFiles - uploadProgress.currentFile;
+                        const estimatedRemaining = Math.ceil((avgTimePerFile * remainingFiles) / 1000);
+                        if (estimatedRemaining < 60) {
+                          return `残り約 ${estimatedRemaining} 秒`;
+                        }
+                        return `残り約 ${Math.ceil(estimatedRemaining / 60)} 分`;
+                      })()}
+                    </div>
+                  )}
+
+                  {/* 完了したファイル */}
+                  {uploadProgress.uploadedFiles.length > 0 && (
+                    <div className="max-h-20 overflow-y-auto text-xs">
+                      {uploadProgress.uploadedFiles.map((name) => (
+                        <div key={name} className="flex items-center space-x-1 text-green-700">
+                          <CheckCircle className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* エラー表示 */}
+              {uploadError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <div className="flex items-center space-x-2 text-red-800 mb-2">
+                    <AlertCircle className="h-5 w-5" />
+                    <span className="font-medium">{uploadError}</span>
+                  </div>
+                  {uploadProgress.failedFiles.length > 0 && (
+                    <div className="max-h-32 overflow-y-auto text-xs space-y-1">
+                      {uploadProgress.failedFiles.map(({ name, error: err }) => (
+                        <div key={name} className="flex items-start space-x-1 text-red-700">
+                          <XCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                          <span>
+                            <span className="font-medium">{name}</span>: {err}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
