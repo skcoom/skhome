@@ -3,13 +3,6 @@ import { createClaudeClient } from '@/lib/claude/client';
 import { analyzeWithClaude } from '@/lib/claude/document-analyzer';
 import type { AnalyzeDocumentRequest } from '@/types/document-analysis';
 
-async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require('pdf-parse');
-  const data = await pdfParse(buffer);
-  return data.text;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body: AnalyzeDocumentRequest = await request.json();
@@ -24,13 +17,13 @@ export async function POST(request: NextRequest) {
 
     let textContent = '';
     let imageBase64: string | null = null;
+    let pdfBase64: string | null = null;
 
     switch (fileType) {
-      case 'pdf': {
-        const pdfBuffer = Buffer.from(content, 'base64');
-        textContent = await extractTextFromPdf(pdfBuffer);
+      case 'pdf':
+        // PDFはClaude Vision APIで直接解析
+        pdfBase64 = content;
         break;
-      }
 
       case 'text':
         textContent = content;
@@ -51,6 +44,7 @@ export async function POST(request: NextRequest) {
     const result = await analyzeWithClaude(claude, {
       text: textContent,
       imageBase64,
+      pdfBase64,
       fileName,
     });
 
