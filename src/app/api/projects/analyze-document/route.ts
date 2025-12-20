@@ -28,8 +28,7 @@ export async function POST(request: NextRequest) {
     switch (fileType) {
       case 'pdf': {
         const pdfBuffer = Buffer.from(content, 'base64');
-        const pdfData = await pdfParse(pdfBuffer);
-        textContent = pdfData.text;
+        textContent = await extractTextFromPdf(pdfBuffer);
         break;
       }
 
