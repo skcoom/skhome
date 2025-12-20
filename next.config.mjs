@@ -59,11 +59,11 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               // TODO: 本番環境では 'unsafe-inline' 'unsafe-eval' を nonce ベースに移行
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https:",
+              "img-src 'self' data: blob: https: https://www.google-analytics.com https://www.googletagmanager.com",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'",
