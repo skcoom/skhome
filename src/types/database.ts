@@ -44,6 +44,7 @@ export interface ProjectMedia {
   caption?: string;
   uploaded_by?: string;
   is_featured: boolean;
+  hero_position?: 1 | 2 | 3 | null;
   created_at: string;
 }
 
