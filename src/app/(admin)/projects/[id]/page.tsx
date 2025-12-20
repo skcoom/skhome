@@ -49,6 +49,17 @@ export default function ProjectDetailPage() {
   const [selectedPhase, setSelectedPhase] = useState<'before' | 'during' | 'after'>('before');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
+  // アップロード進捗管理
+  const [uploadProgress, setUploadProgress] = useState({
+    currentFile: 0,
+    totalFiles: 0,
+    currentFileName: '',
+    startTime: 0,
+    uploadedFiles: [] as string[],
+    failedFiles: [] as { name: string; error: string }[],
+  });
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
