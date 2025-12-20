@@ -52,6 +52,11 @@ export default function ContactPage() {
         return;
       }
 
+      // コンバージョンイベントを送信
+      sendGAEvent('contact_form_submit', {
+        form_type: formData.type || 'general',
+      });
+
       setIsSubmitted(true);
     } catch {
       setError('送信に失敗しました。しばらく経ってからお試しください。');
