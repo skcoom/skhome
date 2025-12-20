@@ -262,6 +262,32 @@ export default function ProjectDetailPage() {
     setProject({ ...project, is_public: newIsPublic });
   };
 
+  const toggleFeatured = async (mediaId: string, currentFeatured: boolean) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/media`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaIds: [mediaId],
+          is_featured: !currentFeatured,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('更新に失敗しました');
+      }
+
+      // ローカルstateを更新
+      setMedia((prev) =>
+        prev.map((m) =>
+          m.id === mediaId ? { ...m, is_featured: !currentFeatured } : m
+        )
+      );
+    } catch (err) {
+      console.error('Toggle featured error:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
