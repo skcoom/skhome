@@ -290,6 +290,28 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const deleteMedia = async (mediaId: string) => {
+    if (!confirm('このメディアを削除しますか？')) return;
+
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/media?mediaId=${mediaId}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '削除に失敗しました');
+      }
+
+      // ローカルstateから削除
+      setMedia((prev) => prev.filter((m) => m.id !== mediaId));
+    } catch (err) {
+      console.error('Delete media error:', err);
+      alert(err instanceof Error ? err.message : '削除に失敗しました');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
