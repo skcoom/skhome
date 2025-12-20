@@ -74,7 +74,7 @@ export const projectSchema = z.object({
     .min(1, 'プロジェクト名は必須です')
     .max(200, 'プロジェクト名は200文字以内で入力してください'),
   category: z.enum(['remodeling', 'apartment', 'new_construction', 'house'], {
-    errorMap: () => ({ message: '有効なカテゴリを選択してください' }),
+    message: '有効なカテゴリを選択してください',
   }),
   description: z
     .string()
