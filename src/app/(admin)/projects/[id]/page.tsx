@@ -394,10 +394,128 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
+      {/* Publishing settings section */}
+      <div className="rounded-lg bg-white p-6 shadow">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Globe className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-medium text-gray-900">公開設定</h2>
+          </div>
+          {project.is_public && (
+            <a
+              href={`/works/${project.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center text-sm text-blue-600 hover:underline"
+            >
+              公開ページを確認
+              <ExternalLink className="ml-1 h-4 w-4" />
+            </a>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {/* 公開ステータス */}
+          <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center space-x-3">
+              {project.is_public ? (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                  <Globe className="h-5 w-5 text-green-600" />
+                </div>
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                  <Lock className="h-5 w-5 text-gray-500" />
+                </div>
+              )}
+              <div>
+                <p className="font-medium text-gray-900">
+                  {project.is_public ? '公開中' : '非公開'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {project.is_public
+                    ? 'この現場はホームページに表示されています'
+                    : 'この現場はホームページに表示されていません'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant={project.is_public ? 'outline' : 'default'}
+              onClick={togglePublic}
+            >
+              {project.is_public ? '非公開にする' : '公開する'}
+            </Button>
+          </div>
+
+          {/* HP掲載写真の状況 */}
+          <div className="p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <Star className="h-5 w-5 text-yellow-500" />
+                <span className="font-medium text-gray-900">HP掲載写真</span>
+              </div>
+              <span className="text-sm text-gray-600">
+                {media.filter((m) => m.is_featured).length} 枚選択中
+              </span>
+            </div>
+            <p className="text-sm text-gray-500 mb-3">
+              HP掲載に設定した写真がサムネイルや施工実績ページに表示されます
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {media.filter((m) => m.is_featured).length === 0 ? (
+                <p className="text-sm text-orange-600">
+                  ※ 下の写真をホバーして「HP掲載に設定」を選択してください
+                </p>
+              ) : (
+                media
+                  .filter((m) => m.is_featured)
+                  .slice(0, 6)
+                  .map((m) => (
+                    <div key={m.id} className="h-12 w-12 rounded overflow-hidden">
+                      <img
+                        src={m.thumbnail_url || m.file_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ))
+              )}
+              {media.filter((m) => m.is_featured).length > 6 && (
+                <div className="h-12 w-12 rounded bg-gray-100 flex items-center justify-center text-sm text-gray-600">
+                  +{media.filter((m) => m.is_featured).length - 6}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ファーストビュー設定へのリンク */}
+          <div className="p-4 rounded-lg border border-gray-200 bg-blue-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900">トップページのファーストビュー</p>
+                <p className="text-sm text-gray-600">
+                  この現場の写真をトップページのメイン画像に設定できます
+                </p>
+              </div>
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm">
+                  ダッシュボードで設定
+                  <ExternalLink className="ml-1 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Media section */}
       <div className="rounded-lg bg-white p-6 shadow">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">施工写真・動画</h2>
+          <div>
+            <h2 className="text-lg font-medium text-gray-900">施工写真・動画</h2>
+            <p className="text-sm text-gray-500">
+              写真をホバーしてHP掲載に設定できます
+            </p>
+          </div>
           <Button onClick={() => setShowUploadModal(true)}>
             <Upload className="mr-2 h-4 w-4" />
             アップロード
