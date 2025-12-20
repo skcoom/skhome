@@ -123,6 +123,12 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Hero Settings */}
+      <HeroSettings
+        allMedia={allMedia || []}
+        initialHeroMedia={heroMedia || []}
+      />
     </div>
   );
 }
