@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Phone, Users, Wrench, Heart } from 'lucide-react';
+import { Phone, Users, Wrench, Heart, User } from 'lucide-react';
 
 interface Member {
   id: string;
