@@ -198,6 +198,16 @@ export default function BlogPage() {
               <p className="text-[#999999]">該当する記事がありません</p>
             </div>
           )}
+
+          {totalPages > 1 && (
+            <div className="mt-12">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </div>
       </section>
 
