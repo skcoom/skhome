@@ -118,7 +118,7 @@ export default async function BlogListPage() {
                     ) : (
                       <EyeOff className="mr-1 h-3 w-3" />
                     )}
-                    {statusLabels[post.status]?.label || post.status}
+                    {BLOG_STATUS_LABELS[post.status]?.label || post.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
