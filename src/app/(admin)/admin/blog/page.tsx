@@ -142,11 +142,7 @@ export default async function BlogListPage() {
                     >
                       <Edit className="h-4 w-4" />
                     </Link>
-                    <button
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <DeleteButton postId={post.id} postTitle={post.title} />
                   </div>
                 </td>
               </tr>
