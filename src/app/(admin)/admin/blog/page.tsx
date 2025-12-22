@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Plus, Edit, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { DeleteButton } from './delete-button';
+import { BLOG_CATEGORY_LABELS, BLOG_STATUS_LABELS } from '@/lib/constants';
 
 interface BlogPost {
   id: string;
@@ -14,17 +15,6 @@ interface BlogPost {
   published_at: string | null;
   created_at: string;
 }
-
-const categoryLabels: Record<string, string> = {
-  news: 'ニュース',
-  column: 'コラム',
-  case_study: '施工事例',
-};
-
-const statusLabels: Record<string, { label: string; color: string }> = {
-  draft: { label: '下書き', color: 'bg-gray-100 text-gray-800' },
-  published: { label: '公開中', color: 'bg-green-100 text-green-800' },
-};
 
 export default async function BlogListPage() {
   const supabase = await createClient();
