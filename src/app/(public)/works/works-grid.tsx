@@ -126,6 +126,16 @@ export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
               </p>
             </div>
           )}
+
+          {totalPages > 1 && (
+            <div className="mt-12">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </div>
       </section>
     </>
