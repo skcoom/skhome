@@ -22,8 +22,8 @@ export async function sendContactNotification(data: ContactNotificationData) {
 
   try {
     const { error } = await resend.emails.send({
-      from: `SKコーム <${FROM_EMAIL}>`,
-      to: [ADMIN_EMAIL],
+      from: `SKコーム <${fromEmail}>`,
+      to: [adminEmail],
       subject: `【お問い合わせ】${data.name}様より`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -67,7 +67,7 @@ export async function sendContactNotification(data: ContactNotificationData) {
           </table>
 
           <div style="margin-top: 30px; text-align: center;">
-            <a href="${SITE_URL}/contacts"
+            <a href="${siteUrl}/contacts"
                style="display: inline-block; background-color: #1a56db; color: white;
                       padding: 12px 24px; text-decoration: none; border-radius: 6px;">
               管理画面で確認する
