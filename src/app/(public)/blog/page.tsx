@@ -128,7 +128,7 @@ export default function BlogPage() {
             </div>
           ) : filteredPosts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredPosts.map((post) => (
+              {paginatedPosts.map((post) => (
                 <article key={post.id} className="group">
                   <Link href={`/blog/${post.slug}`}>
                     {/* Featured image */}
