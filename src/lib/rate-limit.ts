@@ -1,26 +1,17 @@
 /**
- * シンプルなインメモリRate Limiter
+ * Supabase永続化Rate Limiter
  *
- * 注意: この実装はサーバーレス環境では永続化されません。
- * 本番環境ではRedis等の外部ストレージを使用することを推奨します。
+ * サーバーレス環境（Vercel等）でも正常に動作します。
+ * rate_limitsテーブルにデータを保存し、複数インスタンス間で共有されます。
  */
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
+import { createClient } from '@supabase/supabase-js';
 
-const rateLimitStore = new Map<string, RateLimitEntry>();
-
-// 古いエントリを定期的にクリーンアップ
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, 60000); // 1分ごとにクリーンアップ
+// Supabaseクライアント（認証不要のため直接作成）
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export interface RateLimitConfig {
   /** 許可するリクエスト数 */
@@ -36,45 +27,113 @@ export interface RateLimitResult {
 }
 
 /**
- * Rate Limitチェックを行う
+ * Rate Limitチェックを行う（Supabase永続化版）
  * @param key 識別キー（通常はIPアドレスや`${ip}:${endpoint}`形式）
  * @param config Rate Limit設定
  * @returns Rate Limit結果
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   key: string,
   config: RateLimitConfig
-): RateLimitResult {
+): Promise<RateLimitResult> {
   const now = Date.now();
-  const entry = rateLimitStore.get(key);
 
-  if (!entry || now > entry.resetTime) {
-    // 新しいウィンドウを開始
-    const resetTime = now + config.windowMs;
-    rateLimitStore.set(key, { count: 1, resetTime });
+  try {
+    // 既存のエントリを取得
+    const { data: existingEntry, error: selectError } = await supabase
+      .from('rate_limits')
+      .select('count, reset_time')
+      .eq('key', key)
+      .single();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      // PGRST116: 結果が0件の場合のエラー（正常）
+      console.error('Rate limit check error:', selectError);
+      // DBエラー時は許可（サービス継続を優先）
+      return { success: true, remaining: config.limit - 1, resetTime: now + config.windowMs };
+    }
+
+    const resetTimeMs = existingEntry?.reset_time
+      ? new Date(existingEntry.reset_time).getTime()
+      : 0;
+
+    if (!existingEntry || now > resetTimeMs) {
+      // 新しいウィンドウを開始（エントリがない、またはリセット時刻を過ぎている）
+      const newResetTime = new Date(now + config.windowMs).toISOString();
+
+      const { error: upsertError } = await supabase
+        .from('rate_limits')
+        .upsert(
+          { key, count: 1, reset_time: newResetTime },
+          { onConflict: 'key' }
+        );
+
+      if (upsertError) {
+        console.error('Rate limit upsert error:', upsertError);
+        return { success: true, remaining: config.limit - 1, resetTime: now + config.windowMs };
+      }
+
+      return {
+        success: true,
+        remaining: config.limit - 1,
+        resetTime: now + config.windowMs,
+      };
+    }
+
+    if (existingEntry.count >= config.limit) {
+      // Rate Limit超過
+      return {
+        success: false,
+        remaining: 0,
+        resetTime: resetTimeMs,
+      };
+    }
+
+    // カウントを増やす
+    const newCount = existingEntry.count + 1;
+    const { error: updateError } = await supabase
+      .from('rate_limits')
+      .update({ count: newCount })
+      .eq('key', key);
+
+    if (updateError) {
+      console.error('Rate limit update error:', updateError);
+    }
+
     return {
       success: true,
-      remaining: config.limit - 1,
-      resetTime,
+      remaining: config.limit - newCount,
+      resetTime: resetTimeMs,
     };
+  } catch (error) {
+    console.error('Rate limit unexpected error:', error);
+    // 予期せぬエラー時は許可（サービス継続を優先）
+    return { success: true, remaining: config.limit - 1, resetTime: now + config.windowMs };
   }
+}
 
-  if (entry.count >= config.limit) {
-    // Rate Limit超過
-    return {
-      success: false,
-      remaining: 0,
-      resetTime: entry.resetTime,
-    };
+/**
+ * 期限切れのRate Limitエントリをクリーンアップ
+ * 定期実行（Cron等）で呼び出すことを推奨
+ */
+export async function cleanupExpiredRateLimits(): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('rate_limits')
+      .delete()
+      .lt('reset_time', new Date().toISOString())
+      .select('id');
+
+    if (error) {
+      console.error('Rate limit cleanup error:', error);
+      return 0;
+    }
+
+    return data?.length ?? 0;
+  } catch (error) {
+    console.error('Rate limit cleanup unexpected error:', error);
+    return 0;
   }
-
-  // カウントを増やす
-  entry.count += 1;
-  return {
-    success: true,
-    remaining: config.limit - entry.count,
-    resetTime: entry.resetTime,
-  };
 }
 
 /**
