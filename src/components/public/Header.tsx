@@ -66,6 +66,9 @@ export function Header() {
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 text-[#333333]"
+            aria-label={isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-navigation"
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
