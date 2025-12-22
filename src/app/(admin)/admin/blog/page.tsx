@@ -110,7 +110,7 @@ export default async function BlogListPage() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      statusLabels[post.status]?.color || 'bg-gray-100 text-gray-800'
+                      BLOG_STATUS_LABELS[post.status]?.color || 'bg-gray-100 text-gray-800'
                     }`}
                   >
                     {post.status === 'published' ? (
