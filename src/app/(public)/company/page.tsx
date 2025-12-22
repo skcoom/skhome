@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Building2, User } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CompanyPage() {
