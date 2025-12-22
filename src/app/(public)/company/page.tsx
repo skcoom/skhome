@@ -92,9 +92,12 @@ export default function CompanyPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-5">
-              <div className="aspect-[3/4] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                  代表写真
+              <div className="aspect-[3/4] bg-gradient-to-b from-[#E5E4E0] to-[#D5D4D0] rounded-lg overflow-hidden">
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <div className="w-24 h-24 bg-[#FAF9F6] rounded-full flex items-center justify-center mb-4">
+                    <User className="w-12 h-12 text-[#999999]" />
+                  </div>
+                  <span className="text-xs text-[#999999] tracking-wider">代表取締役</span>
                 </div>
               </div>
             </div>
