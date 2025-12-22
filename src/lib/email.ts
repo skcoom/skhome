@@ -1,11 +1,5 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'info@skcoom.co.jp';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@skcoom.co.jp';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
-
 type ContactNotificationData = {
   id: string;
   name: string;
@@ -15,10 +9,16 @@ type ContactNotificationData = {
 };
 
 export async function sendContactNotification(data: ContactNotificationData) {
-  if (!process.env.RESEND_API_KEY) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
     console.warn('RESEND_API_KEY is not set. Skipping email notification.');
     return { success: false, error: 'Email service not configured' };
   }
+
+  const resend = new Resend(apiKey);
+  const adminEmail = process.env.ADMIN_EMAIL || 'info@skcoom.co.jp';
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@skcoom.co.jp';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
 
   try {
     const { error } = await resend.emails.send({
