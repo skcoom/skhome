@@ -96,7 +96,7 @@ export default function BlogPage() {
       <section className="py-8 bg-[#F0EFE9]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-wrap justify-center gap-3">
-            {Object.entries(categoryLabels).map(([key, label]) => (
+            {Object.entries(BLOG_CATEGORY_LABELS).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => handleCategoryChange(key)}
