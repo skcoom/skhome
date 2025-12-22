@@ -296,7 +296,7 @@ export default function EditBlogPostPage() {
               }
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
-              {Object.entries(categoryLabels).map(([value, label]) => (
+              {Object.entries(BLOG_CATEGORY_LABELS).filter(([key]) => key !== 'all').map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
