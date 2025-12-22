@@ -63,7 +63,7 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
 
           {/* Services */}
           <div className="md:col-span-3">
