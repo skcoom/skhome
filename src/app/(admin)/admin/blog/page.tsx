@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Plus, Edit, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { DeleteButton } from './delete-button';
 
 interface BlogPost {
   id: string;
