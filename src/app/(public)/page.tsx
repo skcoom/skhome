@@ -2,18 +2,12 @@ import Link from 'next/link';
 import { ArrowRight, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia, BlogPost } from '@/types/database';
+import { PROJECT_CATEGORY_LABELS, BLOG_CATEGORY_LABELS } from '@/lib/constants';
 
-const categoryLabels: Record<string, string> = {
-  remodeling: 'リフォーム',
-  apartment: 'マンション',
-  new_construction: '新築',
-  house: '住宅',
-};
-
-const blogCategoryLabels: Record<string, { label: string; style: string }> = {
-  news: { label: 'ニュース', style: 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]' },
-  column: { label: 'コラム', style: 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]' },
-  case_study: { label: '施工事例', style: 'bg-[#26A69A] text-white' },
+const blogCategoryStyles: Record<string, string> = {
+  news: 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]',
+  column: 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]',
+  case_study: 'bg-[#26A69A] text-white',
 };
 
 export default async function HomePage() {
