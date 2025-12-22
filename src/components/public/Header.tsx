@@ -77,8 +77,8 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden bg-[#FAF9F6] border-t border-[#E5E4E0]">
-          <nav className="px-6 py-4 space-y-4">
+        <div id="mobile-navigation" className="md:hidden bg-[#FAF9F6] border-t border-[#E5E4E0]">
+          <nav className="px-6 py-4 space-y-4" aria-label="モバイルナビゲーション">
             {[
               { href: '/', label: 'ホーム' },
               { href: '/company', label: '会社概要' },
