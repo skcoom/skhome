@@ -71,16 +71,16 @@ const jsonLd = {
   email: 'info@skcoom.co.jp',
   address: {
     '@type': 'PostalAddress',
-    streetAddress: '大字上野田40-1',
-    addressLocality: 'さいたま市見沼区',
+    streetAddress: '東浦和8-2-12',
+    addressLocality: 'さいたま市緑区',
     addressRegion: '埼玉県',
-    postalCode: '337-0014',
+    postalCode: '336-0926',
     addressCountry: 'JP',
   },
   geo: {
     '@type': 'GeoCoordinates',
-    latitude: 35.9138,
-    longitude: 139.6547,
+    latitude: 35.8614,
+    longitude: 139.7167,
   },
   openingHoursSpecification: {
     '@type': 'OpeningHoursSpecification',
