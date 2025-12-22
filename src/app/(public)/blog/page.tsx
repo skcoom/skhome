@@ -29,6 +29,7 @@ export default function BlogPage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     async function fetchPosts() {
@@ -47,9 +48,28 @@ export default function BlogPage() {
     fetchPosts();
   }, []);
 
-  const filteredPosts = activeCategory === 'all'
-    ? blogPosts
-    : blogPosts.filter((post) => post.category === activeCategory);
+  const filteredPosts = useMemo(() => {
+    return activeCategory === 'all'
+      ? blogPosts
+      : blogPosts.filter((post) => post.category === activeCategory);
+  }, [blogPosts, activeCategory]);
+
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    return filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [filteredPosts, currentPage]);
+
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="bg-[#FAF9F6]">
