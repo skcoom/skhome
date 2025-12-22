@@ -42,7 +42,7 @@ export function Footer() {
           <div className="hidden md:block md:col-span-2" />
 
           {/* Quick links */}
-          <div className="md:col-span-2">
+          <nav className="md:col-span-2" aria-label="フッターメニュー">
             <h4 className="text-sm font-medium tracking-wider mb-6 text-[#4DB6AC]">メニュー</h4>
             <ul className="space-y-3 text-sm">
               {[
