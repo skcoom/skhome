@@ -3,14 +3,7 @@ import { Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia } from '@/types/database';
 import { WorksGrid } from './works-grid';
-
-const categoryLabels: Record<string, string> = {
-  all: 'すべて',
-  remodeling: 'リフォーム',
-  apartment: 'マンション',
-  new_construction: '新築',
-  house: '住宅',
-};
+import { PROJECT_CATEGORY_LABELS } from '@/lib/constants';
 
 export interface WorkItem {
   id: string;
