@@ -48,7 +48,7 @@ export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
             {Object.entries(categoryLabels).map(([key, label]) => (
               <button
                 key={key}
-                onClick={() => setActiveCategory(key)}
+                onClick={() => handleCategoryChange(key)}
                 className={`px-6 py-2.5 rounded-full text-sm font-medium transition-colors ${
                   activeCategory === key
                     ? 'bg-[#26A69A] text-white'
