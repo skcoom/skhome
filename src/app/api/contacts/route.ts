@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate Limitチェック
     const clientIP = getClientIP(request);
-    const rateLimitResult = checkRateLimit(
+    const rateLimitResult = await checkRateLimit(
       `contact:${clientIP}`,
       RATE_LIMITS.contact
     );
