@@ -54,6 +54,12 @@ export const metadata: Metadata = {
   verification: {
     google: '50hZmYgkT3JEV_qqW94RVyYBm2NpfSMszuBGgx0Ts00',
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SKコーム',
+  },
 };
 
 // 構造化データ（JSON-LD）
