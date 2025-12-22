@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Calendar, Sparkles, Phone } from 'lucide-react';
+import { Pagination } from '@/components/ui/pagination';
+
+const POSTS_PER_PAGE = 9;
 
 interface BlogPost {
   id: string;
