@@ -66,7 +66,7 @@ export function Footer() {
           </nav>
 
           {/* Services */}
-          <div className="md:col-span-3">
+          <nav className="md:col-span-3" aria-label="サービス一覧">
             <h4 className="text-sm font-medium tracking-wider mb-6 text-[#4DB6AC]">サービス</h4>
             <ul className="space-y-3 text-sm">
               {[
@@ -85,7 +85,7 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
         </div>
 
         <div className="border-t border-[#444444] mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
