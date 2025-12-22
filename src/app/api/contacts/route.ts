@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 import { contactFormSchema, formatZodErrors, sanitizeInput } from '@/lib/validations';
+import { sendContactNotification } from '@/lib/email';
 
 // お問い合わせ一覧取得（管理者用）
 export async function GET() {
