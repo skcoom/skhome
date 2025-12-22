@@ -115,10 +115,12 @@ export default function MembersPage() {
                 key={member.id}
                 className="bg-[#FAF9F6] rounded-xl overflow-hidden group"
               >
-                <div className="aspect-[3/4] bg-[#E5E4E0] relative overflow-hidden">
-                  {/* プレースホルダー - 実際の画像がある場合は Image コンポーネントに置き換え */}
-                  <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                    メンバー写真
+                <div className="aspect-[3/4] bg-gradient-to-b from-[#E5E4E0] to-[#D5D4D0] relative overflow-hidden">
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                    <div className="w-24 h-24 bg-[#FAF9F6] rounded-full flex items-center justify-center mb-4">
+                      <User className="w-12 h-12 text-[#999999]" />
+                    </div>
+                    <span className="text-xs text-[#999999] tracking-wider">{member.roleJa}</span>
                   </div>
                   <div className="absolute inset-0 bg-[#26A69A]/0 group-hover:bg-[#26A69A]/10 transition-colors" />
                 </div>
