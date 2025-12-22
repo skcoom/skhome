@@ -7,12 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { BlogPost } from '@/types/database';
-
-const categoryLabels: Record<string, string> = {
-  news: 'ニュース',
-  column: 'コラム',
-  case_study: '施工事例',
-};
+import { BLOG_CATEGORY_LABELS } from '@/lib/constants';
 
 export default function EditBlogPostPage() {
   const router = useRouter();
