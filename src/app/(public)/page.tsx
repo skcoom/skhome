@@ -82,8 +82,8 @@ export default async function HomePage() {
     slug: post.slug,
     title: post.title,
     category: post.category,
-    categoryLabel: blogCategoryLabels[post.category]?.label || post.category,
-    categoryStyle: blogCategoryLabels[post.category]?.style || 'bg-gray-100 text-gray-600',
+    categoryLabel: BLOG_CATEGORY_LABELS[post.category] || post.category,
+    categoryStyle: blogCategoryStyles[post.category] || 'bg-gray-100 text-gray-600',
     publishedAt: post.published_at ? new Date(post.published_at).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.') : '',
     featuredImage: post.featured_image || null,
   }));
