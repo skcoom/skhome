@@ -80,7 +80,7 @@ export default async function WorksPage() {
       </section>
 
       {/* Works grid with filter */}
-      <WorksGrid works={works} categoryLabels={categoryLabels} />
+      <WorksGrid works={works} categoryLabels={PROJECT_CATEGORY_LABELS} />
 
       {/* Stats section */}
       <section className="py-16 lg:py-24 bg-[#F0EFE9]">
