@@ -27,9 +27,12 @@ export default function CompanyPage() {
               </p>
             </div>
             <div className="relative">
-              <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                  会社写真
+              <div className="aspect-[4/3] bg-gradient-to-br from-[#E5E4E0] to-[#D5D4D0] rounded-lg overflow-hidden">
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <div className="w-20 h-20 bg-[#FAF9F6] rounded-full flex items-center justify-center mb-3">
+                    <Building2 className="w-10 h-10 text-[#999999]" />
+                  </div>
+                  <span className="text-xs text-[#999999] tracking-wider">SK-KOMU</span>
                 </div>
               </div>
               {/* Accent badge */}
