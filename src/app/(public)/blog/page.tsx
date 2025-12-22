@@ -147,7 +147,7 @@ export default function BlogPage() {
                             ? 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]'
                             : 'bg-[#333333] text-white'
                         }`}>
-                          {categoryLabels[post.category] || post.category}
+                          {BLOG_CATEGORY_LABELS[post.category] || post.category}
                         </span>
                       </div>
                       {/* AI badge */}
