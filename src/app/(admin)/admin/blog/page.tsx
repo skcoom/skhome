@@ -104,7 +104,7 @@ export default async function BlogListPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                    {categoryLabels[post.category] || post.category}
+                    {BLOG_CATEGORY_LABELS[post.category] || post.category}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
