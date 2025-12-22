@@ -140,11 +140,13 @@ export default function MembersPage() {
                   <h3 className="text-xl font-medium text-[#333333] mb-4">
                     {member.name}
                   </h3>
-                  <div className="border-l-2 border-[#26A69A] pl-4">
-                    <p className="text-sm text-[#666666] leading-relaxed">
-                      &ldquo;{member.motto}&rdquo;
-                    </p>
-                  </div>
+                  {member.motto && (
+                    <div className="border-l-2 border-[#26A69A] pl-4">
+                      <p className="text-sm text-[#666666] leading-relaxed">
+                        &ldquo;{member.motto}&rdquo;
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
