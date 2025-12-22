@@ -1,0 +1,27 @@
+{
+  "name": "SKコーム | リフォーム・建築",
+  "short_name": "SKコーム",
+  "description": "お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF9F6",
+  "theme_color": "#26A69A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["business", "lifestyle"],
+  "lang": "ja",
+  "dir": "ltr"
+}
