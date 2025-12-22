@@ -231,9 +231,13 @@ export default function CompanyPage() {
 
             <div>
               {/* Map */}
-              <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
-                  Google Map
+              <div className="aspect-[4/3] bg-gradient-to-br from-[#E5E4E0] to-[#D5D4D0] rounded-lg overflow-hidden">
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <div className="w-16 h-16 bg-[#FAF9F6] rounded-full flex items-center justify-center mb-3">
+                    <MapPin className="w-8 h-8 text-[#26A69A]" />
+                  </div>
+                  <span className="text-sm text-[#666666]">埼玉県さいたま市緑区</span>
+                  <span className="text-xs text-[#999999] mt-1">東浦和8-2-12</span>
                 </div>
               </div>
               <p className="mt-4 text-sm text-[#666666]">
