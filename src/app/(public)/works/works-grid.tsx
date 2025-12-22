@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import type { WorkItem } from './page';
+import { Pagination } from '@/components/ui/pagination';
+
+const WORKS_PER_PAGE = 9;
 
 interface WorksGridProps {
   works: WorkItem[];
@@ -11,10 +14,30 @@ interface WorksGridProps {
 
 export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
   const [activeCategory, setActiveCategory] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredWorks = activeCategory === 'all'
-    ? works
-    : works.filter((work) => work.category === activeCategory);
+  const filteredWorks = useMemo(() => {
+    return activeCategory === 'all'
+      ? works
+      : works.filter((work) => work.category === activeCategory);
+  }, [works, activeCategory]);
+
+  const totalPages = Math.ceil(filteredWorks.length / WORKS_PER_PAGE);
+
+  const paginatedWorks = useMemo(() => {
+    const startIndex = (currentPage - 1) * WORKS_PER_PAGE;
+    return filteredWorks.slice(startIndex, startIndex + WORKS_PER_PAGE);
+  }, [filteredWorks, currentPage]);
+
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <>
