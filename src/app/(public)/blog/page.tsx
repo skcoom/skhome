@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Calendar, Sparkles, Phone } from 'lucide-react';
 import { Pagination } from '@/components/ui/pagination';
+import { BLOG_CATEGORY_LABELS } from '@/lib/constants';
 
 const POSTS_PER_PAGE = 9;
 
@@ -17,13 +18,6 @@ interface BlogPost {
   published_at: string;
   featured_image: string | null;
 }
-
-const categoryLabels: Record<string, string> = {
-  all: 'すべて',
-  news: 'ニュース',
-  column: 'コラム',
-  case_study: '施工事例',
-};
 
 export default function BlogPage() {
   const [activeCategory, setActiveCategory] = useState('all');
