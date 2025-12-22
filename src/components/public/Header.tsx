@@ -26,7 +26,7 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-10">
+          <nav className="hidden md:flex items-center space-x-10" aria-label="メインナビゲーション">
             {[
               { href: '/', label: 'ホーム' },
               { href: '/company', label: '会社概要' },
