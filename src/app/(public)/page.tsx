@@ -49,7 +49,7 @@ export default async function HomePage() {
     return {
       id: project.id,
       name: project.name,
-      category: categoryLabels[project.category] || project.category,
+      category: PROJECT_CATEGORY_LABELS[project.category] || project.category,
       description: project.description || '',
       thumbnailUrl: thumbnail?.file_url || null,
     };
