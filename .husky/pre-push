@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+
+echo "Running build check before push..."
+npm run build
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Build failed! Push aborted."
+  echo "Fix the build errors and try again."
+  exit 1
+fi
+
+echo "Build successful! Pushing..."
