@@ -9,6 +9,12 @@ fi
 
 cd "$CLAUDE_PROJECT_DIR" || exit 1
 
+# mainブランチへの直接pushは避ける
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+  exit 0
+fi
+
 # .env系ファイルはスキップ
 if [[ "$FILE_PATH" =~ ^\.env ]]; then
   exit 0

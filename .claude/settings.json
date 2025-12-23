@@ -14,35 +14,20 @@
   },
   "permissions": {
     "allow": [
-      "Bash(npm run dev)",
-      "Bash(npm run build)",
-      "Bash(npm run start)",
-      "Bash(npm run lint)",
-      "Bash(npm run lint:*)",
-      "Bash(git status)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push)",
-      "Bash(git pull)",
-      "Bash(git log:*)",
-      "Bash(git diff:*)",
-      "Bash(git branch:*)",
-      "Bash(git checkout:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test)",
+      "Bash(git:*)",
       "Bash(npm install)",
       "Bash(npm install:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
       "Bash(sudo:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
-      "Read(.env)",
-      "Read(.env.local)",
-      "Read(.env.*.local)",
-      "Read(.env.production)",
-      "Edit(.env)",
-      "Edit(.env.local)",
+      "Read(.env*)",
+      "Edit(.env*)",
       "Edit(package-lock.json)",
       "Edit(.git/**)"
     ]

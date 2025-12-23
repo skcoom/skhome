@@ -97,3 +97,62 @@ npm run lint     # ESLintでコードチェック
 1. `src/lib/supabase/server.ts` のクライアントを使用
 2. 型定義は `src/types/database.ts` に追加
 3. RLSポリシーの確認を忘れずに
+
+## 環境変数と認証
+
+### 開発環境 vs 本番環境
+- **開発**: `.env.local` に記載（gitignore済み）
+- **本番**: 環境変数としてCI/CDに注入
+- **決してコードにハードコードしない**
+
+### 秘密鍵の扱い
+```typescript
+// NG: コードに直接記載
+const API_KEY = "sk-ant-***";
+
+// OK: 環境変数から取得
+const API_KEY = process.env.ANTHROPIC_API_KEY;
+```
+
+## セキュリティチェックリスト
+
+新機能や変更時に確認：
+- APIキーはコードに含まれていないか
+- ユーザー入力の検証は実装されているか
+- SQLインジェクション対策があるか（Supabaseパラメータ化）
+- エラーメッセージで機密情報を露出していないか
+- XSS対策がされているか（dangerouslySetInnerHTML禁止）
+
+## デバッグTips
+
+### よくある問題と解決策
+
+**環境変数が読み込まれない**
+```
+症状: process.env.* が undefined
+対策:
+  - .env.local ファイルの存在確認
+  - 環境変数名が正確か確認（大文字小文字区別）
+  - サーバー再起動
+```
+
+**CORSエラー**
+```
+症状: クライアントからAPIへのリクエストが失敗
+確認: Supabaseの CORS 設定を確認
+```
+
+**ESLintエラー**
+```
+自動修正: npm run lint -- --fix
+手動修正が必要な場合: エラー内容を確認してドキュメント参照
+```
+
+**Hydration Error**
+```
+症状: Server/Client の HTML が一致しない
+原因:
+  - Server ComponentでuseState等を使用
+  - 日時など動的な値をServer側でレンダリング
+対策: 該当コンポーネントを 'use client' に変更
+```
