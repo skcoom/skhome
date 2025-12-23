@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requirePermission } from '@/lib/auth';
 
 type Params = Promise<{ id: string }>;
 
-// お問い合わせステータス更新
+// お問い合わせステータス更新（スタッフ以上）
 export async function PUT(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('contacts:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const { status } = body;
 
@@ -44,17 +48,21 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-// お問い合わせ削除
+// お問い合わせ削除（管理者のみ）
 export async function DELETE(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('contacts:delete');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
+
+    const supabase = await createClient();
 
     const { error } = await supabase
       .from('contacts')
