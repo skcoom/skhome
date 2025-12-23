@@ -52,6 +52,8 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
   const [editingSummary, setEditingSummary] = useState<string>('');
   const [editingPublicSummary, setEditingPublicSummary] = useState<string>('');
   const [isEditing, setIsEditing] = useState<'management' | 'public' | null>(null);
+  const [appliedManagement, setAppliedManagement] = useState(false);
+  const [appliedPublic, setAppliedPublic] = useState(false);
 
   // ドキュメント一覧を取得
   const fetchDocuments = useCallback(async () => {
@@ -195,8 +197,8 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
   const handleApplyToDescription = () => {
     if (onDescriptionUpdate && currentSummary) {
       onDescriptionUpdate(currentSummary);
+      setAppliedManagement(true);
     }
-    setShowSummaryModal(false);
     setIsEditing(null);
   };
 
@@ -204,9 +206,17 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
   const handleApplyToPublicDescription = () => {
     if (onPublicDescriptionUpdate && currentPublicSummary) {
       onPublicDescriptionUpdate(currentPublicSummary);
+      setAppliedPublic(true);
     }
+    setIsEditing(null);
+  };
+
+  // モーダルを閉じる
+  const handleCloseModal = () => {
     setShowSummaryModal(false);
     setIsEditing(null);
+    setAppliedManagement(false);
+    setAppliedPublic(false);
   };
 
   if (isLoading) {
@@ -337,7 +347,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
               <h3 className="text-lg font-medium text-gray-900">AI解析結果</h3>
               <button
                 type="button"
-                onClick={() => setShowSummaryModal(false)}
+                onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="h-5 w-5" />
@@ -365,14 +375,21 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                         </button>
                       )}
                       {onDescriptionUpdate && isEditing !== 'management' && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleApplyToDescription}
-                        >
-                          反映する
-                        </Button>
+                        appliedManagement ? (
+                          <span className="inline-flex items-center text-sm text-green-600">
+                            <Check className="mr-1 h-4 w-4" />
+                            反映済み
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleApplyToDescription}
+                          >
+                            反映する
+                          </Button>
+                        )
                       )}
                     </div>
                   </div>
@@ -419,13 +436,20 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                         </button>
                       )}
                       {onPublicDescriptionUpdate && isEditing !== 'public' && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleApplyToPublicDescription}
-                        >
-                          反映する
-                        </Button>
+                        appliedPublic ? (
+                          <span className="inline-flex items-center text-sm text-green-600">
+                            <Check className="mr-1 h-4 w-4" />
+                            反映済み
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleApplyToPublicDescription}
+                          >
+                            反映する
+                          </Button>
+                        )
                       )}
                     </div>
                   </div>
@@ -465,7 +489,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowSummaryModal(false)}
+                onClick={handleCloseModal}
               >
                 閉じる
               </Button>
