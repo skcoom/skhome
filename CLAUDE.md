@@ -98,6 +98,27 @@ npm run lint     # ESLintでコードチェック
 2. 型定義は `src/types/database.ts` に追加
 3. RLSポリシーの確認を忘れずに
 
+### Supabase外部キー設計ルール
+同一テーブル間に複数の外部キー関係がある場合、クエリで関係名を明示的に指定する必要がある。
+
+```typescript
+// NG: 曖昧な関係（エラーになる）
+.select(`*, project_media (*)`)
+
+// OK: 関係名を明示
+.select(`*, project_media!project_media_project_id_fkey (*)`)
+```
+
+**現在の複数関係があるテーブル:**
+- `projects` ↔ `project_media`
+  - `project_media_project_id_fkey`: プロジェクトの全メディア（1対多）
+  - `projects_main_media_id_fkey`: メイン画像指定（多対1）
+
+**DB変更時の確認事項:**
+1. 外部キーを追加する場合、既存の関係と競合しないか確認
+2. 変更後は必ずローカルで公開ページを確認
+3. `npm run dev`のコンソールエラーを確認
+
 ## 環境変数と認証
 
 ### 開発環境 vs 本番環境
@@ -155,4 +176,14 @@ const API_KEY = process.env.ANTHROPIC_API_KEY;
   - Server ComponentでuseState等を使用
   - 日時など動的な値をServer側でレンダリング
 対策: 該当コンポーネントを 'use client' に変更
+```
+
+**Supabase外部キー曖昧エラー (PGRST201)**
+```
+症状: 公開ページでデータが表示されない（管理画面では表示される）
+エラー: "Could not embed because more than one relationship was found"
+原因: 同一テーブル間に複数の外部キー関係がある
+対策: クエリで関係名を明示的に指定
+  例: project_media!project_media_project_id_fkey (*)
+確認: npm run dev のコンソールログにエラーが出力される
 ```
