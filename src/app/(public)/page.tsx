@@ -282,10 +282,12 @@ export default async function HomePage() {
                 >
                   <div className="relative aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden mb-4">
                     {work.thumbnailUrl ? (
-                      <img
+                      <Image
                         src={work.thumbnailUrl}
                         alt={work.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, 33vw"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
