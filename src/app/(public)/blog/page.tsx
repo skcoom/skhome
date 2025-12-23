@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Calendar, Sparkles, Phone } from 'lucide-react';
 import { Pagination } from '@/components/ui/pagination';
 import { BLOG_CATEGORY_LABELS } from '@/lib/constants';
