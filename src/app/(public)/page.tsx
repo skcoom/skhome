@@ -353,9 +353,9 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
               {latestPosts.map((post) => (
                 <Link key={post.id} href={`/blog/${post.slug}`} className="group flex gap-6">
-                  <div className="w-32 h-24 bg-[#E5E4E0] rounded-lg flex-shrink-0 overflow-hidden">
+                  <div className="relative w-32 h-24 bg-[#E5E4E0] rounded-lg flex-shrink-0 overflow-hidden">
                     {post.featuredImage ? (
-                      <img src={post.featuredImage} alt={post.title} className="w-full h-full object-cover" />
+                      <Image src={post.featuredImage} alt={post.title} fill className="object-cover" sizes="128px" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-xs">
                         準備中
