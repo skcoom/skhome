@@ -82,15 +82,7 @@ export function Header() {
       {isMenuOpen && (
         <div id="mobile-navigation" className="md:hidden bg-[#FAF9F6] border-t border-[#E5E4E0]">
           <nav className="px-6 py-4 space-y-4" aria-label="モバイルナビゲーション">
-            {[
-              { href: '/', label: 'ホーム' },
-              { href: '/company', label: '会社概要' },
-              { href: '/members', label: 'メンバー' },
-              { href: '/works', label: '施工実績' },
-              { href: '/blog', label: 'ブログ' },
-              { href: '/faq', label: 'よくある質問' },
-              { href: '/contact', label: 'お問い合わせ' },
-            ].map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
