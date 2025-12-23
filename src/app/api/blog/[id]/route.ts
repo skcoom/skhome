@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requirePermission } from '@/lib/auth';
 
 type Params = Promise<{ id: string }>;
 
-// ブログ記事詳細取得（IDまたはスラッグで取得）
+// ブログ記事詳細取得（公開ページからも使用されるため認証不要）
 export async function GET(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
@@ -36,18 +37,21 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-// ブログ記事更新
+// ブログ記事更新（スタッフ以上）
 export async function PUT(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('blog:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const { title, slug, content, excerpt, featured_image, category, status, project_id } = body;
 
@@ -109,17 +113,21 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-// ブログ記事削除
+// ブログ記事削除（管理者のみ）
 export async function DELETE(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('blog:delete');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
+
+    const supabase = await createClient();
 
     const { error } = await supabase
       .from('blog_posts')
