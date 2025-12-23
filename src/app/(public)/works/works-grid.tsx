@@ -10,18 +10,18 @@ const WORKS_PER_PAGE = 9;
 
 interface WorksGridProps {
   works: WorkItem[];
-  categoryLabels: Record<string, string>;
+  tags: readonly string[];
 }
 
-export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
-  const [activeCategory, setActiveCategory] = useState('all');
+export function WorksGrid({ works, tags }: WorksGridProps) {
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const filteredWorks = useMemo(() => {
-    return activeCategory === 'all'
+    return activeTag === null
       ? works
-      : works.filter((work) => work.category === activeCategory);
-  }, [works, activeCategory]);
+      : works.filter((work) => work.tags.includes(activeTag));
+  }, [works, activeTag]);
 
   const totalPages = Math.ceil(filteredWorks.length / WORKS_PER_PAGE);
 
@@ -30,8 +30,8 @@ export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
     return filteredWorks.slice(startIndex, startIndex + WORKS_PER_PAGE);
   }, [filteredWorks, currentPage]);
 
-  const handleCategoryChange = (category: string) => {
-    setActiveCategory(category);
+  const handleTagChange = (tag: string | null) => {
+    setActiveTag(tag);
     setCurrentPage(1);
   };
 
@@ -42,21 +42,31 @@ export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
 
   return (
     <>
-      {/* Category filter */}
+      {/* Tag filter */}
       <section className="py-8 bg-[#F0EFE9]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-wrap justify-center gap-3">
-            {Object.entries(categoryLabels).map(([key, label]) => (
+            <button
+              onClick={() => handleTagChange(null)}
+              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-colors ${
+                activeTag === null
+                  ? 'bg-[#26A69A] text-white'
+                  : 'bg-[#FAF9F6] text-[#666666] hover:bg-[#E5E4E0]'
+              }`}
+            >
+              すべて
+            </button>
+            {tags.map((tag) => (
               <button
-                key={key}
-                onClick={() => handleCategoryChange(key)}
+                key={tag}
+                onClick={() => handleTagChange(tag)}
                 className={`px-6 py-2.5 rounded-full text-sm font-medium transition-colors ${
-                  activeCategory === key
+                  activeTag === tag
                     ? 'bg-[#26A69A] text-white'
                     : 'bg-[#FAF9F6] text-[#666666] hover:bg-[#E5E4E0]'
                 }`}
               >
-                {label}
+                {tag}
               </button>
             ))}
           </div>
@@ -89,11 +99,21 @@ export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
                         準備中
                       </div>
                     )}
-                    {/* Category badge */}
-                    <div className="absolute top-4 left-4">
-                      <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full">
-                        {categoryLabels[work.category] || work.category}
-                      </span>
+                    {/* Tags badges */}
+                    <div className="absolute top-4 left-4 flex flex-wrap gap-1">
+                      {work.tags.slice(0, 2).map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-block bg-[#26A69A] text-white text-xs font-medium px-2 py-0.5 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {work.tags.length > 2 && (
+                        <span className="inline-block bg-[#26A69A]/80 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                          +{work.tags.length - 2}
+                        </span>
+                      )}
                     </div>
                     {/* Year badge */}
                     <div className="absolute top-4 right-4">
@@ -123,9 +143,9 @@ export function WorksGrid({ works, categoryLabels }: WorksGridProps) {
           ) : (
             <div className="text-center py-16">
               <p className="text-[#999999]">
-                {activeCategory === 'all'
+                {activeTag === null
                   ? '施工実績がありません'
-                  : `${categoryLabels[activeCategory]}の施工実績がありません`}
+                  : `「${activeTag}」の施工実績がありません`}
               </p>
             </div>
           )}

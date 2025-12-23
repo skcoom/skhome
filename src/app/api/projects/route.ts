@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
     const status = searchParams.get('status');
     const category = searchParams.get('category');
+    const tag = searchParams.get('tag');
     const isPublic = searchParams.get('public');
 
     let query = supabase
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest) {
     }
     if (category) {
       query = query.eq('category', category);
+    }
+    if (tag) {
+      query = query.contains('tags', [tag]);
     }
     if (isPublic === 'true') {
       query = query.eq('is_public', true);
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
     const body = await request.json();
-    const { name, client_name, address, category, status, start_date, end_date, description, is_public } = body;
+    const { name, client_name, address, category, tags, status, start_date, end_date, description, is_public } = body;
 
     // バリデーション
     if (!name) {
@@ -70,6 +74,7 @@ export async function POST(request: NextRequest) {
         client_name: client_name || null,
         address: address || null,
         category: category || 'remodeling',
+        tags: tags || ['住宅'],
         status: status || 'planning',
         start_date: start_date || null,
         end_date: end_date || null,

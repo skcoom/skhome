@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { Project } from '@/types/database';
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; category?: string }>;
+  searchParams: Promise<{ status?: string; tag?: string }>;
 }
 
 export default async function ProjectsPage({ searchParams }: PageProps) {
@@ -23,8 +23,8 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   if (params.status) {
     query = query.eq('status', params.status);
   }
-  if (params.category) {
-    query = query.eq('category', params.category);
+  if (params.tag) {
+    query = query.contains('tags', [params.tag]);
   }
 
   const { data: projects, error } = await query;
@@ -57,7 +57,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       <Suspense fallback={<div className="h-10" />}>
         <ProjectFilters
           currentStatus={params.status}
-          currentCategory={params.category}
+          currentTag={params.tag}
         />
       </Suspense>
 

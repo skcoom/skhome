@@ -2,13 +2,14 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
+import { PROJECT_TAGS } from '@/lib/constants';
 
 interface ProjectFiltersProps {
   currentStatus?: string;
-  currentCategory?: string;
+  currentTag?: string;
 }
 
-export function ProjectFilters({ currentStatus, currentCategory }: ProjectFiltersProps) {
+export function ProjectFilters({ currentStatus, currentTag }: ProjectFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -30,8 +31,8 @@ export function ProjectFilters({ currentStatus, currentCategory }: ProjectFilter
     router.push(`/projects${queryString ? `?${queryString}` : ''}`);
   };
 
-  const handleCategoryChange = (value: string) => {
-    const queryString = createQueryString('category', value);
+  const handleTagChange = (value: string) => {
+    const queryString = createQueryString('tag', value);
     router.push(`/projects${queryString ? `?${queryString}` : ''}`);
   };
 
@@ -48,15 +49,16 @@ export function ProjectFilters({ currentStatus, currentCategory }: ProjectFilter
         <option value="completed">完了</option>
       </select>
       <select
-        value={currentCategory || ''}
-        onChange={(e) => handleCategoryChange(e.target.value)}
+        value={currentTag || ''}
+        onChange={(e) => handleTagChange(e.target.value)}
         className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
-        <option value="">すべてのカテゴリ</option>
-        <option value="apartment">マンション</option>
-        <option value="remodeling">リフォーム</option>
-        <option value="new_construction">新築</option>
-        <option value="house">住宅</option>
+        <option value="">すべてのタグ</option>
+        {PROJECT_TAGS.map((tag) => (
+          <option key={tag} value={tag}>
+            {tag}
+          </option>
+        ))}
       </select>
     </div>
   );

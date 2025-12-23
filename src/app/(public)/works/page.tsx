@@ -3,12 +3,12 @@ import { Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia } from '@/types/database';
 import { WorksGrid } from './works-grid';
-import { PROJECT_CATEGORY_LABELS } from '@/lib/constants';
+import { PROJECT_TAGS } from '@/lib/constants';
 
 export interface WorkItem {
   id: string;
   name: string;
-  category: string;
+  tags: string[];
   address: string | null;
   description: string | null;
   year: string;
@@ -51,7 +51,7 @@ export default async function WorksPage() {
     return {
       id: project.id,
       name: project.name,
-      category: project.category,
+      tags: project.tags || [],
       address: project.address || null,
       description: project.description || null,
       year: project.start_date ? new Date(project.start_date).getFullYear().toString() : new Date(project.created_at).getFullYear().toString(),
@@ -88,7 +88,7 @@ export default async function WorksPage() {
       </section>
 
       {/* Works grid with filter */}
-      <WorksGrid works={works} categoryLabels={PROJECT_CATEGORY_LABELS} />
+      <WorksGrid works={works} tags={PROJECT_TAGS} />
 
       {/* Process section */}
       <section className="py-16 lg:py-24">

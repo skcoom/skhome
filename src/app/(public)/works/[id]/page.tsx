@@ -8,13 +8,6 @@ import type { Metadata } from 'next';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
 
-const categoryLabels: Record<string, string> = {
-  remodeling: 'リフォーム',
-  apartment: 'マンション',
-  new_construction: '新築',
-  house: '住宅',
-};
-
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -44,9 +37,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const typedProject = project as Project & { project_media: ProjectMedia[] };
-  const categoryLabel = categoryLabels[typedProject.category] || typedProject.category;
+  const tagsLabel = typedProject.tags?.join('・') || 'リフォーム';
   const description = typedProject.description ||
-    `${typedProject.name}の施工実績です。${categoryLabel}工事の詳細をご覧いただけます。`;
+    `${typedProject.name}の施工実績です。${tagsLabel}工事の詳細をご覧いただけます。`;
 
   // OG画像を取得
   // 1. main_media_idが設定されていればその画像を優先
@@ -178,9 +171,16 @@ export default async function WorkDetailPage({ params }: PageProps) {
 
             {/* Project info */}
             <div className="flex flex-col justify-center">
-              <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full w-fit mb-4">
-                {categoryLabels[typedProject.category] || typedProject.category}
-              </span>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {typedProject.tags?.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
 
               <h1 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-6">
                 {typedProject.name}

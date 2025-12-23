@@ -9,6 +9,7 @@ import Link from 'next/link';
 import type { Project } from '@/types/database';
 import { DocumentAnalyzer } from '@/components/admin/DocumentAnalyzer';
 import type { ExtractedProjectData } from '@/types/document-analysis';
+import { PROJECT_TAGS } from '@/lib/constants';
 
 export default function EditProjectPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function EditProjectPage() {
     name: '',
     client_name: '',
     address: '',
-    category: 'remodeling',
+    tags: [] as string[],
     status: 'planning',
     start_date: '',
     end_date: '',
@@ -45,7 +46,7 @@ export default function EditProjectPage() {
           name: data.name || '',
           client_name: data.client_name || '',
           address: data.address || '',
-          category: data.category || 'remodeling',
+          tags: data.tags || [],
           status: data.status || 'planning',
           start_date: data.start_date || '',
           end_date: data.end_date || '',
@@ -76,13 +77,22 @@ export default function EditProjectPage() {
     }
   };
 
+  const handleTagToggle = (tag: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter((t) => t !== tag)
+        : [...prev.tags, tag],
+    }));
+  };
+
   const handleApplyExtractedData = (data: Partial<ExtractedProjectData>) => {
     setFormData((prev) => ({
       ...prev,
       name: data.name ?? prev.name,
       client_name: data.client_name ?? prev.client_name,
       address: data.address ?? prev.address,
-      category: data.category ?? prev.category,
+      tags: data.tags ?? prev.tags,
       status: data.status ?? prev.status,
       start_date: data.start_date ?? prev.start_date,
       end_date: data.end_date ?? prev.end_date,
@@ -105,7 +115,7 @@ export default function EditProjectPage() {
           name: formData.name,
           client_name: formData.client_name || null,
           address: formData.address || null,
-          category: formData.category,
+          tags: formData.tags.length > 0 ? formData.tags : ['住宅'],
           status: formData.status,
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
@@ -233,22 +243,29 @@ export default function EditProjectPage() {
               placeholder="例: 東京都世田谷区○○町1-2-3"
             />
 
-            <div className="space-y-1">
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                カテゴリ *
+            <div className="md:col-span-2 space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                タグ *
               </label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="remodeling">リフォーム</option>
-                <option value="apartment">マンション</option>
-                <option value="new_construction">新築</option>
-                <option value="house">住宅</option>
-              </select>
+              <div className="flex flex-wrap gap-2">
+                {PROJECT_TAGS.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleTagToggle(tag)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      formData.tags.includes(tag)
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              {formData.tags.length === 0 && (
+                <p className="text-xs text-gray-500">少なくとも1つのタグを選択してください</p>
+              )}
             </div>
 
             <div className="space-y-1">

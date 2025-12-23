@@ -3,18 +3,11 @@
 import Link from 'next/link';
 import { FolderKanban, MapPin, Calendar } from 'lucide-react';
 import { StatusChanger } from './StatusChanger';
-import type { Project, ProjectCategory, ProjectStatus } from '@/types/database';
+import type { Project, ProjectStatus } from '@/types/database';
 
 interface ProjectListProps {
   projects: Project[];
 }
-
-const categoryLabels: Record<ProjectCategory, string> = {
-  apartment: 'マンション',
-  remodeling: 'リフォーム',
-  new_construction: '新築',
-  house: '住宅',
-};
 
 export function ProjectList({ projects }: ProjectListProps) {
   return (
@@ -56,10 +49,15 @@ export function ProjectList({ projects }: ProjectListProps) {
                 </div>
               </div>
             </Link>
-            <div className="flex items-center space-x-2">
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800">
-                {categoryLabels[project.category as ProjectCategory]}
-              </span>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {project.tags?.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800"
+                >
+                  {tag}
+                </span>
+              ))}
               <StatusChanger
                 projectId={project.id}
                 currentStatus={project.status as ProjectStatus}

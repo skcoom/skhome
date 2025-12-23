@@ -2,7 +2,18 @@
 
 export type UserRole = 'admin' | 'staff' | 'partner';
 export type ProjectStatus = 'planning' | 'in_progress' | 'completed';
+/** @deprecated tagsを使用してください */
 export type ProjectCategory = 'apartment' | 'remodeling' | 'new_construction' | 'house';
+export type ProjectTag =
+  | '全面リフォーム'
+  | 'キッチン'
+  | '浴室・洗面'
+  | 'トイレ'
+  | 'リビング・居室'
+  | '玄関・廊下'
+  | '外壁・屋根'
+  | '住宅'
+  | '店舗';
 export type MediaType = 'image' | 'video';
 export type MediaPhase = 'before' | 'during' | 'after';
 export type BlogCategory = 'news' | 'column' | 'case_study';
@@ -23,7 +34,9 @@ export interface Project {
   name: string;
   client_name?: string;
   address?: string;
+  /** @deprecated tagsを使用してください */
   category: ProjectCategory;
+  tags: ProjectTag[];
   status: ProjectStatus;
   start_date?: string;
   end_date?: string;

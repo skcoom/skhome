@@ -67,15 +67,33 @@ export const blogPostSchema = z.object({
 
 export type BlogPostInput = z.infer<typeof blogPostSchema>;
 
+// プロジェクトタグの定義
+const projectTagValues = [
+  '全面リフォーム',
+  'キッチン',
+  '浴室・洗面',
+  'トイレ',
+  'リビング・居室',
+  '玄関・廊下',
+  '外壁・屋根',
+  '住宅',
+  '店舗',
+] as const;
+
 // プロジェクト（施工実績）のスキーマ
 export const projectSchema = z.object({
   name: z
     .string()
     .min(1, 'プロジェクト名は必須です')
     .max(200, 'プロジェクト名は200文字以内で入力してください'),
+  /** @deprecated tagsを使用してください */
   category: z.enum(['remodeling', 'apartment', 'new_construction', 'house'], {
     message: '有効なカテゴリを選択してください',
-  }),
+  }).optional(),
+  tags: z
+    .array(z.enum(projectTagValues, { message: '有効なタグを選択してください' }))
+    .min(1, '少なくとも1つのタグを選択してください')
+    .default([]),
   description: z
     .string()
     .max(5000, '説明は5000文字以内で入力してください')

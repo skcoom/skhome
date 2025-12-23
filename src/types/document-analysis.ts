@@ -1,11 +1,11 @@
-import type { ProjectCategory, ProjectStatus } from './database';
+import type { ProjectStatus, ProjectTag } from './database';
 
 // 抽出結果の型
 export interface ExtractedProjectData {
   name: string | null;
   client_name: string | null;
   address: string | null;
-  category: ProjectCategory | null;
+  tags: ProjectTag[];
   status: ProjectStatus | null;
   start_date: string | null;
   end_date: string | null;
