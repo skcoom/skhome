@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 // 画像サイズ設定
 const IMAGE_SIZES = {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).slice(2, 8);
     const arrayBuffer = await file.arrayBuffer();
