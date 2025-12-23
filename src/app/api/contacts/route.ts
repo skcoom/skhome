@@ -3,17 +3,21 @@ import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 import { contactFormSchema, formatZodErrors, sanitizeInput } from '@/lib/validations';
 import { sendContactNotification } from '@/lib/email';
+import { requirePermission } from '@/lib/auth';
 
-// お問い合わせ一覧取得（管理者用）
+// お問い合わせ一覧取得（スタッフ以上）
 export async function GET() {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('contacts:read');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
+
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from('contacts')
