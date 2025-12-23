@@ -28,7 +28,7 @@ function getMediaType(url: string): 'image/jpeg' | 'image/png' | 'image/webp' | 
   return 'image/jpeg';
 }
 
-// ピックアップ画像提案（AI機能: スタッフ以上）
+// ピックアップ画像提案（AI機能: スタッフ以上、Rate Limit適用）
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -40,6 +40,25 @@ export async function POST(
       return NextResponse.json(
         { error: authError || '認証が必要です' },
         { status: authError?.includes('権限') ? 403 : 401 }
+      );
+    }
+
+    // Rate Limitチェック（ユーザーIDベース）
+    const rateLimitResult = await checkRateLimit(
+      `ai:suggestPickup:${user.id}`,
+      RATE_LIMITS.ai
+    );
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'AI機能の利用回数が上限に達しました。しばらく経ってからお試しください。' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+          },
+        }
       );
     }
 
