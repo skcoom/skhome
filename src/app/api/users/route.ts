@@ -34,15 +34,16 @@ export async function GET() {
   }
 }
 
-// ユーザー作成（招待メール方式）
+// ユーザー作成（管理者のみ）
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 管理者権限チェック
+    const { user, error: authError } = await requireAdmin();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
     const body = await request.json();
