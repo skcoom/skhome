@@ -34,11 +34,14 @@ export default async function WorksPage() {
 
   // WorkItem形式に変換
   const works: WorkItem[] = (projects || []).map((project: Project & { project_media: ProjectMedia[] }) => {
-    // フィーチャー画像または最初の施工後画像を取得
-    const featuredMedia = project.project_media?.find((m) => m.is_featured && m.type === 'image');
-    const afterMedia = project.project_media?.find((m) => m.phase === 'after' && m.type === 'image');
-    const anyMedia = project.project_media?.find((m) => m.type === 'image');
-    const thumbnail = featuredMedia || afterMedia || anyMedia;
+    // 掲載対象のメディアのみ（is_featured: trueは非掲載）
+    const publishedMedia = project.project_media?.filter((m) => !m.is_featured) || [];
+    // 施工後 > 施工中 > 施工前 > 最初の画像
+    const afterMedia = publishedMedia.find((m) => m.phase === 'after' && m.type === 'image');
+    const duringMedia = publishedMedia.find((m) => m.phase === 'during' && m.type === 'image');
+    const beforeMedia = publishedMedia.find((m) => m.phase === 'before' && m.type === 'image');
+    const anyMedia = publishedMedia.find((m) => m.type === 'image');
+    const thumbnail = afterMedia || duringMedia || beforeMedia || anyMedia;
 
     return {
       id: project.id,

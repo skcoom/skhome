@@ -47,12 +47,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = typedProject.description ||
     `${typedProject.name}の施工実績です。${categoryLabel}工事の詳細をご覧いただけます。`;
 
-  // OG画像を取得（featured > after > 最初の画像）
+  // OG画像を取得（掲載対象のみ、施工後 > 最初の画像）
   const media = typedProject.project_media || [];
-  const featuredMedia = media.find((m) => m.is_featured && m.type === 'image');
-  const afterMedia = media.find((m) => m.phase === 'after' && m.type === 'image');
-  const firstImage = media.find((m) => m.type === 'image');
-  const ogImage = featuredMedia?.file_url || afterMedia?.file_url || firstImage?.file_url || '/og-image.png';
+  const publishedMedia = media.filter((m) => !m.is_featured);
+  const afterMedia = publishedMedia.find((m) => m.phase === 'after' && m.type === 'image');
+  const firstImage = publishedMedia.find((m) => m.type === 'image');
+  const ogImage = afterMedia?.file_url || firstImage?.file_url || '/og-image.png';
 
   return {
     title: `${typedProject.name} | 施工実績`,
@@ -104,17 +104,21 @@ export default async function WorkDetailPage({ params }: PageProps) {
 
   const typedProject = project as Project & { project_media: ProjectMedia[] };
 
+  // 掲載対象のメディアのみ（is_featured: trueは非掲載）
+  const publishedMedia = typedProject.project_media?.filter((m) => !m.is_featured) || [];
+
   // メディアをフェーズごとに分類
   const mediaByPhase = {
-    before: typedProject.project_media?.filter((m) => m.phase === 'before' && m.type === 'image') || [],
-    during: typedProject.project_media?.filter((m) => m.phase === 'during' && m.type === 'image') || [],
-    after: typedProject.project_media?.filter((m) => m.phase === 'after' && m.type === 'image') || [],
+    before: publishedMedia.filter((m) => m.phase === 'before' && m.type === 'image'),
+    during: publishedMedia.filter((m) => m.phase === 'during' && m.type === 'image'),
+    after: publishedMedia.filter((m) => m.phase === 'after' && m.type === 'image'),
   };
 
-  // メイン画像を取得
-  const featuredMedia = typedProject.project_media?.find((m) => m.is_featured && m.type === 'image');
+  // メイン画像を取得（施工後 > 施工中 > 施工前 > 最初の画像）
   const afterMedia = mediaByPhase.after[0];
-  const mainImage = featuredMedia || afterMedia || typedProject.project_media?.find((m) => m.type === 'image');
+  const duringMedia = mediaByPhase.during[0];
+  const beforeMedia = mediaByPhase.before[0];
+  const mainImage = afterMedia || duringMedia || beforeMedia || publishedMedia.find((m) => m.type === 'image');
 
   // 関連プロジェクトを取得
   const { data: relatedProjects } = await supabase
@@ -228,9 +232,9 @@ export default async function WorkDetailPage({ params }: PageProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {relatedProjects.map((related) => {
-                const relatedMedia = (related.project_media as ProjectMedia[])?.find(
-                  (m) => m.is_featured || m.phase === 'after'
-                ) || (related.project_media as ProjectMedia[])?.[0];
+                // 掲載対象のメディアのみ（is_featured: trueは非掲載）
+                const relatedPublishedMedia = (related.project_media as ProjectMedia[])?.filter((m) => !m.is_featured) || [];
+                const relatedMedia = relatedPublishedMedia.find((m) => m.phase === 'after') || relatedPublishedMedia[0];
 
                 return (
                   <Link
