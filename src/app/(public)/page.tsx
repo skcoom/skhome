@@ -136,7 +136,6 @@ export default async function HomePage() {
                     {heroItems[0]?.url ? (
                       heroItems[0].type === 'video' ? (
                         <video
-                          src={heroItems[0].url}
                           className="w-full h-full object-cover"
                           autoPlay
                           muted
@@ -144,7 +143,9 @@ export default async function HomePage() {
                           playsInline
                           preload="auto"
                           poster={heroItems[0].thumbnailUrl}
-                        />
+                        >
+                          <source src={heroItems[0].url} type="video/mp4" />
+                        </video>
                       ) : (
                         <Image src={heroItems[0].url} alt="施工写真" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
                       )
@@ -158,7 +159,6 @@ export default async function HomePage() {
                     {heroItems[1]?.url ? (
                       heroItems[1].type === 'video' ? (
                         <video
-                          src={heroItems[1].url}
                           className="w-full h-full object-cover"
                           autoPlay
                           muted
@@ -166,7 +166,9 @@ export default async function HomePage() {
                           playsInline
                           preload="auto"
                           poster={heroItems[1].thumbnailUrl}
-                        />
+                        >
+                          <source src={heroItems[1].url} type="video/mp4" />
+                        </video>
                       ) : (
                         <Image src={heroItems[1].url} alt="施工写真" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
                       )
@@ -182,7 +184,6 @@ export default async function HomePage() {
                     {heroItems[2]?.url ? (
                       heroItems[2].type === 'video' ? (
                         <video
-                          src={heroItems[2].url}
                           className="w-full h-full object-cover"
                           autoPlay
                           muted
@@ -190,7 +191,9 @@ export default async function HomePage() {
                           playsInline
                           preload="auto"
                           poster={heroItems[2].thumbnailUrl}
-                        />
+                        >
+                          <source src={heroItems[2].url} type="video/mp4" />
+                        </video>
                       ) : (
                         <Image src={heroItems[2].url} alt="施工写真" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
                       )
