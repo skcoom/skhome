@@ -1,22 +1,27 @@
 import Link from 'next/link';
-import { Phone, Users, Wrench, Heart, User } from 'lucide-react';
+import Image from 'next/image';
+import { Phone, Users, Wrench, Heart } from 'lucide-react';
 
 interface Member {
   id: string;
   name: string;
   role: string;
   roleJa: string;
-  image: string;
+  image: string | null;
+  initials: string;
   motto: string;
 }
 
+// 画像ファイルを追加したらimageパスを設定してください
+// 例: image: '/members/suetake-shuhei.jpg'
 const members: Member[] = [
   {
     id: '1',
     name: '末武 修平',
     role: 'CEO',
     roleJa: '代表取締役',
-    image: '/members/suetake-shuhei.jpg',
+    image: null,
+    initials: '修',
     motto: '',
   },
   {
@@ -24,7 +29,8 @@ const members: Member[] = [
     name: '末武 剛',
     role: 'Master Craftsman',
     roleJa: '親方',
-    image: '/members/suetake-tsuyoshi.jpg',
+    image: null,
+    initials: '剛',
     motto: '',
   },
   {
@@ -32,7 +38,8 @@ const members: Member[] = [
     name: '末武 香代',
     role: 'Accounting',
     roleJa: '経理',
-    image: '/members/suetake-kayo.jpg',
+    image: null,
+    initials: '香',
     motto: '',
   },
   {
@@ -40,7 +47,8 @@ const members: Member[] = [
     name: '木村 翔',
     role: 'Electrician / Carpenter',
     roleJa: '電気・大工工事',
-    image: '/members/kimura.jpg',
+    image: null,
+    initials: '翔',
     motto: '',
   },
   {
@@ -48,7 +56,8 @@ const members: Member[] = [
     name: '本橋 拓真',
     role: 'Interior Craftsman',
     roleJa: '内装工事全般（修行中）',
-    image: '/members/motohashi.jpg',
+    image: null,
+    initials: '拓',
     motto: '',
   },
   {
@@ -56,10 +65,35 @@ const members: Member[] = [
     name: '片山 雄太',
     role: 'Interior Craftsman',
     roleJa: '内装工事全般（修行中）',
-    image: '/members/katayama.jpg',
+    image: null,
+    initials: '雄',
     motto: '',
   },
 ];
+
+function MemberCard({ member }: { member: Member }) {
+  return (
+    <div className="aspect-[3/4] bg-gradient-to-b from-[#E5E4E0] to-[#D5D4D0] relative overflow-hidden">
+      {member.image ? (
+        <Image
+          src={member.image}
+          alt={member.name}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center">
+          <div className="w-28 h-28 bg-[#26A69A] rounded-full flex items-center justify-center mb-4 shadow-lg">
+            <span className="text-4xl font-medium text-white">{member.initials}</span>
+          </div>
+          <span className="text-sm text-[#666666] tracking-wider">{member.roleJa}</span>
+        </div>
+      )}
+      <div className="absolute inset-0 bg-[#26A69A]/0 group-hover:bg-[#26A69A]/10 transition-colors pointer-events-none" />
+    </div>
+  );
+}
 
 const values = [
   {
@@ -123,15 +157,7 @@ export default function MembersPage() {
                 key={member.id}
                 className="bg-[#FAF9F6] rounded-xl overflow-hidden group"
               >
-                <div className="aspect-[3/4] bg-gradient-to-b from-[#E5E4E0] to-[#D5D4D0] relative overflow-hidden">
-                  <div className="w-full h-full flex flex-col items-center justify-center">
-                    <div className="w-24 h-24 bg-[#FAF9F6] rounded-full flex items-center justify-center mb-4">
-                      <User className="w-12 h-12 text-[#999999]" />
-                    </div>
-                    <span className="text-xs text-[#999999] tracking-wider">{member.roleJa}</span>
-                  </div>
-                  <div className="absolute inset-0 bg-[#26A69A]/0 group-hover:bg-[#26A69A]/10 transition-colors" />
-                </div>
+                <MemberCard member={member} />
 
                 <div className="p-6 lg:p-8">
                   <p className="text-xs tracking-widest text-[#26A69A] mb-2">

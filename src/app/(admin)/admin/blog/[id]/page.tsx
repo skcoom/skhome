@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Trash2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FeaturedImageUploader } from '@/components/admin/FeaturedImageUploader';
 import type { BlogPost } from '@/types/database';
 import { BLOG_CATEGORY_LABELS } from '@/lib/constants';
 
@@ -322,39 +323,12 @@ export default function EditBlogPostPage() {
           </div>
 
           {/* Featured Image */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">
-              アイキャッチ画像
-            </h3>
-            {formData.featured_image ? (
-              <div className="space-y-2">
-                <img
-                  src={formData.featured_image}
-                  alt="アイキャッチ"
-                  className="w-full h-32 object-cover rounded-lg"
-                />
-                <button
-                  onClick={() =>
-                    setFormData((prev) => ({ ...prev, featured_image: '' }))
-                  }
-                  className="text-sm text-red-600 hover:text-red-700"
-                >
-                  画像を削除
-                </button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <p className="text-sm text-gray-500">
-                  ドラッグ&ドロップ
-                  <br />
-                  または
-                </p>
-                <button className="mt-2 text-sm text-blue-600 hover:text-blue-700">
-                  ファイルを選択
-                </button>
-              </div>
-            )}
-          </div>
+          <FeaturedImageUploader
+            currentImage={formData.featured_image}
+            onImageChange={(url) =>
+              setFormData((prev) => ({ ...prev, featured_image: url }))
+            }
+          />
         </div>
       </div>
 

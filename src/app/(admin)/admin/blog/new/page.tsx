@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FeaturedImageUploader } from '@/components/admin/FeaturedImageUploader';
 
 interface Project {
   id: string;
@@ -378,21 +379,12 @@ function NewBlogPostContent() {
           </div>
 
           {/* Featured Image */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">
-              アイキャッチ画像
-            </h3>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <p className="text-sm text-gray-500">
-                ドラッグ&ドロップ
-                <br />
-                または
-              </p>
-              <button className="mt-2 text-sm text-blue-600 hover:text-blue-700">
-                ファイルを選択
-              </button>
-            </div>
-          </div>
+          <FeaturedImageUploader
+            currentImage={formData.featured_image}
+            onImageChange={(url) =>
+              setFormData((prev) => ({ ...prev, featured_image: url }))
+            }
+          />
 
           {/* Status Info */}
           <div className="bg-gray-50 rounded-lg p-6">

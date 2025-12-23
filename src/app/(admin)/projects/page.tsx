@@ -1,17 +1,33 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { Plus, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProjectList } from '@/components/admin/ProjectList';
+import { ProjectFilters } from '@/components/admin/ProjectFilters';
 import { createClient } from '@/lib/supabase/server';
 import type { Project } from '@/types/database';
 
-export default async function ProjectsPage() {
+interface PageProps {
+  searchParams: Promise<{ status?: string; category?: string }>;
+}
+
+export default async function ProjectsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
   const supabase = await createClient();
 
-  const { data: projects, error } = await supabase
+  let query = supabase
     .from('projects')
     .select('*')
     .order('created_at', { ascending: false });
+
+  if (params.status) {
+    query = query.eq('status', params.status);
+  }
+  if (params.category) {
+    query = query.eq('category', params.category);
+  }
+
+  const { data: projects, error } = await query;
 
   if (error) {
     console.error('Projects fetch error:', error);
@@ -38,21 +54,12 @@ export default async function ProjectsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <select className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option value="">すべてのステータス</option>
-          <option value="planning">計画中</option>
-          <option value="in_progress">施工中</option>
-          <option value="completed">完了</option>
-        </select>
-        <select className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option value="">すべてのカテゴリ</option>
-          <option value="apartment">マンション</option>
-          <option value="remodeling">リフォーム</option>
-          <option value="new_construction">新築</option>
-          <option value="house">住宅</option>
-        </select>
-      </div>
+      <Suspense fallback={<div className="h-10" />}>
+        <ProjectFilters
+          currentStatus={params.status}
+          currentCategory={params.category}
+        />
+      </Suspense>
 
       {/* Project list */}
       {projectList.length > 0 && <ProjectList projects={projectList} />}

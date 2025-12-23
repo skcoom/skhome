@@ -1,4 +1,36 @@
 /** @type {import('next').NextConfig} */
+
+const isDev = process.env.NODE_ENV === 'development';
+
+/**
+ * Content-Security-Policy (CSP) 設定
+ *
+ * 開発環境と本番環境で異なる設定を適用:
+ * - 開発: 'unsafe-eval' を許可（HMRに必要）
+ * - 本番: 'unsafe-eval' を除外してセキュリティ強化
+ *
+ * 将来の改善計画:
+ * - Next.js 14+ のnonce対応を利用してCSPを強化
+ * - script-src: nonce-{random} 'strict-dynamic'
+ * - style-src: nonce-{random}
+ * - 参考: https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy
+ */
+const cspDirectives = [
+  "default-src 'self'",
+  // 本番では unsafe-eval を除外
+  isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com"
+    : "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https: https://www.google-analytics.com https://www.googletagmanager.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+];
+
 const nextConfig = {
   // Next.js Image Optimization設定
   images: {
@@ -44,40 +76,9 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()'
           },
-          /**
-           * Content-Security-Policy (CSP) 設定
-           *
-           * ⚠️ セキュリティ改善が必要な項目:
-           *
-           * 1. 'unsafe-inline' (script-src, style-src)
-           *    - 現状: Next.jsの動作に必要なため許可
-           *    - 改善: nonce-based CSPの導入を検討
-           *    - 参考: https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy
-           *
-           * 2. 'unsafe-eval' (script-src)
-           *    - 現状: 開発モードと一部ライブラリで必要
-           *    - 改善: 本番環境では可能な限り削除を検討
-           *    - 注意: 削除すると一部機能が動作しない可能性あり
-           *
-           * 将来の改善計画:
-           * - Next.js 14+ のnonce対応を利用してCSPを強化
-           * - script-src: nonce-{random} 'strict-dynamic'
-           * - style-src: nonce-{random}
-           */
           {
             key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              // TODO: 本番環境では 'unsafe-inline' 'unsafe-eval' を nonce ベースに移行
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https: https://www.google-analytics.com https://www.googletagmanager.com",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com",
-              "frame-ancestors 'self'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; ')
+            value: cspDirectives.join('; ')
           }
         ]
       }
