@@ -174,4 +174,14 @@ export const RATE_LIMITS = {
     limit: 10,
     windowMs: 15 * 60 * 1000, // 15分
   },
+  // AI機能（高コスト）: 1時間に20回まで
+  ai: {
+    limit: 20,
+    windowMs: 60 * 60 * 1000, // 1時間
+  },
+  // ドキュメント解析: 1時間に10回まで
+  documentAnalysis: {
+    limit: 10,
+    windowMs: 60 * 60 * 1000, // 1時間
+  },
 } as const;
