@@ -12,12 +12,15 @@ import {
   X,
   Check,
   AlertCircle,
+  Lock,
+  Globe,
 } from 'lucide-react';
 import type { ProjectDocument } from '@/types/database';
 
 interface DocumentManagerProps {
   projectId: string;
   onDescriptionUpdate?: (description: string) => void;
+  onPublicDescriptionUpdate?: (publicDescription: string) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -34,7 +37,7 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function DocumentManager({ projectId, onDescriptionUpdate }: DocumentManagerProps) {
+export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescriptionUpdate }: DocumentManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +47,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate }: DocumentMana
   const [error, setError] = useState<string | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentSummary, setCurrentSummary] = useState<string>('');
+  const [currentPublicSummary, setCurrentPublicSummary] = useState<string>('');
 
   // ドキュメント一覧を取得
   const fetchDocuments = useCallback(async () => {
@@ -118,7 +122,8 @@ export function DocumentManager({ projectId, onDescriptionUpdate }: DocumentMana
       }
 
       const data = await response.json();
-      setCurrentSummary(data.summary);
+      setCurrentSummary(data.summary || '');
+      setCurrentPublicSummary(data.publicSummary || '');
       setShowSummaryModal(true);
 
       // ドキュメント一覧を更新
@@ -155,10 +160,18 @@ export function DocumentManager({ projectId, onDescriptionUpdate }: DocumentMana
     }
   };
 
-  // 概要に反映
+  // 管理用メモに反映
   const handleApplyToDescription = () => {
     if (onDescriptionUpdate && currentSummary) {
       onDescriptionUpdate(currentSummary);
+    }
+    setShowSummaryModal(false);
+  };
+
+  // 公開用概要に反映
+  const handleApplyToPublicDescription = () => {
+    if (onPublicDescriptionUpdate && currentPublicSummary) {
+      onPublicDescriptionUpdate(currentPublicSummary);
     }
     setShowSummaryModal(false);
   };
@@ -298,26 +311,69 @@ export function DocumentManager({ projectId, onDescriptionUpdate }: DocumentMana
               </button>
             </div>
 
-            <div className="mb-6">
-              <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{currentSummary}</p>
-              </div>
+            <div className="space-y-4 mb-6">
+              {/* 管理用メモ */}
+              {currentSummary && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Lock className="h-4 w-4 text-amber-600" />
+                      <span className="text-sm font-medium text-amber-800">管理用メモ（社内向け）</span>
+                    </div>
+                    {onDescriptionUpdate && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleApplyToDescription}
+                      >
+                        反映する
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-sm text-amber-900 whitespace-pre-wrap">{currentSummary}</p>
+                </div>
+              )}
+
+              {/* 公開用概要 */}
+              {currentPublicSummary && (
+                <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Globe className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">公開用概要（お客様向け）</span>
+                    </div>
+                    {onPublicDescriptionUpdate && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleApplyToPublicDescription}
+                      >
+                        反映する
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-sm text-green-900 whitespace-pre-wrap">{currentPublicSummary}</p>
+                </div>
+              )}
+
+              {/* 両方とも空の場合 */}
+              {!currentSummary && !currentPublicSummary && (
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <p className="text-sm text-gray-500">解析結果がありませんでした</p>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end pt-2 border-t">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowSummaryModal(false)}
               >
                 閉じる
               </Button>
-              {onDescriptionUpdate && (
-                <Button type="button" onClick={handleApplyToDescription}>
-                  <Check className="mr-2 h-4 w-4" />
-                  概要に反映
-                </Button>
-              )}
             </div>
           </div>
         </div>

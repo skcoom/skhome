@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia } from '@/types/database';
 import { WorkDetailGallery } from './gallery';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 import type { Metadata } from 'next';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .select(`
       name,
       description,
+      public_description,
       category,
       address,
       main_media_id,
@@ -38,7 +40,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const typedProject = project as Project & { project_media: ProjectMedia[] };
   const tagsLabel = typedProject.tags?.join('・') || 'リフォーム';
-  const description = typedProject.description ||
+  // 公開用概要を優先、なければ管理用メモ、どちらもなければデフォルト文
+  const description = typedProject.public_description || typedProject.description ||
     `${typedProject.name}の施工実績です。${tagsLabel}工事の詳細をご覧いただけます。`;
 
   // OG画像を取得
@@ -204,10 +207,8 @@ export default async function WorkDetailPage({ params }: PageProps) {
                 )}
               </div>
 
-              {typedProject.description && (
-                <p className="text-[#666666] leading-relaxed whitespace-pre-wrap">
-                  {typedProject.description}
-                </p>
+              {(typedProject.public_description || typedProject.description) && (
+                <MarkdownContent content={typedProject.public_description || typedProject.description || ''} />
               )}
             </div>
           </div>

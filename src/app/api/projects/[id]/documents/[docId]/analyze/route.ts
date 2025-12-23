@@ -7,28 +7,50 @@ import Anthropic from '@anthropic-ai/sdk';
 
 type Params = Promise<{ id: string; docId: string }>;
 
-const DOCUMENT_ANALYSIS_PROMPT = `あなたは建設会社の図面・見積書・仕様書から工事情報を抽出し、現場の詳細情報を言語化するアシスタントです。
+const DOCUMENT_ANALYSIS_PROMPT = `あなたは建設会社の図面・見積書・仕様書から工事情報を抽出するアシスタントです。
 
-以下のドキュメントを解析し、現場管理に役立つ情報を抽出してください。
+以下のドキュメントを解析し、2種類の要約を作成してください。
 
-## 抽出・言語化する内容
+---
 
-1. **工事概要**: 工事の内容を分かりやすく説明（どんな工事か、規模感など）
-2. **施工箇所**: 具体的な施工場所や対象箇所
-3. **使用材料・設備**: 主要な材料名、設備機器の型番やメーカー
-4. **工事の特徴**: 特殊な工法、注意点、こだわりポイント
-5. **数量・金額情報**: 主要な数量や金額（見積書の場合）
+## 1. 管理用メモ（社内向け詳細情報）
 
-## 出力形式
+現場管理に役立つ詳細情報を抽出してください：
+- 工事概要：工事の内容、規模感
+- 施工箇所：具体的な場所や対象
+- 使用材料・設備：材料名、型番、メーカー
+- 金額情報：見積金額、内訳（ある場合）
+- 工事の特徴：特殊な工法、注意点
 
-読みやすい文章で現場情報をまとめてください。
-箇条書きと説明文を組み合わせて、現場担当者が一目で理解できる形式にしてください。
-200〜400文字程度を目安にしてください。
+形式：箇条書きと説明文を組み合わせた詳細な記載（300〜500文字）
 
-## 注意事項
-- ドキュメントに記載されていない情報は推測しないでください
-- 専門用語は分かりやすく補足してください
-- 金額情報がある場合は概算として記載してください`;
+---
+
+## 2. 公開用概要（お客様向けホームページ掲載文）
+
+ホームページの施工実績ページに掲載する、お客様向けの文章を作成してください：
+- 工事の魅力や価値を伝える
+- お客様のお悩みとその解決を示す
+- 完成後のイメージや暮らしの変化を描写
+
+**絶対に含めないでください**：
+- 具体的な金額や価格（〇〇万円など）
+- 材料の型番や品番
+- 専門的なコード・記号
+- 施主様の個人名
+
+形式：読みやすい文章、見出しはMarkdown形式（## または **太字**）、150〜250文字
+
+---
+
+## 出力形式（JSON）
+
+必ず以下のJSON形式で出力してください。JSONのみを出力し、他の説明は不要です。
+
+{
+  "managementSummary": "（管理用メモの内容）",
+  "publicSummary": "（公開用概要の内容）"
+}`;
 
 // 保存済みドキュメントをAI解析
 export async function POST(request: NextRequest, { params }: { params: Params }) {
@@ -113,12 +135,28 @@ export async function POST(request: NextRequest, { params }: { params: Params })
       return NextResponse.json({ error: 'AIからの応答がありませんでした' }, { status: 500 });
     }
 
-    const summary = textContent.text;
+    // JSONをパース
+    let managementSummary: string;
+    let publicSummary: string;
+    try {
+      // AIの応答からJSONを抽出（マークダウンコードブロックに囲まれている場合も対応）
+      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('JSON形式の応答が見つかりません');
+      }
+      const parsed = JSON.parse(jsonMatch[0]);
+      managementSummary = parsed.managementSummary || '';
+      publicSummary = parsed.publicSummary || '';
+    } catch {
+      // JSONパースに失敗した場合、従来の形式として処理
+      managementSummary = textContent.text;
+      publicSummary = '';
+    }
 
-    // ドキュメントにAI要約を保存
+    // ドキュメントにAI要約を保存（管理用メモを保存）
     const { error: updateError } = await supabase
       .from('project_documents')
-      .update({ ai_summary: summary })
+      .update({ ai_summary: managementSummary })
       .eq('id', docId);
 
     if (updateError) {
@@ -127,7 +165,8 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 
     return NextResponse.json({
       success: true,
-      summary,
+      summary: managementSummary,
+      publicSummary,
       documentId: docId,
     });
   } catch (error) {

@@ -380,7 +380,7 @@ export default function ProjectDetailPage() {
     }
   };
 
-  // 概要を更新
+  // 管理用メモを更新
   const updateDescription = async (description: string) => {
     if (!project) return;
 
@@ -395,10 +395,32 @@ export default function ProjectDetailPage() {
       }
 
       setProject({ ...project, description });
-      alert('概要を更新しました');
+      alert('管理用メモを更新しました');
     } catch (err) {
       console.error('Description update error:', err);
-      alert('概要の更新に失敗しました');
+      alert('管理用メモの更新に失敗しました');
+    }
+  };
+
+  // 公開用概要を更新
+  const updatePublicDescription = async (publicDescription: string) => {
+    if (!project) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ public_description: publicDescription } as never)
+        .eq('id', project.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      setProject({ ...project, public_description: publicDescription });
+      alert('公開用概要を更新しました');
+    } catch (err) {
+      console.error('Public description update error:', err);
+      alert('公開用概要の更新に失敗しました');
     }
   };
 
@@ -500,12 +522,29 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </div>
+        {/* 管理用メモ（価格等の詳細情報） */}
         {project.description && (
-          <div className="mt-4">
-            <p className="text-sm font-medium text-gray-500">工事概要</p>
-            <p className="mt-1 text-gray-900 whitespace-pre-wrap">{project.description}</p>
+          <div className="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
+            <div className="flex items-center space-x-2 mb-2">
+              <Lock className="h-4 w-4 text-amber-600" />
+              <p className="text-sm font-medium text-amber-800">管理用メモ（非公開）</p>
+            </div>
+            <p className="text-sm text-amber-900 whitespace-pre-wrap">{project.description}</p>
           </div>
         )}
+
+        {/* 公開ページ用概要 */}
+        <div className="mt-4 p-4 rounded-lg bg-green-50 border border-green-200">
+          <div className="flex items-center space-x-2 mb-2">
+            <Globe className="h-4 w-4 text-green-600" />
+            <p className="text-sm font-medium text-green-800">公開ページ用概要</p>
+          </div>
+          {project.public_description ? (
+            <p className="text-sm text-green-900 whitespace-pre-wrap">{project.public_description}</p>
+          ) : (
+            <p className="text-sm text-gray-500 italic">未設定（ドキュメントのAI解析で自動生成できます）</p>
+          )}
+        </div>
       </div>
 
       {/* Document management section */}
@@ -513,6 +552,7 @@ export default function ProjectDetailPage() {
         <DocumentManager
           projectId={projectId}
           onDescriptionUpdate={updateDescription}
+          onPublicDescriptionUpdate={updatePublicDescription}
         />
       </div>
 

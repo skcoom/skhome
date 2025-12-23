@@ -41,7 +41,10 @@ export interface Project {
   status: ProjectStatus;
   start_date?: string;
   end_date?: string;
+  /** 管理者向け詳細メモ（価格、資材情報含む） */
   description?: string;
+  /** 公開ページ向けお客様向け概要文 */
+  public_description?: string;
   is_public: boolean;
   main_media_id?: string;
   created_by: string;
