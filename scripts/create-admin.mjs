@@ -35,7 +35,35 @@ async function createAdminUser() {
     .single();
 
   if (existingUser) {
-    console.log('既に登録済み:', existingUser);
+    console.log('usersテーブルに登録済み:', existingUser);
+
+    // Supabase Authにユーザーが存在するか確認
+    const { data: authUsers } = await supabase.auth.admin.listUsers();
+    const authUser = authUsers?.users?.find(u => u.email === email);
+
+    if (authUser) {
+      console.log('Supabase Authにも存在:', authUser.id);
+    } else {
+      console.log('Supabase Authにユーザーがありません。招待メールを送信します...');
+
+      // 招待メールを送信
+      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        data: { name: existingUser.name, role: existingUser.role },
+        redirectTo: 'https://skcoom.co.jp/auth/invite'
+      });
+
+      if (inviteError) {
+        console.error('招待エラー:', inviteError.message);
+      } else {
+        // usersテーブルのidを更新
+        await supabase
+          .from('users')
+          .update({ id: inviteData.user.id })
+          .eq('email', email);
+
+        console.log('招待メール送信完了。メールからパスワードを設定してください。');
+      }
+    }
     return;
   }
 
