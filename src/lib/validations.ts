@@ -76,6 +76,7 @@ const projectTagValues = [
   'リビング・居室',
   '玄関・廊下',
   '外壁・屋根',
+  '看板',
   '住宅',
   '店舗',
 ] as const;
