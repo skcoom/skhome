@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia, BlogPost } from '@/types/database';
