@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requirePermission } from '@/lib/auth';
 
-// 現場一覧取得
+// 現場一覧取得（公開ページからも使用されるため認証不要）
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
