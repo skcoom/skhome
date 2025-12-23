@@ -6,6 +6,16 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
+const navItems = [
+  { href: '/', label: 'ホーム' },
+  { href: '/company', label: '会社概要' },
+  { href: '/members', label: 'メンバー' },
+  { href: '/works', label: '施工実績' },
+  { href: '/blog', label: 'ブログ' },
+  { href: '/faq', label: 'よくある質問' },
+  { href: '/contact', label: 'お問い合わせ' },
+];
+
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -27,15 +37,7 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-10" aria-label="メインナビゲーション">
-            {[
-              { href: '/', label: 'ホーム' },
-              { href: '/company', label: '会社概要' },
-              { href: '/members', label: 'メンバー' },
-              { href: '/works', label: '施工実績' },
-              { href: '/blog', label: 'ブログ' },
-              { href: '/faq', label: 'よくある質問' },
-              { href: '/contact', label: 'お問い合わせ' },
-            ].map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

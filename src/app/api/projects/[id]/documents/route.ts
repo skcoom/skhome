@@ -119,6 +119,59 @@ export async function POST(request: NextRequest, { params }: { params: Params })
   }
 }
 
+// ドキュメントの書類タイプを更新
+export async function PATCH(request: NextRequest, { params }: { params: Params }) {
+  try {
+    const { id } = await params;
+
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('media:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
+    }
+
+    const supabase = await createClient();
+    const body = await request.json();
+    const { docId, document_type } = body;
+
+    if (!docId) {
+      return NextResponse.json({ error: 'docIdは必須です' }, { status: 400 });
+    }
+
+    // 書類タイプのバリデーション
+    const validTypes = ['estimate', 'invoice', 'contract', 'other'];
+    if (!document_type || !validTypes.includes(document_type)) {
+      return NextResponse.json({ error: '無効な書類タイプです' }, { status: 400 });
+    }
+
+    // ドキュメントを更新
+    const { data, error } = await supabase
+      .from('project_documents')
+      .update({ document_type })
+      .eq('id', docId)
+      .eq('project_id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Document update error:', error);
+      return NextResponse.json({ error: 'ドキュメントの更新に失敗しました' }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: 'ドキュメントが見つかりません' }, { status: 404 });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Document PATCH error:', error);
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
+  }
+}
+
 // ドキュメントを削除
 export async function DELETE(request: NextRequest, { params }: { params: Params }) {
   try {

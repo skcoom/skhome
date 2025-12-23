@@ -395,6 +395,19 @@ export default async function HomePage() {
               <p className="text-[#999999]">ブログ記事を準備中です</p>
             </div>
           )}
+
+          <div className="text-center mt-12 md:hidden">
+            <Link
+              href="/blog"
+              className="inline-flex items-center text-[#333333] text-sm tracking-wide"
+            >
+              <span className="mr-2">&gt;</span>
+              <span className="relative">
+                すべてのブログを見る
+                <span className="absolute -bottom-1 left-0 w-full h-px bg-[#333333]" />
+              </span>
+            </Link>
+          </div>
         </div>
       </section>
 

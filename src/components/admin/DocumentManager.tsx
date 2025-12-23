@@ -56,6 +56,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
   const [isEditing, setIsEditing] = useState<'management' | 'public' | null>(null);
   const [appliedManagement, setAppliedManagement] = useState(false);
   const [appliedPublic, setAppliedPublic] = useState(false);
+  const [updatingTypeId, setUpdatingTypeId] = useState<string | null>(null);
 
   // ドキュメント一覧を取得
   const fetchDocuments = useCallback(async () => {
@@ -166,6 +167,31 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
       setError(err instanceof Error ? err.message : '削除に失敗しました');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  // 書類タイプを変更
+  const handleTypeChange = async (docId: string, newType: DocumentType) => {
+    setUpdatingTypeId(docId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/documents`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId, document_type: newType }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '更新に失敗しました');
+      }
+
+      await fetchDocuments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '更新に失敗しました');
+    } finally {
+      setUpdatingTypeId(null);
     }
   };
 
@@ -296,6 +322,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
         <div className="divide-y divide-gray-200 rounded-lg border border-gray-200">
           {documents.map((doc) => {
             const docTypeInfo = DOCUMENT_TYPE_LABELS[doc.document_type] || DOCUMENT_TYPE_LABELS.other;
+            const isUpdatingType = updatingTypeId === doc.id;
             return (
             <div key={doc.id} className="flex items-center justify-between p-4">
               <div className="flex items-center space-x-3">
@@ -303,9 +330,19 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                 <div>
                   <div className="flex items-center space-x-2">
                     <p className="text-sm font-medium text-gray-900">{doc.file_name}</p>
-                    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${docTypeInfo.color}`}>
-                      {docTypeInfo.label}
-                    </span>
+                    <select
+                      value={doc.document_type}
+                      onChange={(e) => handleTypeChange(doc.id, e.target.value as DocumentType)}
+                      disabled={isUpdatingType}
+                      className={`rounded px-2 py-0.5 text-xs font-medium border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 ${docTypeInfo.color} ${isUpdatingType ? 'opacity-50' : ''}`}
+                    >
+                      {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, { label }]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                    {isUpdatingType && <Loader2 className="h-3 w-3 animate-spin text-gray-400" />}
                   </div>
                   <p className="text-xs text-gray-500">
                     {formatFileSize(doc.file_size)} • {formatDate(doc.created_at)}
