@@ -86,34 +86,6 @@ export default async function WorksPage() {
       {/* Works grid with filter */}
       <WorksGrid works={works} categoryLabels={PROJECT_CATEGORY_LABELS} />
 
-      {/* Stats section */}
-      <section className="py-16 lg:py-24 bg-[#F0EFE9]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-sm tracking-widest text-[#26A69A] mb-4">ACHIEVEMENT</p>
-            <h2 className="text-2xl lg:text-3xl font-medium text-[#333333]">
-              これまでの実績
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-            {[
-              { number: '500+', label: '施工件数' },
-              { number: '10', label: '年以上の実績' },
-              { number: '98%', label: '顧客満足度' },
-              { number: '7', label: '名の職人' },
-            ].map((stat, index) => (
-              <div key={index} className="bg-[#FAF9F6] rounded-xl p-6 lg:p-8 text-center">
-                <p className="text-3xl lg:text-4xl font-medium text-[#26A69A] mb-2">
-                  {stat.number}
-                </p>
-                <p className="text-sm text-[#666666]">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Process section */}
       <section className="py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
