@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { WorkItem } from './page';
 import { Pagination } from '@/components/ui/pagination';
 
