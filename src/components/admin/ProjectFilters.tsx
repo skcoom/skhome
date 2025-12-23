@@ -7,9 +7,10 @@ import { PROJECT_TAGS } from '@/lib/constants';
 interface ProjectFiltersProps {
   currentStatus?: string;
   currentTag?: string;
+  currentDocStatus?: string;
 }
 
-export function ProjectFilters({ currentStatus, currentTag }: ProjectFiltersProps) {
+export function ProjectFilters({ currentStatus, currentTag, currentDocStatus }: ProjectFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -36,6 +37,11 @@ export function ProjectFilters({ currentStatus, currentTag }: ProjectFiltersProp
     router.push(`/projects${queryString ? `?${queryString}` : ''}`);
   };
 
+  const handleDocStatusChange = (value: string) => {
+    const queryString = createQueryString('docStatus', value);
+    router.push(`/projects${queryString ? `?${queryString}` : ''}`);
+  };
+
   return (
     <div className="flex flex-wrap gap-2">
       <select
@@ -59,6 +65,18 @@ export function ProjectFilters({ currentStatus, currentTag }: ProjectFiltersProp
             {tag}
           </option>
         ))}
+      </select>
+      <select
+        value={currentDocStatus || ''}
+        onChange={(e) => handleDocStatusChange(e.target.value)}
+        className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      >
+        <option value="">すべての書類状態</option>
+        <option value="estimate">見積済み</option>
+        <option value="contract">契約済み</option>
+        <option value="invoice">請求済み</option>
+        <option value="no_estimate">見積なし</option>
+        <option value="no_invoice">請求なし</option>
       </select>
     </div>
   );

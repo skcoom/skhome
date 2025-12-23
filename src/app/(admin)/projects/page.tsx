@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectWithDocumentStatus, DocumentType } from '@/types/database';
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; tag?: string }>;
+  searchParams: Promise<{ status?: string; tag?: string; docStatus?: string }>;
 }
 
 export default async function ProjectsPage({ searchParams }: PageProps) {
@@ -51,7 +51,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   });
 
   // プロジェクトにドキュメント状態を追加
-  const projectList: ProjectWithDocumentStatus[] = (projects || []).map((project) => {
+  let projectList: ProjectWithDocumentStatus[] = (projects || []).map((project) => {
     const docTypes = documentStatusMap.get(project.id) || new Set();
     return {
       ...project,
@@ -60,6 +60,27 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       hasContract: docTypes.has('contract'),
     } as ProjectWithDocumentStatus;
   });
+
+  // 書類状態でフィルタリング
+  if (params.docStatus) {
+    switch (params.docStatus) {
+      case 'estimate':
+        projectList = projectList.filter((p) => p.hasEstimate);
+        break;
+      case 'contract':
+        projectList = projectList.filter((p) => p.hasContract);
+        break;
+      case 'invoice':
+        projectList = projectList.filter((p) => p.hasInvoice);
+        break;
+      case 'no_estimate':
+        projectList = projectList.filter((p) => !p.hasEstimate);
+        break;
+      case 'no_invoice':
+        projectList = projectList.filter((p) => !p.hasInvoice);
+        break;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -84,6 +105,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         <ProjectFilters
           currentStatus={params.status}
           currentTag={params.tag}
+          currentDocStatus={params.docStatus}
         />
       </Suspense>
 
