@@ -47,7 +47,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
 
     const supabase = await createClient();
     const body = await request.json();
-    const { name, client_name, address, category, tags, status, start_date, end_date, description, is_public } = body;
+    const { name, client_name, address, category, tags, status, start_date, end_date, description, public_description, is_public } = body;
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
@@ -59,6 +59,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
     if (start_date !== undefined) updateData.start_date = start_date;
     if (end_date !== undefined) updateData.end_date = end_date;
     if (description !== undefined) updateData.description = description;
+    if (public_description !== undefined) updateData.public_description = public_description;
     if (is_public !== undefined) updateData.is_public = is_public;
 
     const { data, error } = await supabase

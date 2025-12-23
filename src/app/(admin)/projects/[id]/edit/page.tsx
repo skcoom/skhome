@@ -31,6 +31,7 @@ export default function EditProjectPage() {
     start_date: '',
     end_date: '',
     description: '',
+    public_description: '',
     is_public: false,
   });
 
@@ -51,6 +52,7 @@ export default function EditProjectPage() {
           start_date: data.start_date || '',
           end_date: data.end_date || '',
           description: data.description || '',
+          public_description: data.public_description || '',
           is_public: data.is_public || false,
         });
       } catch (err) {
@@ -120,6 +122,7 @@ export default function EditProjectPage() {
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
           description: formData.description || null,
+          public_description: formData.public_description || null,
           is_public: formData.is_public,
         }),
       });
@@ -305,7 +308,7 @@ export default function EditProjectPage() {
 
             <div className="md:col-span-2 space-y-1">
               <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                工事概要
+                管理用メモ（非公開）
               </label>
               <textarea
                 id="description"
@@ -313,9 +316,26 @@ export default function EditProjectPage() {
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="工事の概要や特記事項を入力してください"
+                className="block w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 shadow-sm placeholder:text-gray-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                placeholder="価格、材料型番など社内向けの詳細メモ"
               />
+              <p className="text-xs text-gray-500">この内容は公開ページには表示されません</p>
+            </div>
+
+            <div className="md:col-span-2 space-y-1">
+              <label htmlFor="public_description" className="block text-sm font-medium text-gray-700">
+                公開用概要（ホームページ掲載）
+              </label>
+              <textarea
+                id="public_description"
+                name="public_description"
+                value={formData.public_description}
+                onChange={handleChange}
+                rows={3}
+                className="block w-full rounded-md border border-green-300 bg-green-50 px-3 py-2 shadow-sm placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                placeholder="お客様向けの工事紹介文（100〜150文字推奨）"
+              />
+              <p className="text-xs text-gray-500">この内容が施工実績ページに表示されます</p>
             </div>
 
             <div className="md:col-span-2">
