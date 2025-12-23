@@ -19,11 +19,12 @@ export default async function WorksPage() {
   const supabase = await createClient();
 
   // 公開されているプロジェクトを取得
+  // project_media_project_id_fkey を明示的に指定（main_media_id との関係と区別するため）
   const { data: projects, error } = await supabase
     .from('projects')
     .select(`
       *,
-      project_media (*)
+      project_media!project_media_project_id_fkey (*)
     `)
     .eq('is_public', true)
     .order('created_at', { ascending: false });

@@ -26,7 +26,7 @@ export default async function HomePage() {
     .from('projects')
     .select(`
       *,
-      project_media (*)
+      project_media!project_media_project_id_fkey (*)
     `)
     .eq('is_public', true)
     .order('created_at', { ascending: false })

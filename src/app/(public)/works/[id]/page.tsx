@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       category,
       address,
       main_media_id,
-      project_media (id, file_url, is_featured, phase, type)
+      project_media!project_media_project_id_fkey (id, file_url, is_featured, phase, type)
     `)
     .eq('id', id)
     .eq('is_public', true)
@@ -98,7 +98,7 @@ export default async function WorkDetailPage({ params }: PageProps) {
     .from('projects')
     .select(`
       *,
-      project_media (*)
+      project_media!project_media_project_id_fkey (*)
     `)
     .eq('id', id)
     .eq('is_public', true)
@@ -139,7 +139,7 @@ export default async function WorkDetailPage({ params }: PageProps) {
       name,
       category,
       address,
-      project_media (*)
+      project_media!project_media_project_id_fkey (*)
     `)
     .eq('is_public', true)
     .eq('category', typedProject.category)

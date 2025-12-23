@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
       .from('projects')
       .select(`
         *,
-        project_media (*)
+        project_media!project_media_project_id_fkey (*)
       `)
       .eq('id', id)
       .single();
