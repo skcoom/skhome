@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requirePermission } from '@/lib/auth';
 
+// ヒーロー設定取得（公開ページでも使用）
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -28,8 +30,18 @@ export async function GET() {
   }
 }
 
+// ヒーロー設定更新（管理者のみ）
 export async function PUT(request: Request) {
   try {
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('settings:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
+    }
+
     const supabase = await createClient();
     const body = await request.json();
     const { selections } = body as { selections: { mediaId: string; position: 1 | 2 | 3 }[] };
