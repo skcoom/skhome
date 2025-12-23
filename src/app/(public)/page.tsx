@@ -58,6 +58,7 @@ export default async function HomePage() {
       description: project.description || '',
       thumbnailUrl: thumbnail?.file_url || null,
       thumbnailType: (thumbnail?.type || 'image') as 'image' | 'video',
+      posterUrl: thumbnail?.thumbnail_url || null,
     };
   });
 
@@ -78,6 +79,7 @@ export default async function HomePage() {
       heroItems.push({
         url: fallback?.thumbnailUrl || '',
         type: fallback?.thumbnailType || 'image',
+        thumbnailUrl: fallback?.posterUrl || undefined,
       });
     }
   }
