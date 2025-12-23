@@ -35,10 +35,16 @@ export function ProjectList({ projects }: ProjectListProps) {
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">
                   {project.address && (
-                    <span className="flex items-center">
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center text-blue-600 hover:text-blue-800 hover:underline"
+                    >
                       <MapPin className="mr-1 h-4 w-4" />
                       {project.address}
-                    </span>
+                    </a>
                   )}
                   {project.start_date && (
                     <span className="flex items-center">

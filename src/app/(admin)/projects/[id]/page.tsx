@@ -514,10 +514,15 @@ export default function ProjectDetailPage() {
           {project.address && (
             <div>
               <p className="text-sm font-medium text-gray-500">施工場所</p>
-              <p className="mt-1 flex items-center text-gray-900">
-                <MapPin className="mr-1 h-4 w-4 text-gray-400" />
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 flex items-center text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                <MapPin className="mr-1 h-4 w-4" />
                 {project.address}
-              </p>
+              </a>
             </div>
           )}
           {project.start_date && (
