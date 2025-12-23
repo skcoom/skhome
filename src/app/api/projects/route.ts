@@ -63,13 +63,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '工事名は必須です' }, { status: 400 });
     }
 
-    // ユーザープロファイルを取得
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single();
-
     const { data, error } = await supabase
       .from('projects')
       .insert({
@@ -82,7 +75,7 @@ export async function POST(request: NextRequest) {
         end_date: end_date || null,
         description: description || null,
         is_public: is_public || false,
-        created_by: userProfile?.id || null,
+        created_by: user.id,
       })
       .select()
       .single();
