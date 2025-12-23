@@ -497,31 +497,31 @@ export default function ProjectDetailPage() {
             </Button>
           </div>
 
-          {/* HP掲載写真の状況 */}
+          {/* 非掲載写真の状況 */}
           <div className="p-4 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                <span className="font-medium text-gray-900">HP掲載写真</span>
+                <EyeOff className="h-5 w-5 text-gray-500" />
+                <span className="font-medium text-gray-900">非掲載の写真</span>
               </div>
               <span className="text-sm text-gray-600">
-                {media.filter((m) => m.is_featured).length} 枚選択中
+                {media.filter((m) => m.is_featured).length} 枚
               </span>
             </div>
             <p className="text-sm text-gray-500 mb-3">
-              HP掲載に設定した写真がサムネイルや施工実績ページに表示されます
+              「掲載しない」に設定した写真はホームページに表示されません
             </p>
             <div className="flex flex-wrap gap-2">
               {media.filter((m) => m.is_featured).length === 0 ? (
-                <p className="text-sm text-orange-600">
-                  ※ 下の写真をホバーして「HP掲載に設定」を選択してください
+                <p className="text-sm text-green-600">
+                  すべての写真がホームページに表示されます
                 </p>
               ) : (
                 media
                   .filter((m) => m.is_featured)
                   .slice(0, 6)
                   .map((m) => (
-                    <div key={m.id} className="h-12 w-12 rounded overflow-hidden">
+                    <div key={m.id} className="h-12 w-12 rounded overflow-hidden opacity-50">
                       <img
                         src={m.thumbnail_url || m.file_url}
                         alt=""
@@ -564,7 +564,7 @@ export default function ProjectDetailPage() {
           <div>
             <h2 className="text-lg font-medium text-gray-900">施工写真・動画</h2>
             <p className="text-sm text-gray-500">
-              写真をホバーしてHP掲載に設定できます
+              写真をホバーして「掲載しない」を選択できます
             </p>
           </div>
           <Button onClick={() => setShowUploadModal(true)}>
@@ -651,12 +651,12 @@ export default function ProjectDetailPage() {
                     <p className="truncate text-xs text-white">{item.caption}</p>
                   </div>
                 )}
-                {/* HP掲載バッジ */}
+                {/* 非掲載バッジ */}
                 {item.is_featured && (
                   <div className="absolute top-2 right-2 z-10">
-                    <span className="rounded bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white flex items-center">
-                      <Star className="h-3 w-3 mr-1" />
-                      HP掲載
+                    <span className="rounded bg-gray-500 px-2 py-0.5 text-xs font-medium text-white flex items-center">
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      非掲載
                     </span>
                   </div>
                 )}
@@ -671,7 +671,7 @@ export default function ProjectDetailPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
-                {/* ホバー時のHP掲載トグルボタン */}
+                {/* ホバー時の掲載トグルボタン */}
                 {item.type === 'image' ? (
                   // 画像の場合：中央に表示
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -679,19 +679,19 @@ export default function ProjectDetailPage() {
                       onClick={() => toggleFeatured(item.id, item.is_featured)}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                         item.is_featured
-                          ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-gray-600 text-white hover:bg-gray-700'
                       }`}
                     >
                       {item.is_featured ? (
                         <>
-                          <Star className="h-4 w-4 inline mr-1" />
-                          HP掲載解除
+                          <Eye className="h-4 w-4 inline mr-1" />
+                          掲載する
                         </>
                       ) : (
                         <>
-                          <Star className="h-4 w-4 inline mr-1" />
-                          HP掲載に設定
+                          <EyeOff className="h-4 w-4 inline mr-1" />
+                          掲載しない
                         </>
                       )}
                     </button>
@@ -706,12 +706,21 @@ export default function ProjectDetailPage() {
                       }}
                       className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-colors ${
                         item.is_featured
-                          ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-gray-600 text-white hover:bg-gray-700'
                       }`}
                     >
-                      <Star className="h-3 w-3 inline mr-1" />
-                      {item.is_featured ? 'HP掲載解除' : 'HP掲載に設定'}
+                      {item.is_featured ? (
+                        <>
+                          <Eye className="h-3 w-3 inline mr-1" />
+                          掲載する
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-3 w-3 inline mr-1" />
+                          掲載しない
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
