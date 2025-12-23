@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClaudeClient } from '@/lib/claude/client';
+import { requirePermission } from '@/lib/auth';
 import type { ProjectMedia } from '@/types/database';
 
 interface SuggestedPair {
