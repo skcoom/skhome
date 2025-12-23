@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 import { contactFormSchema, formatZodErrors, sanitizeInput } from '@/lib/validations';
-import { sendContactNotification } from '@/lib/email';
+import { sendContactNotification, sendDiscordNotification } from '@/lib/email';
 import { requirePermission } from '@/lib/auth';
 
 // お問い合わせ一覧取得（スタッフ以上）
