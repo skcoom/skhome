@@ -99,7 +99,7 @@ export type Permission = keyof typeof PERMISSIONS;
  * ユーザーが特定の権限を持っているかチェック
  */
 export function hasPermission(role: UserRole, permission: Permission): boolean {
-  const allowedRoles = PERMISSIONS[permission];
+  const allowedRoles = PERMISSIONS[permission] as readonly string[];
   return allowedRoles.includes(role);
 }
 
