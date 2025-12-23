@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth';
 
-// ユーザー一覧取得（管理者用）
+// ユーザー一覧取得（管理者のみ）
 export async function GET() {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 管理者権限チェック
+    const { user, error: authError } = await requireAdmin();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
+
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from('users')
