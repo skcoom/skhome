@@ -17,7 +17,7 @@ export async function sendContactNotification(data: ContactNotificationData) {
 
   const resend = new Resend(apiKey);
   const adminEmail = process.env.ADMIN_EMAIL || 'info@skcoom.co.jp';
-  const fromEmail = process.env.FROM_EMAIL || 'noreply@skcoom.co.jp';
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@mail.skcoom.co.jp';
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
 
   try {
