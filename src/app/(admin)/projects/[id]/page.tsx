@@ -73,6 +73,9 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 動画再生モーダル
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+
   // Supabaseからプロジェクトとメディアデータを取得
   useEffect(() => {
     const fetchData = async () => {
@@ -118,11 +121,84 @@ export default function ProjectDetailPage() {
     }
   }, [projectId, supabase]);
 
+  // 1ファイルをアップロードする関数
+  const uploadSingleFile = async (
+    file: File,
+    onSuccess: (name: string) => void,
+    onError: (name: string, error: string) => void
+  ): Promise<void> => {
+    const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
+    let fileUrl: string;
+    let thumbnailUrl: string | undefined;
+
+    try {
+      if (mediaType === 'image') {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', projectId);
+
+        const response = await fetch('/api/media/process', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '画像処理に失敗しました');
+        }
+
+        const result = await response.json();
+        fileUrl = result.file_url;
+        thumbnailUrl = result.thumbnail_url;
+      } else {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${projectId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+        const { error: storageError } = await supabase.storage
+          .from('project-media')
+          .upload(fileName, file);
+
+        if (storageError) {
+          throw new Error(storageError.message || '動画アップロードに失敗しました');
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('project-media')
+          .getPublicUrl(fileName);
+
+        fileUrl = publicUrlData.publicUrl;
+      }
+
+      const insertData = {
+        project_id: projectId,
+        type: mediaType,
+        phase: selectedPhase as MediaPhase,
+        file_url: fileUrl,
+        thumbnail_url: thumbnailUrl,
+        is_featured: false,
+      };
+      const { error: insertError } = await supabase
+        .from('project_media')
+        .insert(insertData as never);
+
+      if (insertError) {
+        throw new Error(insertError.message || 'データベース登録に失敗しました');
+      }
+
+      onSuccess(file.name);
+    } catch (fileError) {
+      const errorMessage = fileError instanceof Error ? fileError.message : '不明なエラー';
+      onError(file.name, errorMessage);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
+    const CONCURRENT_UPLOADS = 2; // 同時アップロード数を制限
+
     setIsUploading(true);
     setUploadError(null);
     setUploadProgress({
@@ -134,93 +210,42 @@ export default function ProjectDetailPage() {
       failedFiles: [],
     });
 
-    const uploadedFiles: string[] = [];
-    const failedFiles: { name: string; error: string }[] = [];
+    let completedCount = 0;
+    const uploadedFileNames: string[] = [];
+    const failedFilesList: { name: string; error: string }[] = [];
+
+    const updateProgress = (fileName: string) => {
+      completedCount++;
+      setUploadProgress((prev) => ({
+        ...prev,
+        currentFile: completedCount,
+        currentFileName: fileName,
+      }));
+    };
+
+    const onSuccess = (name: string) => {
+      uploadedFileNames.push(name);
+      updateProgress(name);
+      setUploadProgress((prev) => ({
+        ...prev,
+        uploadedFiles: [...prev.uploadedFiles, name],
+      }));
+    };
+
+    const onError = (name: string, error: string) => {
+      failedFilesList.push({ name, error });
+      updateProgress(name);
+      setUploadProgress((prev) => ({
+        ...prev,
+        failedFiles: [...prev.failedFiles, { name, error }],
+      }));
+    };
 
     try {
-      for (let i = 0; i < fileArray.length; i++) {
-        const file = fileArray[i];
-        const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
-
-        setUploadProgress((prev) => ({
-          ...prev,
-          currentFile: i + 1,
-          currentFileName: file.name,
-        }));
-
-        let fileUrl: string;
-        let thumbnailUrl: string | undefined;
-
-        try {
-          if (mediaType === 'image') {
-            // 画像の場合：処理APIでリサイズ・WebP変換
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('projectId', projectId);
-
-            const response = await fetch('/api/media/process', {
-              method: 'POST',
-              body: formData,
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || '画像処理に失敗しました');
-            }
-
-            const result = await response.json();
-            fileUrl = result.file_url;
-            thumbnailUrl = result.thumbnail_url;
-          } else {
-            // 動画の場合：従来通り直接アップロード
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${projectId}/${Date.now()}.${fileExt}`;
-
-            const { error: storageError } = await supabase.storage
-              .from('project-media')
-              .upload(fileName, file);
-
-            if (storageError) {
-              throw new Error(storageError.message || '動画アップロードに失敗しました');
-            }
-
-            const { data: publicUrlData } = supabase.storage
-              .from('project-media')
-              .getPublicUrl(fileName);
-
-            fileUrl = publicUrlData.publicUrl;
-          }
-
-          // メディアレコードを作成
-          const insertData = {
-            project_id: projectId,
-            type: mediaType,
-            phase: selectedPhase as MediaPhase,
-            file_url: fileUrl,
-            thumbnail_url: thumbnailUrl,
-            is_featured: false,
-          };
-          const { error: insertError } = await supabase
-            .from('project_media')
-            .insert(insertData as never);
-
-          if (insertError) {
-            throw new Error(insertError.message || 'データベース登録に失敗しました');
-          }
-
-          uploadedFiles.push(file.name);
-          setUploadProgress((prev) => ({
-            ...prev,
-            uploadedFiles: [...prev.uploadedFiles, file.name],
-          }));
-        } catch (fileError) {
-          const errorMessage = fileError instanceof Error ? fileError.message : '不明なエラー';
-          failedFiles.push({ name: file.name, error: errorMessage });
-          setUploadProgress((prev) => ({
-            ...prev,
-            failedFiles: [...prev.failedFiles, { name: file.name, error: errorMessage }],
-          }));
-        }
+      // ファイルをチャンクに分けて並列処理
+      for (let i = 0; i < fileArray.length; i += CONCURRENT_UPLOADS) {
+        const chunk = fileArray.slice(i, i + CONCURRENT_UPLOADS);
+        await Promise.all(chunk.map((file) => uploadSingleFile(file, onSuccess, onError)));
       }
 
       // メディア一覧を再取得
@@ -232,18 +257,20 @@ export default function ProjectDetailPage() {
       setMedia(data || []);
 
       // 結果に応じてモーダルを閉じるか、エラー表示
-      if (failedFiles.length === 0) {
+      if (failedFilesList.length === 0) {
         setShowUploadModal(false);
-      } else if (failedFiles.length === fileArray.length) {
+      } else if (failedFilesList.length === fileArray.length) {
         setUploadError('すべてのファイルのアップロードに失敗しました');
       } else {
-        setUploadError(`${failedFiles.length}件のファイルがアップロードに失敗しました`);
+        setUploadError(`${failedFilesList.length}件のファイルがアップロードに失敗しました`);
       }
     } catch (err) {
       console.error('Upload failed:', err);
       setUploadError(err instanceof Error ? err.message : 'アップロードに失敗しました');
     } finally {
       setIsUploading(false);
+      // inputをリセット
+      e.target.value = '';
     }
   };
 
@@ -600,12 +627,18 @@ export default function ProjectDetailPage() {
                         className="h-full w-full object-cover"
                         muted
                       />
-                      {/* 動画プレイアイコン */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="bg-black bg-opacity-50 rounded-full p-3">
+                      {/* 動画プレイアイコン - クリック可能 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlayingVideo(item.file_url);
+                        }}
+                        className="absolute inset-0 flex items-center justify-center z-20 group/play"
+                      >
+                        <div className="bg-black bg-opacity-50 rounded-full p-3 group-hover/play:bg-opacity-70 transition-all group-hover/play:scale-110">
                           <Play className="h-8 w-8 text-white" />
                         </div>
-                      </div>
+                      </button>
                     </div>
                   ) : (
                     <div className="flex h-full items-center justify-center">
@@ -639,28 +672,49 @@ export default function ProjectDetailPage() {
                   <Trash2 className="h-4 w-4" />
                 </button>
                 {/* ホバー時のHP掲載トグルボタン */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <button
-                    onClick={() => toggleFeatured(item.id, item.is_featured)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      item.is_featured
-                        ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                        : 'bg-yellow-500 text-white hover:bg-yellow-600'
-                    }`}
-                  >
-                    {item.is_featured ? (
-                      <>
-                        <Star className="h-4 w-4 inline mr-1" />
-                        HP掲載解除
-                      </>
-                    ) : (
-                      <>
-                        <Star className="h-4 w-4 inline mr-1" />
-                        HP掲載に設定
-                      </>
-                    )}
-                  </button>
-                </div>
+                {item.type === 'image' ? (
+                  // 画像の場合：中央に表示
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <button
+                      onClick={() => toggleFeatured(item.id, item.is_featured)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        item.is_featured
+                          ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                      }`}
+                    >
+                      {item.is_featured ? (
+                        <>
+                          <Star className="h-4 w-4 inline mr-1" />
+                          HP掲載解除
+                        </>
+                      ) : (
+                        <>
+                          <Star className="h-4 w-4 inline mr-1" />
+                          HP掲載に設定
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  // 動画の場合：下部に表示（再生ボタンと重ならないように）
+                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFeatured(item.id, item.is_featured);
+                      }}
+                      className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                        item.is_featured
+                          ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                      }`}
+                    >
+                      <Star className="h-3 w-3 inline mr-1" />
+                      {item.is_featured ? 'HP掲載解除' : 'HP掲載に設定'}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
 
@@ -726,17 +780,59 @@ export default function ProjectDetailPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   ファイルを選択
                 </label>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                  className="w-full"
-                />
+                <div
+                  className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
+                    isUploading
+                      ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                      : 'border-blue-300 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 cursor-pointer'
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (isUploading) return;
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                      const input = document.getElementById('file-upload') as HTMLInputElement;
+                      if (input) {
+                        const dataTransfer = new DataTransfer();
+                        Array.from(files).forEach((file) => dataTransfer.items.add(file));
+                        input.files = dataTransfer.files;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                      }
+                    }
+                  }}
+                  onClick={() => {
+                    if (!isUploading) {
+                      document.getElementById('file-upload')?.click();
+                    }
+                  }}
+                >
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                    className="hidden"
+                  />
+                  <div className="text-center">
+                    <Upload className={`mx-auto h-10 w-10 ${isUploading ? 'text-gray-400' : 'text-blue-500'}`} />
+                    <p className={`mt-2 text-sm font-medium ${isUploading ? 'text-gray-500' : 'text-blue-600'}`}>
+                      {isUploading ? 'アップロード中...' : 'クリックまたはドラッグ＆ドロップ'}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      画像・動画ファイルを選択（複数可）
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {isUploading && uploadProgress.totalFiles > 0 && (
@@ -828,6 +924,34 @@ export default function ProjectDetailPage() {
                 キャンセル
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 動画再生モーダル */}
+      {playingVideo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+          onClick={() => setPlayingVideo(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPlayingVideo(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <span className="text-sm">閉じる ✕</span>
+            </button>
+            <video
+              src={playingVideo}
+              className="w-full rounded-lg"
+              controls
+              autoPlay
+            >
+              <source src={playingVideo} />
+            </video>
           </div>
         </div>
       )}
