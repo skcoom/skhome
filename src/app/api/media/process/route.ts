@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
     const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).slice(2, 8);
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -71,8 +72,8 @@ export async function POST(request: NextRequest) {
         .webp({ quality: WEBP_QUALITY })
         .toBuffer();
 
-      // ファイルパスを生成
-      const filePath = `${projectId}/${timestamp}_${size}.webp`;
+      // ファイルパスを生成（ランダム文字列で重複を防ぐ）
+      const filePath = `${projectId}/${timestamp}_${randomStr}_${size}.webp`;
 
       // Supabase Storageにアップロード
       const { error: uploadError } = await supabase.storage
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
 
       if (uploadError) {
         console.error(`Upload error for ${size}:`, uploadError);
-        throw new Error(`${size}サイズのアップロードに失敗しました`);
+        console.error('Upload error details:', JSON.stringify(uploadError, null, 2));
+        throw new Error(`${size}サイズのアップロードに失敗しました: ${uploadError.message || '不明なエラー'}`);
       }
 
       // 公開URLを取得
