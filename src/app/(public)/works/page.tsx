@@ -37,12 +37,16 @@ export default async function WorksPage() {
   const works: WorkItem[] = (projects || []).map((project: Project & { project_media: ProjectMedia[] }) => {
     // 掲載対象のメディアのみ（is_featured: trueは非掲載）
     const publishedMedia = project.project_media?.filter((m) => !m.is_featured) || [];
-    // 施工後 > 施工中 > 施工前 > 最初の画像
+    // 1. main_media_idが設定されていればその画像を優先
+    // 2. なければ施工後 > 施工中 > 施工前 > 最初の画像
+    const designatedMainMedia = project.main_media_id
+      ? publishedMedia.find((m) => m.id === project.main_media_id)
+      : null;
     const afterMedia = publishedMedia.find((m) => m.phase === 'after' && m.type === 'image');
     const duringMedia = publishedMedia.find((m) => m.phase === 'during' && m.type === 'image');
     const beforeMedia = publishedMedia.find((m) => m.phase === 'before' && m.type === 'image');
     const anyMedia = publishedMedia.find((m) => m.type === 'image');
-    const thumbnail = afterMedia || duringMedia || beforeMedia || anyMedia;
+    const thumbnail = designatedMainMedia || afterMedia || duringMedia || beforeMedia || anyMedia;
 
     return {
       id: project.id,
