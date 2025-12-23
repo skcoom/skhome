@@ -1,7 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
 
-dotenv.config({ path: '.env.local' });
+// .env.local を手動で読み込み
+const envFile = readFileSync('.env.local', 'utf-8');
+envFile.split('\n').forEach(line => {
+  const [key, ...valueParts] = line.split('=');
+  if (key && valueParts.length > 0) {
+    process.env[key.trim()] = valueParts.join('=').trim();
+  }
+});
 
 async function createAdminUser() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
