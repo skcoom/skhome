@@ -130,7 +130,7 @@ export default async function HomePage() {
             <div className="lg:col-span-7 relative">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-4">
-                  <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
+                  <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden relative">
                     {heroItems[0]?.url ? (
                       heroItems[0].type === 'video' ? (
                         <video
@@ -150,7 +150,7 @@ export default async function HomePage() {
                       </div>
                     )}
                   </div>
-                  <div className="aspect-square bg-[#E5E4E0] rounded-lg overflow-hidden">
+                  <div className="aspect-square bg-[#E5E4E0] rounded-lg overflow-hidden relative">
                     {heroItems[1]?.url ? (
                       heroItems[1].type === 'video' ? (
                         <video
@@ -172,7 +172,7 @@ export default async function HomePage() {
                   </div>
                 </div>
                 <div className="pt-12">
-                  <div className="aspect-[3/4] bg-[#E5E4E0] rounded-lg overflow-hidden">
+                  <div className="aspect-[3/4] bg-[#E5E4E0] rounded-lg overflow-hidden relative">
                     {heroItems[2]?.url ? (
                       heroItems[2].type === 'video' ? (
                         <video
