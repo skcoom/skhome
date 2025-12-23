@@ -33,6 +33,7 @@ export function Header() {
               { href: '/members', label: 'メンバー' },
               { href: '/works', label: '施工実績' },
               { href: '/blog', label: 'ブログ' },
+              { href: '/faq', label: 'よくある質問' },
               { href: '/contact', label: 'お問い合わせ' },
             ].map((item) => (
               <Link
