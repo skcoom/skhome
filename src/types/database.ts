@@ -63,6 +63,17 @@ export interface ProjectMedia {
   created_at: string;
 }
 
+export interface ProjectDocument {
+  id: string;
+  project_id: string;
+  file_url: string;
+  file_name: string;
+  file_size: number;
+  ai_summary?: string;
+  uploaded_by?: string;
+  created_at: string;
+}
+
 export interface ProjectProgress {
   id: string;
   project_id: string;
@@ -116,6 +127,11 @@ export interface Database {
         Row: ProjectMedia;
         Insert: Omit<ProjectMedia, 'id' | 'created_at'>;
         Update: Partial<Omit<ProjectMedia, 'id' | 'created_at'>>;
+      };
+      project_documents: {
+        Row: ProjectDocument;
+        Insert: Omit<ProjectDocument, 'id' | 'created_at'>;
+        Update: Partial<Omit<ProjectDocument, 'id' | 'created_at'>>;
       };
       project_progress: {
         Row: ProjectProgress;

@@ -14,6 +14,7 @@ export default function NewProjectPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pendingPdfFile, setPendingPdfFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -87,6 +88,22 @@ export default function NewProjectPage() {
         return;
       }
 
+      // PDFファイルがある場合はドキュメントとしてアップロード
+      if (pendingPdfFile && data.id) {
+        try {
+          const formDataPdf = new FormData();
+          formDataPdf.append('file', pendingPdfFile);
+
+          await fetch(`/api/projects/${data.id}/documents`, {
+            method: 'POST',
+            body: formDataPdf,
+          });
+        } catch (pdfError) {
+          console.error('PDF upload error:', pdfError);
+          // PDFアップロードに失敗してもプロジェクト作成は成功しているので続行
+        }
+      }
+
       router.push('/projects');
       router.refresh();
     } catch {
@@ -116,7 +133,11 @@ export default function NewProjectPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <DocumentAnalyzer onApply={handleApplyExtractedData} />
+        <DocumentAnalyzer
+          onApply={handleApplyExtractedData}
+          showSaveOption={true}
+          onFileSelect={setPendingPdfFile}
+        />
 
         <div className="rounded-lg bg-white p-6 shadow">
           {error && (

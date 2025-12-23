@@ -16,6 +16,8 @@ import type { ExtractedProjectData } from '@/types/document-analysis';
 
 interface DocumentAnalyzerProps {
   onApply: (data: Partial<ExtractedProjectData>) => void;
+  onFileSelect?: (file: File | null) => void;
+  showSaveOption?: boolean;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -33,7 +35,7 @@ const statusLabels: Record<string, string> = {
 
 type InputMode = 'file' | 'text';
 
-export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
+export function DocumentAnalyzer({ onApply, onFileSelect, showSaveOption = false }: DocumentAnalyzerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [inputMode, setInputMode] = useState<InputMode>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -42,6 +44,7 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractedProjectData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [saveFile, setSaveFile] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -155,10 +158,16 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
     const { confidence: _confidence, ...dataToApply } = result;
     onApply(dataToApply);
 
+    // PDFを保存する場合はファイルを渡す
+    if (saveFile && selectedFile && selectedFile.type === 'application/pdf' && onFileSelect) {
+      onFileSelect(selectedFile);
+    }
+
     setShowPreview(false);
     setSelectedFile(null);
     setTextInput('');
     setResult(null);
+    setSaveFile(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -355,6 +364,26 @@ export function DocumentAnalyzer({ onApply }: DocumentAnalyzerProps) {
                 );
               })}
             </div>
+
+            {/* PDF保存オプション */}
+            {showSaveOption && selectedFile?.type === 'application/pdf' && (
+              <div className="mb-6 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={saveFile}
+                    onChange={(e) => setSaveFile(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-blue-900">
+                    このPDFを現場のドキュメントとして保存する
+                  </span>
+                </label>
+                <p className="mt-1 ml-7 text-xs text-blue-700">
+                  保存すると現場詳細画面からいつでも参照できます
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-3">
               <Button

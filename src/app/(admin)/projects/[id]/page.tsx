@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
 import { PickupSuggestions } from '@/components/admin/PickupSuggestions';
+import { DocumentManager } from '@/components/admin/DocumentManager';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
@@ -379,6 +380,28 @@ export default function ProjectDetailPage() {
     }
   };
 
+  // 概要を更新
+  const updateDescription = async (description: string) => {
+    if (!project) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ description } as never)
+        .eq('id', project.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      setProject({ ...project, description });
+      alert('概要を更新しました');
+    } catch (err) {
+      console.error('Description update error:', err);
+      alert('概要の更新に失敗しました');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -483,6 +506,14 @@ export default function ProjectDetailPage() {
             <p className="mt-1 text-gray-900 whitespace-pre-wrap">{project.description}</p>
           </div>
         )}
+      </div>
+
+      {/* Document management section */}
+      <div className="rounded-lg bg-white p-6 shadow">
+        <DocumentManager
+          projectId={projectId}
+          onDescriptionUpdate={updateDescription}
+        />
       </div>
 
       {/* Publishing settings section */}
