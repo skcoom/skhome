@@ -55,7 +55,9 @@ export default async function HomePage() {
       id: project.id,
       name: project.name,
       tags: project.tags || [],
+      address: project.address || null,
       description: project.public_description || project.description || '',
+      year: project.start_date ? new Date(project.start_date).getFullYear().toString() : new Date(project.created_at).getFullYear().toString(),
       thumbnailUrl: thumbnail?.file_url || null,
       thumbnailType: (thumbnail?.type || 'image') as 'image' | 'video',
       posterUrl: thumbnail?.thumbnail_url || null,
@@ -309,19 +311,40 @@ export default async function HomePage() {
                         準備中
                       </div>
                     )}
-                    {/* Tags badge */}
-                    {work.tags.length > 0 && (
-                      <div className="absolute top-4 left-4 flex flex-wrap gap-1">
-                        <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full">
-                          {work.tags[0]}
+                    {/* Tags badges */}
+                    <div className="absolute top-4 left-4 flex flex-wrap gap-1">
+                      {work.tags.slice(0, 2).map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-block bg-[#26A69A] text-white text-xs font-medium px-2 py-0.5 rounded-full"
+                        >
+                          {tag}
                         </span>
-                      </div>
+                      ))}
+                      {work.tags.length > 2 && (
+                        <span className="inline-block bg-[#26A69A]/80 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                          +{work.tags.length - 2}
+                        </span>
+                      )}
+                    </div>
+                    {/* Year badge */}
+                    <div className="absolute top-4 right-4">
+                      <span className="inline-block bg-white/90 text-[#666666] text-xs font-medium px-2 py-1 rounded">
+                        {work.year}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {work.address && (
+                      <p className="text-xs text-[#999999]">{work.address}</p>
+                    )}
+                    <h3 className="text-lg font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors">
+                      {work.name}
+                    </h3>
+                    {work.description && (
+                      <p className="text-sm text-[#666666] line-clamp-2">{work.description}</p>
                     )}
                   </div>
-                  <h3 className="text-lg font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors mb-2">
-                    {work.name}
-                  </h3>
-                  <p className="text-sm text-[#666666] line-clamp-2">{work.description}</p>
                 </Link>
               ))}
             </div>
