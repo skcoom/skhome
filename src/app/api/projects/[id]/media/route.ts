@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requirePermission } from '@/lib/auth';
 
 type Params = Promise<{ id: string }>;
 
-// プロジェクトのメディア一覧取得
+// プロジェクトのメディア一覧取得（公開ページからも使用）
 export async function GET(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
@@ -35,18 +36,21 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-// メディア情報を登録（ファイルアップロード後）
+// メディア情報を登録（スタッフ以上）
 export async function POST(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('media:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const { type, phase, file_url, thumbnail_url, caption, is_featured } = body;
 
@@ -54,13 +58,6 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     if (!file_url) {
       return NextResponse.json({ error: 'ファイルURLは必須です' }, { status: 400 });
     }
-
-    // ユーザープロファイルを取得
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single();
 
     const { data, error } = await supabase
       .from('project_media')
@@ -71,7 +68,7 @@ export async function POST(request: NextRequest, { params }: { params: Params })
         file_url,
         thumbnail_url: thumbnail_url || null,
         caption: caption || null,
-        uploaded_by: userProfile?.id || null,
+        uploaded_by: user.id,
         is_featured: is_featured || false,
       })
       .select()
@@ -89,18 +86,21 @@ export async function POST(request: NextRequest, { params }: { params: Params })
   }
 }
 
-// メディアのis_featuredを更新
+// メディアのis_featuredを更新（スタッフ以上）
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   try {
-    await params; // paramsを使用（lintエラー回避）
-    const supabase = await createClient();
+    await params;
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('media:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const { mediaIds, is_featured } = body;
 
@@ -108,7 +108,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       return NextResponse.json({ error: 'mediaIdsは配列で指定してください' }, { status: 400 });
     }
 
-    // 複数のメディアを一括更新
     const { data, error } = await supabase
       .from('project_media')
       .update({ is_featured: is_featured ?? true })
@@ -131,18 +130,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
   }
 }
 
-// メディアを削除
+// メディアを削除（スタッフ以上）
 export async function DELETE(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('media:delete');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const mediaId = searchParams.get('mediaId');
 
@@ -150,7 +152,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       return NextResponse.json({ error: 'mediaIdは必須です' }, { status: 400 });
     }
 
-    // メディア情報を取得（ストレージのファイルパスを特定するため）
+    // メディア情報を取得
     const { data: mediaData, error: fetchError } = await supabase
       .from('project_media')
       .select('*')
@@ -162,7 +164,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       return NextResponse.json({ error: 'メディアが見つかりません' }, { status: 404 });
     }
 
-    // ストレージからファイルを削除（file_urlからパスを抽出）
+    // ストレージからファイルを削除
     const fileUrl = mediaData.file_url;
     if (fileUrl) {
       const pathMatch = fileUrl.match(/project-media\/(.+)$/);
