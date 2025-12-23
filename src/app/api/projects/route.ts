@@ -42,17 +42,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 現場新規作成
+// 現場新規作成（スタッフ以上）
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('projects:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const { name, client_name, address, category, status, start_date, end_date, description, is_public } = body;
 
