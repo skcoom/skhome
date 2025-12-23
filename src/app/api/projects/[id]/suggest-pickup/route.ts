@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClaudeClient } from '@/lib/claude/client';
 import { requirePermission } from '@/lib/auth';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import type { ProjectMedia } from '@/types/database';
 
 interface SuggestedPair {
