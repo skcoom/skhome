@@ -42,10 +42,14 @@ export default async function HomePage() {
 
   // プロジェクトデータを整形
   const featuredWorks = (projects || []).map((project: Project & { project_media: ProjectMedia[] }) => {
-    const featuredMedia = project.project_media?.find((m) => m.is_featured && m.type === 'image');
-    const afterMedia = project.project_media?.find((m) => m.phase === 'after' && m.type === 'image');
-    const anyMedia = project.project_media?.find((m) => m.type === 'image');
-    const thumbnail = featuredMedia || afterMedia || anyMedia;
+    // 画像を優先、なければ動画もフォールバックとして使用
+    const featuredImage = project.project_media?.find((m) => m.is_featured && m.type === 'image');
+    const featuredVideo = project.project_media?.find((m) => m.is_featured && m.type === 'video');
+    const afterImage = project.project_media?.find((m) => m.phase === 'after' && m.type === 'image');
+    const afterVideo = project.project_media?.find((m) => m.phase === 'after' && m.type === 'video');
+    const anyImage = project.project_media?.find((m) => m.type === 'image');
+    const anyVideo = project.project_media?.find((m) => m.type === 'video');
+    const thumbnail = featuredImage || featuredVideo || afterImage || afterVideo || anyImage || anyVideo;
 
     return {
       id: project.id,
@@ -53,6 +57,7 @@ export default async function HomePage() {
       category: PROJECT_CATEGORY_LABELS[project.category] || project.category,
       description: project.description || '',
       thumbnailUrl: thumbnail?.file_url || null,
+      thumbnailType: (thumbnail?.type || 'image') as 'image' | 'video',
     };
   });
 
@@ -67,12 +72,12 @@ export default async function HomePage() {
         thumbnailUrl: heroItem.thumbnail_url || undefined,
       });
     } else {
-      // フォールバック：featuredWorksの順番をずらして使用
-      const fallbackIndex = [2, 0, 1][i - 1];
-      const fallbackUrl = featuredWorks[fallbackIndex]?.thumbnailUrl;
+      // フォールバック：featuredWorksを順番に使用
+      const fallbackIndex = i - 1;
+      const fallback = featuredWorks[fallbackIndex];
       heroItems.push({
-        url: fallbackUrl || '',
-        type: 'image',
+        url: fallback?.thumbnailUrl || '',
+        type: fallback?.thumbnailType || 'image',
       });
     }
   }
