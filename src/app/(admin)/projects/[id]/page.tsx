@@ -519,21 +519,20 @@ export default function ProjectDetailPage() {
               ) : (
                 media
                   .filter((m) => m.is_featured)
-                  .slice(0, 6)
                   .map((m) => (
-                    <div key={m.id} className="h-12 w-12 rounded overflow-hidden opacity-50">
+                    <button
+                      key={m.id}
+                      onClick={() => toggleFeatured(m.id, m.is_featured)}
+                      className="h-12 w-12 rounded overflow-hidden opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
+                      title="クリックで掲載する"
+                    >
                       <img
                         src={m.thumbnail_url || m.file_url}
                         alt=""
                         className="h-full w-full object-cover"
                       />
-                    </div>
+                    </button>
                   ))
-              )}
-              {media.filter((m) => m.is_featured).length > 6 && (
-                <div className="h-12 w-12 rounded bg-gray-100 flex items-center justify-center text-sm text-gray-600">
-                  +{media.filter((m) => m.is_featured).length - 6}
-                </div>
               )}
             </div>
           </div>
