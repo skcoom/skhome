@@ -27,11 +27,21 @@ function getMediaType(url: string): 'image/jpeg' | 'image/png' | 'image/webp' | 
   return 'image/jpeg';
 }
 
+// ピックアップ画像提案（AI機能: スタッフ以上）
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('ai:use');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
+    }
+
     const { id: projectId } = await params;
     const supabase = await createClient();
 
