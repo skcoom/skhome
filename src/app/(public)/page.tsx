@@ -140,6 +140,8 @@ export default async function HomePage() {
                           muted
                           loop
                           playsInline
+                          preload="auto"
+                          poster={heroItems[0].thumbnailUrl}
                         />
                       ) : (
                         <Image src={heroItems[0].url} alt="施工写真" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
@@ -160,6 +162,8 @@ export default async function HomePage() {
                           muted
                           loop
                           playsInline
+                          preload="auto"
+                          poster={heroItems[1].thumbnailUrl}
                         />
                       ) : (
                         <Image src={heroItems[1].url} alt="施工写真" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
@@ -182,6 +186,8 @@ export default async function HomePage() {
                           muted
                           loop
                           playsInline
+                          preload="auto"
+                          poster={heroItems[2].thumbnailUrl}
                         />
                       ) : (
                         <Image src={heroItems[2].url} alt="施工写真" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
