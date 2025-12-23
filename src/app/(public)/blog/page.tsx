@@ -129,10 +129,12 @@ export default function BlogPage() {
                     {/* Featured image */}
                     <div className="relative aspect-[16/10] bg-[#E5E4E0] rounded-lg overflow-hidden mb-4">
                       {post.featured_image ? (
-                        <img
+                        <Image
                           src={post.featured_image}
                           alt={post.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
