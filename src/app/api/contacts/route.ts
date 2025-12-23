@@ -96,15 +96,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'お問い合わせの送信に失敗しました' }, { status: 500 });
     }
 
-    // 管理者にメール通知を送信（失敗してもお問い合わせは成功扱い）
-    sendContactNotification({
+    // 通知を送信（失敗してもお問い合わせは成功扱い）
+    const notificationData = {
       id: data.id,
       name: sanitizedData.name,
       email: sanitizedData.email,
       phone: sanitizedData.phone,
       message: sanitizedData.message,
-    }).catch((err) => {
-      console.error('Failed to send contact notification:', err);
+    };
+
+    // メール通知
+    sendContactNotification(notificationData).catch((err) => {
+      console.error('Failed to send email notification:', err);
+    });
+
+    // Discord通知
+    sendDiscordNotification(notificationData).catch((err) => {
+      console.error('Failed to send Discord notification:', err);
     });
 
     return NextResponse.json(
