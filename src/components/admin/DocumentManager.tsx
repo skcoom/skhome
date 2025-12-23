@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Lock,
   Globe,
+  Pencil,
 } from 'lucide-react';
 import type { ProjectDocument } from '@/types/database';
 
@@ -48,6 +49,9 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentSummary, setCurrentSummary] = useState<string>('');
   const [currentPublicSummary, setCurrentPublicSummary] = useState<string>('');
+  const [editingSummary, setEditingSummary] = useState<string>('');
+  const [editingPublicSummary, setEditingPublicSummary] = useState<string>('');
+  const [isEditing, setIsEditing] = useState<'management' | 'public' | null>(null);
 
   // ドキュメント一覧を取得
   const fetchDocuments = useCallback(async () => {
@@ -160,12 +164,40 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
     }
   };
 
+  // 編集モードを開始
+  const startEditing = (type: 'management' | 'public') => {
+    if (type === 'management') {
+      setEditingSummary(currentSummary);
+    } else {
+      setEditingPublicSummary(currentPublicSummary);
+    }
+    setIsEditing(type);
+  };
+
+  // 編集をキャンセル
+  const cancelEditing = () => {
+    setIsEditing(null);
+    setEditingSummary('');
+    setEditingPublicSummary('');
+  };
+
+  // 編集内容を確定
+  const confirmEditing = () => {
+    if (isEditing === 'management') {
+      setCurrentSummary(editingSummary);
+    } else if (isEditing === 'public') {
+      setCurrentPublicSummary(editingPublicSummary);
+    }
+    setIsEditing(null);
+  };
+
   // 管理用メモに反映
   const handleApplyToDescription = () => {
     if (onDescriptionUpdate && currentSummary) {
       onDescriptionUpdate(currentSummary);
     }
     setShowSummaryModal(false);
+    setIsEditing(null);
   };
 
   // 公開用概要に反映
@@ -174,6 +206,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
       onPublicDescriptionUpdate(currentPublicSummary);
     }
     setShowSummaryModal(false);
+    setIsEditing(null);
   };
 
   if (isLoading) {
@@ -320,18 +353,49 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                       <Lock className="h-4 w-4 text-amber-600" />
                       <span className="text-sm font-medium text-amber-800">管理用メモ（社内向け）</span>
                     </div>
-                    {onDescriptionUpdate && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleApplyToDescription}
-                      >
-                        反映する
-                      </Button>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {isEditing !== 'management' && (
+                        <button
+                          type="button"
+                          onClick={() => startEditing('management')}
+                          className="p-1 text-amber-600 hover:text-amber-800"
+                          title="編集"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      {onDescriptionUpdate && isEditing !== 'management' && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleApplyToDescription}
+                        >
+                          反映する
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-amber-900 whitespace-pre-wrap">{currentSummary}</p>
+                  {isEditing === 'management' ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={editingSummary}
+                        onChange={(e) => setEditingSummary(e.target.value)}
+                        className="w-full h-40 p-2 text-sm border border-amber-300 rounded bg-white resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={cancelEditing}>
+                          キャンセル
+                        </Button>
+                        <Button type="button" size="sm" onClick={confirmEditing}>
+                          <Check className="mr-1 h-3 w-3" />
+                          確定
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-amber-900 whitespace-pre-wrap">{currentSummary}</p>
+                  )}
                 </div>
               )}
 
@@ -343,17 +407,48 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                       <Globe className="h-4 w-4 text-green-600" />
                       <span className="text-sm font-medium text-green-800">公開用概要（お客様向け）</span>
                     </div>
-                    {onPublicDescriptionUpdate && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleApplyToPublicDescription}
-                      >
-                        反映する
-                      </Button>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {isEditing !== 'public' && (
+                        <button
+                          type="button"
+                          onClick={() => startEditing('public')}
+                          className="p-1 text-green-600 hover:text-green-800"
+                          title="編集"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      {onPublicDescriptionUpdate && isEditing !== 'public' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleApplyToPublicDescription}
+                        >
+                          反映する
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-green-900 whitespace-pre-wrap">{currentPublicSummary}</p>
+                  {isEditing === 'public' ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={editingPublicSummary}
+                        onChange={(e) => setEditingPublicSummary(e.target.value)}
+                        className="w-full h-40 p-2 text-sm border border-green-300 rounded bg-white resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={cancelEditing}>
+                          キャンセル
+                        </Button>
+                        <Button type="button" size="sm" onClick={confirmEditing}>
+                          <Check className="mr-1 h-3 w-3" />
+                          確定
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-green-900 whitespace-pre-wrap">{currentPublicSummary}</p>
+                  )}
                 </div>
               )}
 

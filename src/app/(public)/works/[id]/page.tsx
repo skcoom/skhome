@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia } from '@/types/database';
 import { WorkDetailGallery } from './gallery';
-import { MarkdownContent } from '@/components/ui/markdown-content';
+import { DescriptionSection } from './description-section';
 import type { Metadata } from 'next';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
@@ -189,7 +189,7 @@ export default async function WorkDetailPage({ params }: PageProps) {
                 {typedProject.name}
               </h1>
 
-              <div className="space-y-4 mb-8">
+              <div className="space-y-4">
                 {typedProject.address && (
                   <div className="flex items-center text-[#666666]">
                     <MapPin className="mr-3 h-5 w-5 text-[#26A69A]" />
@@ -206,14 +206,17 @@ export default async function WorkDetailPage({ params }: PageProps) {
                   </div>
                 )}
               </div>
-
-              {(typedProject.public_description || typedProject.description) && (
-                <MarkdownContent content={typedProject.public_description || typedProject.description || ''} />
-              )}
             </div>
           </div>
         </div>
       </section>
+
+      {/* Description section */}
+      {(typedProject.public_description || typedProject.description) && (
+        <DescriptionSection
+          content={typedProject.public_description || typedProject.description || ''}
+        />
+      )}
 
       {/* Gallery section */}
       {(mediaByPhase.before.length > 0 || mediaByPhase.during.length > 0 || mediaByPhase.after.length > 0) && (
