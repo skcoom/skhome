@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireStaff } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,15 +13,19 @@ interface Notification {
   createdAt: string;
 }
 
+// 通知一覧取得（スタッフ以上）
 export async function GET() {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // 権限チェック
+    const { user, error: authError } = await requireStaff();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
+
+    const supabase = await createClient();
 
     const notifications: Notification[] = [];
     const now = new Date();
