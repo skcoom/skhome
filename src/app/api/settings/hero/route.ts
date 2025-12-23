@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
 
+// ビルド時の静的生成を無効化（cookiesを使用するため）
+export const dynamic = 'force-dynamic';
+
 // ヒーロー設定取得（公開ページでも使用）
 export async function GET() {
   try {
