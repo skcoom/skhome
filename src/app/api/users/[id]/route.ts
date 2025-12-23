@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth';
 
 type Params = Promise<{ id: string }>;
 
-// ユーザー詳細取得
+// ユーザー詳細取得（管理者のみ）
 export async function GET(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 管理者権限チェック
+    const { user, error: authError } = await requireAdmin();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
+
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from('users')
@@ -34,18 +39,21 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-// ユーザー更新
+// ユーザー更新（管理者のみ）
 export async function PUT(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 管理者権限チェック
+    const { user, error: authError } = await requireAdmin();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const { name, role, company_name } = body;
 
@@ -80,17 +88,21 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-// ユーザー削除
+// ユーザー削除（管理者のみ）
 export async function DELETE(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 管理者権限チェック
+    const { user, error: authError } = await requireAdmin();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
+
+    const supabase = await createClient();
 
     // usersテーブルから削除
     const { error } = await supabase
@@ -105,11 +117,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
 
     // Supabase Authからも削除
     const adminClient = createAdminClient();
-    const { error: authError } = await adminClient.auth.admin.deleteUser(id);
+    const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(id);
 
-    if (authError) {
-      console.error('Auth user delete error:', authError);
-      // usersテーブルからは既に削除されているので、エラーをログに残すが成功とする
+    if (authDeleteError) {
+      console.error('Auth user delete error:', authDeleteError);
     }
 
     return NextResponse.json({ success: true });
