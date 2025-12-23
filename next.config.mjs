@@ -23,6 +23,7 @@ const cspDirectives = [
     : "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https: https://www.google-analytics.com https://www.googletagmanager.com",
+  "media-src 'self' https://*.supabase.co",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com",
   "frame-ancestors 'self'",
