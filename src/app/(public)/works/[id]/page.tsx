@@ -30,7 +30,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       category,
       address,
-      project_media (file_url, is_featured, phase, type)
+      main_media_id,
+      project_media (id, file_url, is_featured, phase, type)
     `)
     .eq('id', id)
     .eq('is_public', true)
@@ -47,12 +48,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = typedProject.description ||
     `${typedProject.name}の施工実績です。${categoryLabel}工事の詳細をご覧いただけます。`;
 
-  // OG画像を取得（掲載対象のみ、施工後 > 最初の画像）
+  // OG画像を取得
+  // 1. main_media_idが設定されていればその画像を優先
+  // 2. なければ掲載対象のみ、施工後 > 最初の画像
   const media = typedProject.project_media || [];
   const publishedMedia = media.filter((m) => !m.is_featured);
+  const designatedMainMedia = typedProject.main_media_id
+    ? publishedMedia.find((m) => m.id === typedProject.main_media_id)
+    : null;
   const afterMedia = publishedMedia.find((m) => m.phase === 'after' && m.type === 'image');
   const firstImage = publishedMedia.find((m) => m.type === 'image');
-  const ogImage = afterMedia?.file_url || firstImage?.file_url || '/og-image.png';
+  const ogImage = designatedMainMedia?.file_url || afterMedia?.file_url || firstImage?.file_url || '/og-image.png';
 
   return {
     title: `${typedProject.name} | 施工実績`,
@@ -114,11 +120,16 @@ export default async function WorkDetailPage({ params }: PageProps) {
     after: publishedMedia.filter((m) => m.phase === 'after' && m.type === 'image'),
   };
 
-  // メイン画像を取得（施工後 > 施工中 > 施工前 > 最初の画像）
+  // メイン画像を取得
+  // 1. main_media_idが設定されていればその画像を使用
+  // 2. なければフォールバック: 施工後 > 施工中 > 施工前 > 最初の画像
+  const designatedMainImage = typedProject.main_media_id
+    ? publishedMedia.find((m) => m.id === typedProject.main_media_id)
+    : null;
   const afterMedia = mediaByPhase.after[0];
   const duringMedia = mediaByPhase.during[0];
   const beforeMedia = mediaByPhase.before[0];
-  const mainImage = afterMedia || duringMedia || beforeMedia || publishedMedia.find((m) => m.type === 'image');
+  const mainImage = designatedMainImage || afterMedia || duringMedia || beforeMedia || publishedMedia.find((m) => m.type === 'image');
 
   // 関連プロジェクトを取得
   const { data: relatedProjects } = await supabase

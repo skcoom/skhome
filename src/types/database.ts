@@ -29,6 +29,7 @@ export interface Project {
   end_date?: string;
   description?: string;
   is_public: boolean;
+  main_media_id?: string;
   created_by: string;
   created_at: string;
   updated_at: string;

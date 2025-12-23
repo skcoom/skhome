@@ -317,6 +317,46 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const setMainImage = async (mediaId: string) => {
+    if (!project) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ main_media_id: mediaId } as never)
+        .eq('id', project.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      setProject({ ...project, main_media_id: mediaId });
+    } catch (err) {
+      console.error('Set main image error:', err);
+      alert('メイン画像の設定に失敗しました');
+    }
+  };
+
+  const clearMainImage = async () => {
+    if (!project) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ main_media_id: null } as never)
+        .eq('id', project.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      setProject({ ...project, main_media_id: undefined });
+    } catch (err) {
+      console.error('Clear main image error:', err);
+      alert('メイン画像の解除に失敗しました');
+    }
+  };
+
   const deleteMedia = async (mediaId: string) => {
     if (!confirm('このメディアを削除しますか？')) return;
 
@@ -537,6 +577,53 @@ export default function ProjectDetailPage() {
             </div>
           </div>
 
+          {/* メイン画像設定 */}
+          <div className="p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <Star className="h-5 w-5 text-yellow-500" />
+                <span className="font-medium text-gray-900">メイン画像</span>
+              </div>
+              {project.main_media_id && (
+                <button
+                  onClick={clearMainImage}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  解除
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mb-3">
+              施工実績詳細ページのトップに表示される画像です
+            </p>
+            {project.main_media_id ? (
+              <div className="flex items-center space-x-3">
+                {(() => {
+                  const mainMedia = media.find((m) => m.id === project.main_media_id);
+                  if (!mainMedia) return <span className="text-sm text-gray-500">画像が見つかりません</span>;
+                  return (
+                    <>
+                      <div className="h-16 w-16 rounded overflow-hidden">
+                        <img
+                          src={mainMedia.thumbnail_url || mainMedia.file_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <span className="text-sm text-gray-600">
+                        {phaseLabels[mainMedia.phase]}の画像を設定中
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : (
+              <p className="text-sm text-amber-600">
+                メイン画像が未設定です。下の写真一覧で設定してください。
+              </p>
+            )}
+          </div>
+
           {/* ファーストビュー設定へのリンク */}
           <div className="p-4 rounded-lg border border-gray-200 bg-blue-50">
             <div className="flex items-center justify-between">
@@ -650,8 +737,17 @@ export default function ProjectDetailPage() {
                     <p className="truncate text-xs text-white">{item.caption}</p>
                   </div>
                 )}
+                {/* メイン画像バッジ */}
+                {project.main_media_id === item.id && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <span className="rounded bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white flex items-center">
+                      <Star className="h-3 w-3 mr-1" />
+                      メイン
+                    </span>
+                  </div>
+                )}
                 {/* 非掲載バッジ */}
-                {item.is_featured && (
+                {item.is_featured && project.main_media_id !== item.id && (
                   <div className="absolute top-2 right-2 z-10">
                     <span className="rounded bg-gray-500 px-2 py-0.5 text-xs font-medium text-white flex items-center">
                       <EyeOff className="h-3 w-3 mr-1" />
@@ -673,7 +769,18 @@ export default function ProjectDetailPage() {
                 {/* ホバー時の掲載トグルボタン */}
                 {item.type === 'image' ? (
                   // 画像の場合：中央に表示
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                    {/* メインに設定ボタン */}
+                    {project.main_media_id !== item.id && !item.is_featured && (
+                      <button
+                        onClick={() => setMainImage(item.id)}
+                        className="px-3 py-2 rounded-lg text-sm font-medium bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
+                      >
+                        <Star className="h-4 w-4 inline mr-1" />
+                        メインに設定
+                      </button>
+                    )}
+                    {/* 掲載トグルボタン */}
                     <button
                       onClick={() => toggleFeatured(item.id, item.is_featured)}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
