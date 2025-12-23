@@ -42,17 +42,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ブログ記事作成
+// ブログ記事作成（スタッフ以上）
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('blog:write');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const { title, slug, content, excerpt, featured_image, category, status, ai_generated, project_id } = body;
 
