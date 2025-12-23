@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateBlogPost } from '@/lib/claude/client';
+import { requirePermission } from '@/lib/auth';
 
+// ブログ記事生成（AI機能: スタッフ以上）
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('ai:use');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
+    }
 
+    const body = await request.json();
     const { name, category, description, clientName, address } = body;
 
     if (!name || !category) {
