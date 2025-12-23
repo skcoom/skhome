@@ -40,7 +40,7 @@ export default function CompanyPage() {
                 <div className="w-28 h-28 bg-[#26A69A] rounded-full flex items-center justify-center text-center">
                   <div className="text-xs font-medium text-white leading-tight">
                     Since<br />
-                    2015
+                    2021
                   </div>
                 </div>
               </div>

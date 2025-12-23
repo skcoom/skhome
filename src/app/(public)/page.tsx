@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { ArrowRight, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectMedia, BlogPost } from '@/types/database';
-import { PROJECT_CATEGORY_LABELS, BLOG_CATEGORY_LABELS } from '@/lib/constants';
+import { BLOG_CATEGORY_LABELS } from '@/lib/constants';
 
 const blogCategoryStyles: Record<string, string> = {
   news: 'bg-[#FAF9F6] text-[#666666] border border-[#E5E4E0]',
@@ -54,8 +54,8 @@ export default async function HomePage() {
     return {
       id: project.id,
       name: project.name,
-      category: PROJECT_CATEGORY_LABELS[project.category] || project.category,
-      description: project.description || '',
+      tags: project.tags || [],
+      description: project.public_description || project.description || '',
       thumbnailUrl: thumbnail?.file_url || null,
       thumbnailType: (thumbnail?.type || 'image') as 'image' | 'video',
       posterUrl: thumbnail?.thumbnail_url || null,
@@ -105,7 +105,7 @@ export default async function HomePage() {
             {/* Left content */}
             <div className="lg:col-span-5 relative z-10">
               <p className="text-sm tracking-widest text-[#26A69A] mb-4">
-                SINCE 2010
+                SINCE 2021
               </p>
               <h1 className="text-3xl lg:text-4xl font-medium leading-relaxed text-[#333333] mb-8">
                 暮らしの「つづき」を、<br />
@@ -211,7 +211,6 @@ export default async function HomePage() {
                 <div className="w-24 h-24 lg:w-32 lg:h-32 bg-[#26A69A] rounded-full flex items-center justify-center text-center">
                   <div className="text-xs lg:text-sm font-medium text-white leading-tight">
                     From<br />
-                    Kawaguchi<br />
                     Saitama
                   </div>
                 </div>
@@ -310,12 +309,14 @@ export default async function HomePage() {
                         準備中
                       </div>
                     )}
-                    {/* Category badge */}
-                    <div className="absolute top-4 left-4">
-                      <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full">
-                        {work.category}
-                      </span>
-                    </div>
+                    {/* Tags badge */}
+                    {work.tags.length > 0 && (
+                      <div className="absolute top-4 left-4 flex flex-wrap gap-1">
+                        <span className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full">
+                          {work.tags[0]}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <h3 className="text-lg font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors mb-2">
                     {work.name}
