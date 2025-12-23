@@ -179,7 +179,7 @@ export default async function HomePage() {
                           playsInline
                         />
                       ) : (
-                        <img src={heroItems[2].url} alt="施工写真" className="w-full h-full object-cover" />
+                        <Image src={heroItems[2].url} alt="施工写真" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
                       )
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#999999] text-sm">
