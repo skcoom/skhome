@@ -42,14 +42,18 @@ export default async function HomePage() {
 
   // プロジェクトデータを整形
   const featuredWorks = (projects || []).map((project: Project & { project_media: ProjectMedia[] }) => {
-    // 画像を優先、なければ動画もフォールバックとして使用
-    const featuredImage = project.project_media?.find((m) => m.is_featured && m.type === 'image');
-    const featuredVideo = project.project_media?.find((m) => m.is_featured && m.type === 'video');
-    const afterImage = project.project_media?.find((m) => m.phase === 'after' && m.type === 'image');
-    const afterVideo = project.project_media?.find((m) => m.phase === 'after' && m.type === 'video');
-    const anyImage = project.project_media?.find((m) => m.type === 'image');
-    const anyVideo = project.project_media?.find((m) => m.type === 'video');
-    const thumbnail = featuredImage || featuredVideo || afterImage || afterVideo || anyImage || anyVideo;
+    // 掲載対象のメディアのみ（is_featured: trueは非掲載）
+    const publishedMedia = project.project_media?.filter((m) => !m.is_featured) || [];
+    // 1. main_media_idが設定されていればその画像を優先
+    // 2. なければ施工後 > 施工中 > 施工前 > 最初の画像
+    const designatedMainMedia = project.main_media_id
+      ? publishedMedia.find((m) => m.id === project.main_media_id)
+      : null;
+    const afterMedia = publishedMedia.find((m) => m.phase === 'after' && m.type === 'image');
+    const duringMedia = publishedMedia.find((m) => m.phase === 'during' && m.type === 'image');
+    const beforeMedia = publishedMedia.find((m) => m.phase === 'before' && m.type === 'image');
+    const anyMedia = publishedMedia.find((m) => m.type === 'image');
+    const thumbnail = designatedMainMedia || afterMedia || duringMedia || beforeMedia || anyMedia;
 
     return {
       id: project.id,
@@ -59,8 +63,6 @@ export default async function HomePage() {
       description: project.public_description || project.description || '',
       year: project.start_date ? new Date(project.start_date).getFullYear().toString() : new Date(project.created_at).getFullYear().toString(),
       thumbnailUrl: thumbnail?.file_url || null,
-      thumbnailType: (thumbnail?.type || 'image') as 'image' | 'video',
-      posterUrl: thumbnail?.thumbnail_url || null,
     };
   });
 
@@ -80,8 +82,8 @@ export default async function HomePage() {
       const fallback = featuredWorks[fallbackIndex];
       heroItems.push({
         url: fallback?.thumbnailUrl || '',
-        type: fallback?.thumbnailType || 'image',
-        thumbnailUrl: fallback?.posterUrl || undefined,
+        type: 'image',
+        thumbnailUrl: undefined,
       });
     }
   }
