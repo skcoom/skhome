@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClaudeClient } from '@/lib/claude/client';
 import { analyzeWithClaude } from '@/lib/claude/document-analyzer';
+import { requirePermission } from '@/lib/auth';
 import type { AnalyzeDocumentRequest } from '@/types/document-analysis';
 
+// ドキュメント解析（AI機能: スタッフ以上）
 export async function POST(request: NextRequest) {
   try {
+    // 権限チェック
+    const { user, error: authError } = await requirePermission('ai:use');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 }
+      );
+    }
+
     const body: AnalyzeDocumentRequest = await request.json();
     const { fileType, content, fileName } = body;
 
