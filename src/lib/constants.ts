@@ -34,3 +34,13 @@ export const BLOG_STATUS_LABELS: Record<string, { label: string; color: string }
   draft: { label: '下書き', color: 'bg-gray-100 text-gray-800' },
   published: { label: '公開中', color: 'bg-green-100 text-green-800' },
 };
+
+// 書類タイプ
+export const DOCUMENT_TYPE_LABELS: Record<string, { label: string; color: string; badge: string }> = {
+  estimate: { label: '見積書', color: 'bg-amber-100 text-amber-800', badge: '見積済' },
+  invoice: { label: '請求書', color: 'bg-purple-100 text-purple-800', badge: '請求済' },
+  contract: { label: '契約書', color: 'bg-emerald-100 text-emerald-800', badge: '契約済' },
+  other: { label: 'その他', color: 'bg-gray-100 text-gray-800', badge: '' },
+};
+
+export const DOCUMENT_TYPES = ['estimate', 'invoice', 'contract', 'other'] as const;

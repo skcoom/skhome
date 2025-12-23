@@ -45,9 +45,16 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     const supabase = await createClient();
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const documentType = (formData.get('document_type') as string) || 'other';
 
     if (!file) {
       return NextResponse.json({ error: 'ファイルは必須です' }, { status: 400 });
+    }
+
+    // 書類タイプのバリデーション
+    const validTypes = ['estimate', 'invoice', 'contract', 'other'];
+    if (!validTypes.includes(documentType)) {
+      return NextResponse.json({ error: '無効な書類タイプです' }, { status: 400 });
     }
 
     // PDFのみ許可
@@ -89,6 +96,7 @@ export async function POST(request: NextRequest, { params }: { params: Params })
       .from('project_documents')
       .insert({
         project_id: id,
+        document_type: documentType,
         file_url: urlData.publicUrl,
         file_name: file.name,
         file_size: file.size,

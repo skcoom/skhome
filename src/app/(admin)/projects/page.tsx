@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ProjectList } from '@/components/admin/ProjectList';
 import { ProjectFilters } from '@/components/admin/ProjectFilters';
 import { createClient } from '@/lib/supabase/server';
-import type { Project } from '@/types/database';
+import type { Project, ProjectWithDocumentStatus, DocumentType } from '@/types/database';
 
 interface PageProps {
   searchParams: Promise<{ status?: string; tag?: string }>;
@@ -33,7 +33,33 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     console.error('Projects fetch error:', error);
   }
 
-  const projectList = (projects || []) as Project[];
+  const projectIds = (projects || []).map((p) => p.id);
+
+  // 各プロジェクトのドキュメントタイプを取得
+  const { data: documents } = await supabase
+    .from('project_documents')
+    .select('project_id, document_type')
+    .in('project_id', projectIds.length > 0 ? projectIds : ['']);
+
+  // プロジェクトごとに書類タイプの存在をマップ
+  const documentStatusMap = new Map<string, Set<DocumentType>>();
+  (documents || []).forEach((doc: { project_id: string; document_type: DocumentType }) => {
+    if (!documentStatusMap.has(doc.project_id)) {
+      documentStatusMap.set(doc.project_id, new Set());
+    }
+    documentStatusMap.get(doc.project_id)!.add(doc.document_type);
+  });
+
+  // プロジェクトにドキュメント状態を追加
+  const projectList: ProjectWithDocumentStatus[] = (projects || []).map((project) => {
+    const docTypes = documentStatusMap.get(project.id) || new Set();
+    return {
+      ...project,
+      hasEstimate: docTypes.has('estimate'),
+      hasInvoice: docTypes.has('invoice'),
+      hasContract: docTypes.has('contract'),
+    } as ProjectWithDocumentStatus;
+  });
 
   return (
     <div className="space-y-6">

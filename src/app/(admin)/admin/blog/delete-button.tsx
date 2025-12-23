@@ -49,12 +49,12 @@ export function DeleteButton({ postId, postTitle }: DeleteButtonProps) {
 
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 mx-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 mx-4 text-center overflow-hidden">
             <h3 className="text-lg font-medium text-gray-900">記事を削除</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              「{postTitle}」を削除しますか？この操作は取り消せません。
+            <p className="mt-2 text-sm text-gray-500 break-words">
+              「{postTitle}」を削除しますか？<br />この操作は取り消せません。
             </p>
-            <div className="mt-6 flex justify-end space-x-4">
+            <div className="mt-6 flex justify-center space-x-4">
               <button
                 onClick={() => setShowConfirm(false)}
                 disabled={isDeleting}

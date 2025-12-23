@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Sparkles, Share2, Phone, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Calendar, Share2, Phone, ArrowRight } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Metadata } from 'next';
@@ -164,12 +164,6 @@ export default async function BlogPostPage({
               }`}>
                 {categoryLabels[blogPost.category] || blogPost.category}
               </span>
-              {blogPost.ai_generated && (
-                <span className="inline-flex items-center bg-[#E0F2F1] text-[#26A69A] text-xs font-medium px-2.5 py-1 rounded">
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  AI生成
-                </span>
-              )}
             </div>
 
             <h1 className="text-2xl lg:text-4xl font-medium text-[#333333] leading-relaxed mb-6">

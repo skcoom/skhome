@@ -279,17 +279,26 @@ export default function ProjectDetailPage() {
     if (!project) return;
 
     const newIsPublic = !project.is_public;
-    const { error: updateError } = await supabase
-      .from('projects')
-      .update({ is_public: newIsPublic } as never)
-      .eq('id', project.id);
 
-    if (updateError) {
-      console.error('Update error:', updateError);
-      return;
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_public: newIsPublic }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('Update error:', data.error);
+        alert('公開設定の変更に失敗しました');
+        return;
+      }
+
+      setProject({ ...project, is_public: newIsPublic });
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('公開設定の変更に失敗しました');
     }
-
-    setProject({ ...project, is_public: newIsPublic });
   };
 
   const toggleFeatured = async (mediaId: string, currentFeatured: boolean) => {

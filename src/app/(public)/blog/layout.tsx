@@ -4,13 +4,13 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
 
 export const metadata: Metadata = {
   title: 'ブログ',
-  description: 'SKコームのブログ。施工事例やリフォームに関するお役立ち情報をお届けします。AIが自動生成した施工レポートも掲載しています。',
+  description: 'SKコームのブログ。施工事例やリフォームに関するお役立ち情報をお届けします。',
   alternates: {
     canonical: '/blog',
   },
   openGraph: {
     title: 'ブログ | SKコーム',
-    description: 'SKコームのブログ。施工事例やリフォームに関するお役立ち情報をお届けします。AIが自動生成した施工レポートも掲載しています。',
+    description: 'SKコームのブログ。施工事例やリフォームに関するお役立ち情報をお届けします。',
     type: 'website',
     url: `${siteUrl}/blog`,
   },

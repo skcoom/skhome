@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Sparkles, Phone } from 'lucide-react';
+import { Calendar, Phone } from 'lucide-react';
 import { Pagination } from '@/components/ui/pagination';
 import { BLOG_CATEGORY_LABELS } from '@/lib/constants';
 
@@ -79,8 +79,7 @@ export default function BlogPage() {
               ブログ
             </h1>
             <p className="text-[#666666] leading-relaxed">
-              施工事例やリフォームに関するお役立ち情報をお届けします。<br />
-              AIが自動生成した施工レポートも掲載しています。
+              施工事例やリフォームに関するお役立ち情報をお届けします。
             </p>
           </div>
         </div>
@@ -153,15 +152,6 @@ export default function BlogPage() {
                           {BLOG_CATEGORY_LABELS[post.category] || post.category}
                         </span>
                       </div>
-                      {/* AI badge */}
-                      {post.ai_generated && (
-                        <div className="absolute top-4 right-4">
-                          <span className="inline-flex items-center bg-[#E0F2F1] text-[#26A69A] text-xs font-medium px-2 py-1 rounded">
-                            <Sparkles className="mr-1 h-3 w-3" />
-                            AI
-                          </span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Content */}
@@ -237,36 +227,6 @@ export default function BlogPage() {
                 <p className="text-xs text-[#999999]">{topic.count}件の記事</p>
               </button>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* About AI generation */}
-      <section className="py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="bg-[#E0F2F1] rounded-2xl p-8 lg:p-12">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-8">
-                <div className="flex items-center mb-4">
-                  <Sparkles className="h-5 w-5 text-[#26A69A] mr-2" />
-                  <p className="text-sm tracking-widest text-[#26A69A]">AI BLOG</p>
-                </div>
-                <h2 className="text-xl lg:text-2xl font-medium text-[#333333] mb-4">
-                  AIによる施工レポート自動生成
-                </h2>
-                <p className="text-[#666666] leading-relaxed">
-                  SKコームでは、施工完了後の事例をAIが自動でブログ記事にまとめています。
-                  お客様のプライバシーに配慮しながら、施工のポイントや工夫した点を
-                  分かりやすくお伝えします。
-                </p>
-              </div>
-              <div className="lg:col-span-4 text-center lg:text-right">
-                <div className="inline-flex items-center bg-[#26A69A] text-white px-4 py-2 rounded-full text-sm">
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Powered by Claude AI
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>

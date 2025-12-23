@@ -17,6 +17,7 @@ export type ProjectTag =
   | '店舗';
 export type MediaType = 'image' | 'video';
 export type MediaPhase = 'before' | 'during' | 'after';
+export type DocumentType = 'estimate' | 'invoice' | 'contract' | 'other';
 export type BlogCategory = 'news' | 'column' | 'case_study';
 export type BlogStatus = 'draft' | 'published';
 export type ContactStatus = 'pending' | 'in_progress' | 'completed';
@@ -69,12 +70,19 @@ export interface ProjectMedia {
 export interface ProjectDocument {
   id: string;
   project_id: string;
+  document_type: DocumentType;
   file_url: string;
   file_name: string;
   file_size: number;
   ai_summary?: string;
   uploaded_by?: string;
   created_at: string;
+}
+
+export interface ProjectWithDocumentStatus extends Project {
+  hasEstimate: boolean;
+  hasInvoice: boolean;
+  hasContract: boolean;
 }
 
 export interface ProjectProgress {

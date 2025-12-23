@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { FolderKanban, MapPin, Calendar } from 'lucide-react';
 import { StatusChanger } from './StatusChanger';
-import type { Project, ProjectStatus } from '@/types/database';
+import { DOCUMENT_TYPE_LABELS } from '@/lib/constants';
+import type { ProjectWithDocumentStatus, ProjectStatus } from '@/types/database';
 
 interface ProjectListProps {
-  projects: Project[];
+  projects: ProjectWithDocumentStatus[];
 }
 
 export function ProjectList({ projects }: ProjectListProps) {
@@ -62,6 +63,21 @@ export function ProjectList({ projects }: ProjectListProps) {
                 projectId={project.id}
                 currentStatus={project.status as ProjectStatus}
               />
+              {project.hasEstimate && (
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DOCUMENT_TYPE_LABELS.estimate.color}`}>
+                  {DOCUMENT_TYPE_LABELS.estimate.badge}
+                </span>
+              )}
+              {project.hasContract && (
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DOCUMENT_TYPE_LABELS.contract.color}`}>
+                  {DOCUMENT_TYPE_LABELS.contract.badge}
+                </span>
+              )}
+              {project.hasInvoice && (
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DOCUMENT_TYPE_LABELS.invoice.color}`}>
+                  {DOCUMENT_TYPE_LABELS.invoice.badge}
+                </span>
+              )}
               {project.is_public && (
                 <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
                   公開中

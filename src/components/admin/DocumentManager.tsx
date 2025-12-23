@@ -16,7 +16,8 @@ import {
   Globe,
   Pencil,
 } from 'lucide-react';
-import type { ProjectDocument } from '@/types/database';
+import type { ProjectDocument, DocumentType } from '@/types/database';
+import { DOCUMENT_TYPE_LABELS } from '@/lib/constants';
 
 interface DocumentManagerProps {
   projectId: string;
@@ -46,6 +47,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDocType, setSelectedDocType] = useState<DocumentType>('other');
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentSummary, setCurrentSummary] = useState<string>('');
   const [currentPublicSummary, setCurrentPublicSummary] = useState<string>('');
@@ -90,6 +92,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('document_type', selectedDocType);
 
       const response = await fetch(`/api/projects/${projectId}/documents`, {
         method: 'POST',
@@ -232,7 +235,18 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-gray-900">ドキュメント</h3>
-        <div>
+        <div className="flex items-center space-x-2">
+          <select
+            value={selectedDocType}
+            onChange={(e) => setSelectedDocType(e.target.value as DocumentType)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, { label }]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
           <input
             ref={fileInputRef}
             type="file"
@@ -255,7 +269,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                PDFをアップロード
+                アップロード
               </>
             )}
           </Button>
@@ -280,12 +294,19 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
         </div>
       ) : (
         <div className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-          {documents.map((doc) => (
+          {documents.map((doc) => {
+            const docTypeInfo = DOCUMENT_TYPE_LABELS[doc.document_type] || DOCUMENT_TYPE_LABELS.other;
+            return (
             <div key={doc.id} className="flex items-center justify-between p-4">
               <div className="flex items-center space-x-3">
                 <FileText className="h-8 w-8 text-red-500" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{doc.file_name}</p>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-sm font-medium text-gray-900">{doc.file_name}</p>
+                    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${docTypeInfo.color}`}>
+                      {docTypeInfo.label}
+                    </span>
+                  </div>
                   <p className="text-xs text-gray-500">
                     {formatFileSize(doc.file_size)} • {formatDate(doc.created_at)}
                     {doc.ai_summary && ' • 解析済み'}
@@ -335,7 +356,8 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
