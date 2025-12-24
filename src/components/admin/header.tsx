@@ -3,12 +3,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { Bell, User as UserIcon, Mail, Folder, FileText } from 'lucide-react';
+import { Bell, User as UserIcon, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 interface Notification {
   id: string;
-  type: 'contact' | 'project' | 'blog';
+  type: 'contact';
   title: string;
   message: string;
   link: string;
@@ -29,15 +29,8 @@ function formatRelativeTime(dateString: string): string {
   return `${diffDays}日前`;
 }
 
-function getNotificationIcon(type: Notification['type']) {
-  switch (type) {
-    case 'contact':
-      return <Mail className="h-4 w-4 text-blue-500" />;
-    case 'project':
-      return <Folder className="h-4 w-4 text-green-500" />;
-    case 'blog':
-      return <FileText className="h-4 w-4 text-purple-500" />;
-  }
+function getNotificationIcon() {
+  return <Mail className="h-4 w-4 text-blue-500" />;
 }
 
 export function Header() {
@@ -134,7 +127,7 @@ export function Header() {
                       className="flex items-start gap-3 border-b px-4 py-3 hover:bg-gray-50 last:border-b-0"
                     >
                       <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
-                        {getNotificationIcon(notification.type)}
+                        {getNotificationIcon()}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900">
