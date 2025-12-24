@@ -104,7 +104,7 @@ export default function NewProjectPage() {
         }
       }
 
-      router.push('/projects');
+      router.push('/admin/projects');
       router.refresh();
     } catch {
       setError('現場の登録に失敗しました');

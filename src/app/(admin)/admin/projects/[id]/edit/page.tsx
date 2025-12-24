@@ -134,7 +134,7 @@ export default function EditProjectPage() {
         return;
       }
 
-      router.push(`/projects/${projectId}`);
+      router.push(`/admin/projects/${projectId}`);
       router.refresh();
     } catch {
       setError('現場の更新に失敗しました');
@@ -158,7 +158,7 @@ export default function EditProjectPage() {
         return;
       }
 
-      router.push('/projects');
+      router.push('/admin/projects');
       router.refresh();
     } catch {
       setError('現場の削除に失敗しました');

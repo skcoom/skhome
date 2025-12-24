@@ -29,17 +29,17 @@ export function ProjectFilters({ currentStatus, currentTag, currentDocStatus }: 
 
   const handleStatusChange = (value: string) => {
     const queryString = createQueryString('status', value);
-    router.push(`/projects${queryString ? `?${queryString}` : ''}`);
+    router.push(`/admin/projects${queryString ? `?${queryString}` : ''}`);
   };
 
   const handleTagChange = (value: string) => {
     const queryString = createQueryString('tag', value);
-    router.push(`/projects${queryString ? `?${queryString}` : ''}`);
+    router.push(`/admin/projects${queryString ? `?${queryString}` : ''}`);
   };
 
   const handleDocStatusChange = (value: string) => {
     const queryString = createQueryString('docStatus', value);
-    router.push(`/projects${queryString ? `?${queryString}` : ''}`);
+    router.push(`/admin/projects${queryString ? `?${queryString}` : ''}`);
   };
 
   return (
