@@ -155,7 +155,7 @@ export function Header() {
               {notifications.length > 0 && (
                 <div className="border-t px-4 py-2">
                   <Link
-                    href="/contacts"
+                    href="/admin/contacts"
                     onClick={() => setIsOpen(false)}
                     className="block text-center text-sm text-blue-600 hover:text-blue-800"
                   >

@@ -445,7 +445,7 @@ export default function ProjectDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center">
         <div className="text-red-500 mb-4">{error || 'プロジェクトが見つかりません'}</div>
-        <Link href="/projects">
+        <Link href="/admin/projects">
           <Button variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             一覧に戻る
@@ -461,7 +461,7 @@ export default function ProjectDetailPage() {
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-4">
           <Link
-            href="/projects"
+            href="/admin/projects"
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -718,9 +718,9 @@ export default function ProjectDetailPage() {
                   この現場の写真をトップページのメイン画像に設定できます
                 </p>
               </div>
-              <Link href="/dashboard">
+              <Link href="/admin/settings">
                 <Button variant="outline" size="sm">
-                  ダッシュボードで設定
+                  サイト設定で変更
                   <ExternalLink className="ml-1 h-4 w-4" />
                 </Button>
               </Link>

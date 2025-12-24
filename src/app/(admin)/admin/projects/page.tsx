@@ -92,7 +92,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
             施工現場の登録・管理を行います
           </p>
         </div>
-        <Link href="/projects/new">
+        <Link href="/admin/projects/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             新規現場を登録
@@ -123,7 +123,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
             新しい現場を登録して管理を始めましょう
           </p>
           <div className="mt-6">
-            <Link href="/projects/new">
+            <Link href="/admin/projects/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 新規現場を登録

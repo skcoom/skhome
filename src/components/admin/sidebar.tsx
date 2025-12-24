@@ -10,16 +10,18 @@ import {
   MessageSquare,
   LogOut,
   Home,
+  Settings,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
 const navigation = [
-  { name: 'ダッシュボード', href: '/dashboard', icon: LayoutDashboard },
-  { name: '現場管理', href: '/projects', icon: FolderKanban },
+  { name: 'ダッシュボード', href: '/admin/dashboard', icon: LayoutDashboard },
+  { name: '現場管理', href: '/admin/projects', icon: FolderKanban },
   { name: 'ブログ管理', href: '/admin/blog', icon: FileText },
-  { name: 'ユーザー管理', href: '/users', icon: Users },
-  { name: 'お問い合わせ', href: '/contacts', icon: MessageSquare },
+  { name: 'ユーザー管理', href: '/admin/users', icon: Users },
+  { name: 'お問い合わせ', href: '/admin/contacts', icon: MessageSquare },
+  { name: 'サイト設定', href: '/admin/settings', icon: Settings },
 ];
 
 export function Sidebar() {
@@ -36,7 +38,7 @@ export function Sidebar() {
     <div className="flex h-full w-64 flex-col bg-gray-900">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-gray-800">
-        <Link href="/dashboard" className="flex items-center space-x-2">
+        <Link href="/admin/dashboard" className="flex items-center space-x-2">
           <span className="text-xl font-bold text-white">SKHOME</span>
         </Link>
       </div>

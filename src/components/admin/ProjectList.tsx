@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FolderKanban, MapPin, Calendar } from 'lucide-react';
 import { StatusChanger } from './StatusChanger';
 import { DOCUMENT_TYPE_LABELS } from '@/lib/constants';
@@ -11,18 +11,18 @@ interface ProjectListProps {
 }
 
 export function ProjectList({ projects }: ProjectListProps) {
+  const router = useRouter();
+
   return (
     <div className="grid gap-4">
       {projects.map((project) => (
         <div
           key={project.id}
-          className="block rounded-lg bg-white p-6 shadow hover:shadow-md transition-shadow"
+          className="block rounded-lg bg-white p-6 shadow hover:shadow-md transition-shadow cursor-pointer"
+          onClick={() => router.push(`/admin/projects/${project.id}`)}
         >
           <div className="flex items-start justify-between">
-            <Link
-              href={`/projects/${project.id}`}
-              className="flex items-start space-x-4 flex-1"
-            >
+            <div className="flex items-start space-x-4 flex-1">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
                 <FolderKanban className="h-6 w-6 text-blue-600" />
               </div>
@@ -55,8 +55,11 @@ export function ProjectList({ projects }: ProjectListProps) {
                   )}
                 </div>
               </div>
-            </Link>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+            </div>
+            <div
+              className="flex items-center gap-2 flex-wrap justify-end"
+              onClick={(e) => e.stopPropagation()}
+            >
               {project.tags?.map((tag) => (
                 <span
                   key={tag}

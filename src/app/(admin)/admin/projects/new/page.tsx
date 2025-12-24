@@ -118,7 +118,7 @@ export default function NewProjectPage() {
       {/* Header */}
       <div className="flex items-center space-x-4">
         <Link
-          href="/projects"
+          href="/admin/projects"
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -256,7 +256,7 @@ export default function NewProjectPage() {
 
         {/* Actions */}
         <div className="flex justify-end space-x-4">
-          <Link href="/projects">
+          <Link href="/admin/projects">
             <Button type="button" variant="outline">
               キャンセル
             </Button>

@@ -76,7 +76,7 @@ export default function SetPasswordPage() {
       setSuccess(true);
       // 3秒後にダッシュボードへリダイレクト
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/admin/dashboard');
       }, 3000);
     } catch {
       setError('パスワードの設定に失敗しました');

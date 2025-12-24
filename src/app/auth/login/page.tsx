@@ -30,7 +30,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      router.push('/admin/dashboard');
       router.refresh();
     } catch {
       setError('ログインに失敗しました');
