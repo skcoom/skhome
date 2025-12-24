@@ -35,11 +35,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // 管理画面へのアクセスで未認証の場合はログインページへリダイレクト
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/projects') ||
-    request.nextUrl.pathname.startsWith('/users') ||
-    request.nextUrl.pathname.startsWith('/contacts') ||
-    request.nextUrl.pathname.startsWith('/admin');
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
 
   if (isAdminRoute && !user) {
     const url = request.nextUrl.clone();
@@ -50,7 +46,7 @@ export async function updateSession(request: NextRequest) {
   // ログイン済みでログインページにアクセスした場合はダッシュボードへ
   if (request.nextUrl.pathname === '/auth/login' && user) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = '/admin/dashboard';
     return NextResponse.redirect(url);
   }
 
