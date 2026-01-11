@@ -1,7 +1,40 @@
-import { type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
+// スパム攻撃で生成された不正URLパターン
+const SPAM_URL_PATTERNS = [
+  /\.phtml$/i,                    // .phtml拡張子
+  /^\/shopbrand/i,                // /shopbrand/...
+  /^\/item\//i,                   // /item/...
+  /^\/goods\//i,                  // /goods/...
+  /^\/detail\//i,                 // /detail/...
+  /^\/info\/\d+/i,                // /info/数字
+  /^\/goodscode\//i,              // /goodscode/...
+  /^\/shopping\d+/i,              // /shopping数字
+  /^\/single-house\/\d+\/feed/i,  // WordPressフィード形式
+  /^\/category\//i,               // /category/...
+  /^\/blog_category\//i,          // /blog_category/...
+  /^\/リフォーム\/\d+/i,           // /リフォーム/数字
+];
+
+function isSpamUrl(pathname: string): boolean {
+  return SPAM_URL_PATTERNS.some(pattern => pattern.test(pathname));
+}
+
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // スパムURLには410 Goneを返す
+  if (isSpamUrl(pathname)) {
+    return new NextResponse(null, {
+      status: 410,
+      statusText: 'Gone',
+      headers: {
+        'X-Robots-Tag': 'noindex',
+      },
+    });
+  }
+
   return await updateSession(request);
 }
 

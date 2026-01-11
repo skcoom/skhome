@@ -492,7 +492,7 @@ export default function ProjectDetailPage() {
               </>
             )}
           </Button>
-          <Link href={`/projects/${project.id}/edit`}>
+          <Link href={`/admin/projects/${project.id}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
               編集

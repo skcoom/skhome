@@ -182,7 +182,7 @@ export default function EditProjectPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link
-            href={`/projects/${projectId}`}
+            href={`/admin/projects/${projectId}`}
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -360,7 +360,7 @@ export default function EditProjectPage() {
 
         {/* Actions */}
         <div className="flex justify-end space-x-4">
-          <Link href={`/projects/${projectId}`}>
+          <Link href={`/admin/projects/${projectId}`}>
             <Button type="button" variant="outline">
               キャンセル
             </Button>
