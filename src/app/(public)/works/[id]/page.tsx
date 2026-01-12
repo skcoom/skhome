@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, MapPin, Calendar, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import type { Project, ProjectMedia } from '@/types/database';
+import type { Project, ProjectMedia, ProjectTag } from '@/types/database';
 import { WorkDetailGallery } from './gallery';
 import { DescriptionSection } from './description-section';
 import type { Metadata } from 'next';
@@ -127,20 +127,76 @@ export default async function WorkDetailPage({ params }: PageProps) {
   const beforeMedia = mediaByPhase.before[0];
   const mainImage = designatedMainImage || afterMedia || duringMedia || beforeMedia || publishedMedia.find((m) => m.type === 'image');
 
-  // 関連プロジェクトを取得
-  const { data: relatedProjects } = await supabase
-    .from('projects')
-    .select(`
-      id,
-      name,
-      category,
-      address,
-      project_media!project_media_project_id_fkey (*)
-    `)
-    .eq('is_public', true)
-    .eq('category', typedProject.category)
-    .neq('id', id)
-    .limit(3);
+  // 関連プロジェクト用の型（表示に必要なフィールドのみ）
+  type RelatedProject = {
+    id: string;
+    name: string;
+    tags: ProjectTag[];
+    address: string | null;
+    created_at: string;
+    project_media: ProjectMedia[];
+  };
+
+  // 関連プロジェクトを取得（タグの共通数が多い順）
+  const currentTags = typedProject.tags || [];
+  let relatedProjects: RelatedProject[] = [];
+
+  if (currentTags.length > 0) {
+    // タグが1つ以上共通するプロジェクトを取得
+    const { data: candidates } = await supabase
+      .from('projects')
+      .select(`
+        id,
+        name,
+        tags,
+        address,
+        created_at,
+        project_media!project_media_project_id_fkey (*)
+      `)
+      .eq('is_public', true)
+      .overlaps('tags', currentTags)
+      .neq('id', id);
+
+    if (candidates && candidates.length > 0) {
+      // 共通タグ数でソートし、上位3件を取得
+      relatedProjects = (candidates as RelatedProject[])
+        .map((p) => ({
+          ...p,
+          _commonTagCount: (p.tags || []).filter((t) => currentTags.includes(t)).length,
+        }))
+        .sort((a, b) => {
+          // 共通タグ数の降順、同数なら新しい順
+          if (b._commonTagCount !== a._commonTagCount) {
+            return b._commonTagCount - a._commonTagCount;
+          }
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        })
+        .slice(0, 3);
+    }
+  }
+
+  // フォールバック: 共通タグのプロジェクトが3件未満の場合、最新のプロジェクトで補完
+  if (relatedProjects.length < 3) {
+    const existingIds = [id, ...relatedProjects.map((p) => p.id)];
+    const { data: fallbackProjects } = await supabase
+      .from('projects')
+      .select(`
+        id,
+        name,
+        tags,
+        address,
+        created_at,
+        project_media!project_media_project_id_fkey (*)
+      `)
+      .eq('is_public', true)
+      .not('id', 'in', `(${existingIds.join(',')})`)
+      .order('created_at', { ascending: false })
+      .limit(3 - relatedProjects.length);
+
+    if (fallbackProjects) {
+      relatedProjects = [...relatedProjects, ...(fallbackProjects as RelatedProject[])];
+    }
+  }
 
   return (
     <div className="bg-[#FAF9F6]">
