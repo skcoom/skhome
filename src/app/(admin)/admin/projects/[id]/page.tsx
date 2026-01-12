@@ -267,37 +267,56 @@ export default function ProjectDetailPage() {
         fileUrl = result.file_url;
         thumbnailUrl = result.thumbnail_url;
       } else {
-        // 動画: まずクライアントサイドでサムネイルを生成
+        // 動画: クライアントから直接Supabaseにアップロード（Vercelの4.5MB制限回避）
         console.log('[Upload] Starting video upload for:', file.name);
+
+        // サムネイル生成を試行
         const thumbnailBlob = await generateVideoThumbnail(file);
         console.log('[Upload] Thumbnail generation result:', thumbnailBlob ? `Blob size: ${thumbnailBlob.size}` : 'null');
 
-        // 動画とサムネイルをAPIにアップロード
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('projectId', projectId);
-        if (thumbnailBlob) {
-          formData.append('thumbnail', thumbnailBlob, 'thumbnail.jpg');
-          console.log('[Upload] Thumbnail appended to FormData');
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).slice(2, 10);
+        const fileExt = file.name.split('.').pop() || 'mp4';
+
+        // 動画を直接Supabase Storageにアップロード
+        const videoFileName = `${projectId}/${timestamp}_${randomStr}.${fileExt}`;
+        const { error: videoUploadError } = await supabase.storage
+          .from('project-media')
+          .upload(videoFileName, file, {
+            contentType: file.type,
+          });
+
+        if (videoUploadError) {
+          throw new Error(`動画アップロードに失敗しました: ${videoUploadError.message}`);
+        }
+
+        const { data: videoUrlData } = supabase.storage
+          .from('project-media')
+          .getPublicUrl(videoFileName);
+        fileUrl = videoUrlData.publicUrl;
+        console.log('[Upload] Video uploaded:', fileUrl);
+
+        // サムネイルをアップロード（生成成功した場合）
+        if (thumbnailBlob && thumbnailBlob.size > 1000) {
+          const thumbFileName = `${projectId}/${timestamp}_${randomStr}_thumb.jpg`;
+          const { error: thumbUploadError } = await supabase.storage
+            .from('project-media')
+            .upload(thumbFileName, thumbnailBlob, {
+              contentType: 'image/jpeg',
+            });
+
+          if (!thumbUploadError) {
+            const { data: thumbUrlData } = supabase.storage
+              .from('project-media')
+              .getPublicUrl(thumbFileName);
+            thumbnailUrl = thumbUrlData.publicUrl;
+            console.log('[Upload] Thumbnail uploaded:', thumbnailUrl);
+          } else {
+            console.warn('[Upload] Thumbnail upload failed:', thumbUploadError);
+          }
         } else {
-          console.warn('[Upload] No thumbnail to append');
+          console.warn('[Upload] No valid thumbnail to upload');
         }
-
-        const response = await fetch('/api/media/video', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || '動画処理に失敗しました');
-        }
-
-        const result = await response.json();
-        console.log('[Upload] API response:', result);
-        fileUrl = result.file_url;
-        thumbnailUrl = result.thumbnail_url;
-        console.log('[Upload] thumbnail_url from API:', thumbnailUrl);
       }
 
       // AI分類モードの場合はDB登録をスキップ
