@@ -9,12 +9,14 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [formLoadTime] = useState(Date.now());
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     type: '',
     message: '',
+    website: '', // Honeypot field（ボット対策）
   });
 
   const handleChange = (
@@ -42,6 +44,9 @@ export default function ContactPage() {
           message: formData.type
             ? `【${formData.type}】\n${formData.message}`
             : formData.message,
+          // スパム対策フィールド
+          website: formData.website,
+          _timestamp: formLoadTime,
         }),
       });
 
@@ -167,6 +172,20 @@ export default function ContactPage() {
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Honeypot field - ボット対策（人間には見えない） */}
+                  <div style={{ position: 'absolute', left: '-9999px' }} aria-hidden="true">
+                    <label htmlFor="website">ウェブサイト</label>
+                    <input
+                      type="text"
+                      id="website"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleChange}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
                   {error && (
                     <div className="rounded-lg bg-red-50 border border-red-200 p-4">
                       <p className="text-sm text-red-600">{error}</p>

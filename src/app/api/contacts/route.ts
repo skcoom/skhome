@@ -64,6 +64,25 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const body = await request.json();
 
+    // スパム対策: Honeypotチェック
+    // ボットは隠しフィールドも自動入力するため、値があればスパム
+    if (body.website) {
+      console.log('[Spam Blocked] Honeypot triggered:', clientIP);
+      // 成功を装ってボットに検知されないようにする
+      return NextResponse.json({ success: true }, { status: 201 });
+    }
+
+    // スパム対策: 送信時間チェック
+    // 人間は3秒以内にフォームを入力できない
+    const MIN_SUBMISSION_TIME_MS = 3000;
+    if (body._timestamp) {
+      const submissionTime = Date.now() - body._timestamp;
+      if (submissionTime < MIN_SUBMISSION_TIME_MS) {
+        console.log('[Spam Blocked] Too fast submission:', submissionTime, 'ms from', clientIP);
+        return NextResponse.json({ success: true }, { status: 201 });
+      }
+    }
+
     // Zodバリデーション
     const validationResult = contactFormSchema.safeParse(body);
     if (!validationResult.success) {
