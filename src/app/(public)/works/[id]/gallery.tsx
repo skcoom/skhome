@@ -243,6 +243,7 @@ export function WorkDetailGallery({ mediaByPhase }: GalleryProps) {
                 src={selectedMedia.file_url}
                 controls
                 autoPlay
+                muted
                 className="max-w-full max-h-[85vh]"
               >
                 お使いのブラウザは動画再生に対応していません。

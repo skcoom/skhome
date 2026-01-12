@@ -130,6 +130,45 @@ export default function ProjectDetailPage() {
     }
   }, [projectId, supabase]);
 
+  // 動画からサムネイル画像を生成する関数
+  const generateVideoThumbnail = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+
+      video.onloadeddata = () => {
+        video.currentTime = 0;
+      };
+
+      video.onseeked = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(video, 0, 0);
+
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(video.src);
+            if (blob) resolve(blob);
+            else reject(new Error('サムネイル生成に失敗しました'));
+          },
+          'image/webp',
+          0.8
+        );
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        reject(new Error('動画の読み込みに失敗しました'));
+      };
+
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   // 1ファイルをアップロードする関数（AI分類モード対応）
   const uploadSingleFile = async (
     file: File,
@@ -162,7 +201,9 @@ export default function ProjectDetailPage() {
         thumbnailUrl = result.thumbnail_url;
       } else {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${projectId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).slice(2);
+        const fileName = `${projectId}/${timestamp}_${randomStr}.${fileExt}`;
 
         const { error: storageError } = await supabase.storage
           .from('project-media')
@@ -177,6 +218,27 @@ export default function ProjectDetailPage() {
           .getPublicUrl(fileName);
 
         fileUrl = publicUrlData.publicUrl;
+
+        // サムネイル生成とアップロード
+        try {
+          const thumbnailBlob = await generateVideoThumbnail(file);
+          const thumbnailFileName = `${projectId}/${timestamp}_${randomStr}_thumb.webp`;
+
+          const { error: thumbStorageError } = await supabase.storage
+            .from('project-media')
+            .upload(thumbnailFileName, thumbnailBlob, {
+              contentType: 'image/webp',
+            });
+
+          if (!thumbStorageError) {
+            const { data: thumbUrlData } = supabase.storage
+              .from('project-media')
+              .getPublicUrl(thumbnailFileName);
+            thumbnailUrl = thumbUrlData.publicUrl;
+          }
+        } catch (thumbError) {
+          console.warn('サムネイル生成をスキップ:', thumbError);
+        }
       }
 
       // AI分類モードの場合はDB登録をスキップ
