@@ -26,10 +26,12 @@ import {
   ExternalLink,
   Trash2,
   Play,
+  Sparkles,
 } from 'lucide-react';
-import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
+import type { Project, ProjectMedia, MediaType, MediaPhase, PendingClassificationFile } from '@/types/database';
 import { PickupSuggestions } from '@/components/admin/pickup-suggestions';
 import { DocumentManager } from '@/components/admin/document-manager';
+import { PhotoClassifier } from '@/components/admin/photo-classifier';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
@@ -77,6 +79,11 @@ export default function ProjectDetailPage() {
   // 動画再生モーダル
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
+  // AI分類機能
+  const [useAIClassification, setUseAIClassification] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<PendingClassificationFile[]>([]);
+  const [showClassifier, setShowClassifier] = useState(false);
+
   // Supabaseからプロジェクトとメディアデータを取得
   useEffect(() => {
     const fetchData = async () => {
@@ -122,11 +129,12 @@ export default function ProjectDetailPage() {
     }
   }, [projectId, supabase]);
 
-  // 1ファイルをアップロードする関数
+  // 1ファイルをアップロードする関数（AI分類モード対応）
   const uploadSingleFile = async (
     file: File,
-    onSuccess: (name: string) => void,
-    onError: (name: string, error: string) => void
+    onSuccess: (name: string, pendingFile?: PendingClassificationFile) => void,
+    onError: (name: string, error: string) => void,
+    skipDbInsert: boolean = false
   ): Promise<void> => {
     const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
     let fileUrl: string;
@@ -168,6 +176,18 @@ export default function ProjectDetailPage() {
           .getPublicUrl(fileName);
 
         fileUrl = publicUrlData.publicUrl;
+      }
+
+      // AI分類モードの場合はDB登録をスキップ
+      if (skipDbInsert) {
+        const pendingFile: PendingClassificationFile = {
+          tempId: `${Date.now()}_${file.name}`,
+          file_url: fileUrl,
+          thumbnail_url: thumbnailUrl,
+          type: mediaType,
+        };
+        onSuccess(file.name, pendingFile);
+        return;
       }
 
       const insertData = {
@@ -214,6 +234,7 @@ export default function ProjectDetailPage() {
     let completedCount = 0;
     const uploadedFileNames: string[] = [];
     const failedFilesList: { name: string; error: string }[] = [];
+    const pendingFilesList: PendingClassificationFile[] = [];
 
     const updateProgress = (fileName: string) => {
       completedCount++;
@@ -224,8 +245,11 @@ export default function ProjectDetailPage() {
       }));
     };
 
-    const onSuccess = (name: string) => {
+    const onSuccess = (name: string, pendingFile?: PendingClassificationFile) => {
       uploadedFileNames.push(name);
+      if (pendingFile) {
+        pendingFilesList.push(pendingFile);
+      }
       updateProgress(name);
       setUploadProgress((prev) => ({
         ...prev,
@@ -246,10 +270,20 @@ export default function ProjectDetailPage() {
       // ファイルをチャンクに分けて並列処理
       for (let i = 0; i < fileArray.length; i += CONCURRENT_UPLOADS) {
         const chunk = fileArray.slice(i, i + CONCURRENT_UPLOADS);
-        await Promise.all(chunk.map((file) => uploadSingleFile(file, onSuccess, onError)));
+        await Promise.all(
+          chunk.map((file) => uploadSingleFile(file, onSuccess, onError, useAIClassification))
+        );
       }
 
-      // メディア一覧を再取得
+      // AI分類モードの場合
+      if (useAIClassification && pendingFilesList.length > 0) {
+        setPendingFiles(pendingFilesList);
+        setShowUploadModal(false);
+        setShowClassifier(true);
+        return;
+      }
+
+      // 通常モード: メディア一覧を再取得
       const { data } = await supabase
         .from('project_media')
         .select('*')
@@ -273,6 +307,61 @@ export default function ProjectDetailPage() {
       // inputをリセット
       e.target.value = '';
     }
+  };
+
+  // AI分類結果を確定してDBに保存
+  const handleClassificationConfirm = async (
+    results: { tempId: string; phase: MediaPhase; is_featured: boolean }[]
+  ) => {
+    try {
+      // pendingFilesから該当するファイルを取得してDBに登録
+      const insertData = results.map((result) => {
+        const file = pendingFiles.find((f) => f.tempId === result.tempId);
+        if (!file) return null;
+
+        return {
+          project_id: projectId,
+          type: file.type,
+          phase: result.phase,
+          file_url: file.file_url,
+          thumbnail_url: file.thumbnail_url,
+          is_featured: result.is_featured,
+        };
+      }).filter((d): d is NonNullable<typeof d> => d !== null);
+
+      if (insertData.length > 0) {
+        const { error: insertError } = await supabase
+          .from('project_media')
+          .insert(insertData as never);
+
+        if (insertError) {
+          throw new Error(insertError.message || 'データベース登録に失敗しました');
+        }
+      }
+
+      // メディア一覧を再取得
+      const { data } = await supabase
+        .from('project_media')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      setMedia(data || []);
+
+      // 状態をリセット
+      setPendingFiles([]);
+      setShowClassifier(false);
+    } catch (err) {
+      console.error('Classification confirm error:', err);
+      alert(err instanceof Error ? err.message : '保存に失敗しました');
+    }
+  };
+
+  // AI分類をキャンセル（アップロード済みファイルは残る）
+  const handleClassificationCancel = () => {
+    // pendingFilesのファイルはストレージにアップロード済みだが、DBには未登録
+    // キャンセル時はそのままストレージに残す（手動で再分類可能にするため）
+    setPendingFiles([]);
+    setShowClassifier(false);
   };
 
   const togglePublic = async () => {
@@ -964,20 +1053,45 @@ export default function ProjectDetailPage() {
             </h3>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  フェーズ
+              {/* AI分類オプション */}
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                <label className="flex items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useAIClassification}
+                    onChange={(e) => setUseAIClassification(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    disabled={isUploading}
+                  />
+                  <div className="ml-3">
+                    <div className="flex items-center space-x-2">
+                      <Sparkles className="h-4 w-4 text-purple-600" />
+                      <span className="font-medium text-purple-900">AIで自動分類する</span>
+                    </div>
+                    <p className="mt-1 text-xs text-purple-700">
+                      施工前/施工中/施工後をAIが自動で判定し、HP掲載に適した写真も提案します
+                    </p>
+                  </div>
                 </label>
-                <select
-                  value={selectedPhase}
-                  onChange={(e) => setSelectedPhase(e.target.value as 'before' | 'during' | 'after')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="before">施工前</option>
-                  <option value="during">施工中</option>
-                  <option value="after">施工後</option>
-                </select>
               </div>
+
+              {/* フェーズ選択（AI分類OFFの場合のみ表示） */}
+              {!useAIClassification && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    フェーズ
+                  </label>
+                  <select
+                    value={selectedPhase}
+                    onChange={(e) => setSelectedPhase(e.target.value as 'before' | 'during' | 'after')}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                  >
+                    <option value="before">施工前</option>
+                    <option value="during">施工中</option>
+                    <option value="after">施工後</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1154,6 +1268,16 @@ export default function ProjectDetailPage() {
             </video>
           </div>
         </div>
+      )}
+
+      {/* AI分類モーダル */}
+      {showClassifier && pendingFiles.length > 0 && (
+        <PhotoClassifier
+          projectId={projectId}
+          files={pendingFiles}
+          onConfirm={handleClassificationConfirm}
+          onCancel={handleClassificationCancel}
+        />
       )}
     </div>
   );

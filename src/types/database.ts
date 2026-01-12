@@ -120,6 +120,28 @@ export interface Contact {
   created_at: string;
 }
 
+/** AI写真分類の結果 */
+export interface PhotoClassificationResult {
+  /** アップロード時の一時ID（ファイル名ベース） */
+  tempId: string;
+  /** 判定された施工段階 */
+  suggestedPhase: MediaPhase;
+  /** 判定の確信度（0.0-1.0） */
+  confidence: number;
+  /** HP掲載適性スコア（1-10） */
+  hpSuitability: number;
+  /** 判定理由 */
+  reason: string;
+}
+
+/** アップロード後のAI分類待ちファイル */
+export interface PendingClassificationFile {
+  tempId: string;
+  file_url: string;
+  thumbnail_url?: string;
+  type: MediaType;
+}
+
 // Database schema for Supabase
 export interface Database {
   public: {
