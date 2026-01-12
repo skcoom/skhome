@@ -55,7 +55,7 @@ export default async function WorksPage() {
       address: project.address || null,
       description: project.description || null,
       year: project.start_date ? new Date(project.start_date).getFullYear().toString() : new Date(project.created_at).getFullYear().toString(),
-      thumbnailUrl: thumbnail?.file_url || null,
+      thumbnailUrl: thumbnail?.thumbnail_url || thumbnail?.file_url || null,
     };
   });
 
