@@ -56,104 +56,111 @@ const phaseLabels = {
 
 // クライアントサイドで動画からサムネイルを生成
 async function generateVideoThumbnail(file: File): Promise<Blob | null> {
-  console.log('[Thumbnail] Starting generation for:', file.name, 'size:', file.size);
+  console.log('[Thumbnail] Starting generation for:', file.name, 'size:', file.size, 'type:', file.type);
 
   return new Promise((resolve) => {
-    const video = document.createElement('video');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    // FileReaderでデータURLとして読み込み（blob URLより互換性が高い）
+    const reader = new FileReader();
 
-    if (!ctx) {
-      console.error('[Thumbnail] Canvas context not available');
-      resolve(null);
-      return;
-    }
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      console.log('[Thumbnail] FileReader loaded, data URL length:', dataUrl.length);
 
-    const objectUrl = URL.createObjectURL(file);
-    console.log('[Thumbnail] Created object URL:', objectUrl);
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
 
-    // タイムアウト設定（15秒）
-    const timeout = setTimeout(() => {
-      console.error('[Thumbnail] Generation timed out after 15 seconds');
-      URL.revokeObjectURL(objectUrl);
-      video.src = '';
-      resolve(null);
-    }, 15000);
-
-    // クリーンアップ関数
-    const cleanup = () => {
-      clearTimeout(timeout);
-      URL.revokeObjectURL(objectUrl);
-    };
-
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = 'auto'; // metadataからautoに変更してより多くのデータを読み込む
-    // crossOriginはblob URLの場合は設定しない（エラーの原因になる）
-
-    // loadeddataイベントを使用（loadedmetadataより確実）
-    video.onloadeddata = () => {
-      console.log('[Thumbnail] Video data loaded. Duration:', video.duration, 'Size:', video.videoWidth, 'x', video.videoHeight);
-
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        console.error('[Thumbnail] Video dimensions are 0');
-        cleanup();
+      if (!ctx) {
+        console.error('[Thumbnail] Canvas context not available');
         resolve(null);
         return;
       }
 
-      // 動画の0.5秒目か、動画の長さの10%のどちらか小さい方を使用
-      const seekTime = Math.min(0.5, video.duration * 0.1);
-      console.log('[Thumbnail] Seeking to:', seekTime);
-      video.currentTime = seekTime > 0 ? seekTime : 0.001;
-    };
-
-    video.onseeked = () => {
-      console.log('[Thumbnail] Seeked to:', video.currentTime);
-
-      try {
-        // キャンバスサイズを設定（最大640px幅、アスペクト比維持）
-        const maxWidth = 640;
-        const scale = Math.min(1, maxWidth / video.videoWidth);
-        canvas.width = Math.floor(video.videoWidth * scale);
-        canvas.height = Math.floor(video.videoHeight * scale);
-
-        console.log('[Thumbnail] Canvas size:', canvas.width, 'x', canvas.height);
-
-        // 動画フレームをキャンバスに描画
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        console.log('[Thumbnail] Drew frame to canvas');
-
-        // JPEGとしてBlobを生成（品質80%）
-        canvas.toBlob(
-          (blob) => {
-            cleanup();
-            if (blob) {
-              console.log('[Thumbnail] Generated blob, size:', blob.size);
-            } else {
-              console.error('[Thumbnail] toBlob returned null');
-            }
-            resolve(blob);
-          },
-          'image/jpeg',
-          0.8
-        );
-      } catch (err) {
-        console.error('[Thumbnail] Error drawing to canvas:', err);
-        cleanup();
+      // タイムアウト設定（20秒）
+      const timeout = setTimeout(() => {
+        console.error('[Thumbnail] Generation timed out after 20 seconds');
+        video.src = '';
         resolve(null);
-      }
+      }, 20000);
+
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+
+      // canplaythrough: 十分なデータがバッファされた時点で発火
+      video.oncanplaythrough = () => {
+        console.log('[Thumbnail] Video can play through. Duration:', video.duration, 'Size:', video.videoWidth, 'x', video.videoHeight);
+
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+          console.error('[Thumbnail] Video dimensions are 0');
+          clearTimeout(timeout);
+          resolve(null);
+          return;
+        }
+
+        // 動画の0.5秒目か、動画の長さの10%のどちらか小さい方を使用
+        const seekTime = Math.min(0.5, video.duration * 0.1);
+        console.log('[Thumbnail] Seeking to:', seekTime);
+        video.currentTime = seekTime > 0 ? seekTime : 0.001;
+      };
+
+      video.onseeked = () => {
+        console.log('[Thumbnail] Seeked to:', video.currentTime);
+        clearTimeout(timeout);
+
+        try {
+          // キャンバスサイズを設定（最大640px幅、アスペクト比維持）
+          const maxWidth = 640;
+          const scale = Math.min(1, maxWidth / video.videoWidth);
+          canvas.width = Math.floor(video.videoWidth * scale);
+          canvas.height = Math.floor(video.videoHeight * scale);
+
+          console.log('[Thumbnail] Canvas size:', canvas.width, 'x', canvas.height);
+
+          // 動画フレームをキャンバスに描画
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          console.log('[Thumbnail] Drew frame to canvas');
+
+          // JPEGとしてBlobを生成（品質80%）
+          canvas.toBlob(
+            (blob) => {
+              video.src = '';
+              if (blob) {
+                console.log('[Thumbnail] Generated blob, size:', blob.size);
+              } else {
+                console.error('[Thumbnail] toBlob returned null');
+              }
+              resolve(blob);
+            },
+            'image/jpeg',
+            0.8
+          );
+        } catch (err) {
+          console.error('[Thumbnail] Error drawing to canvas:', err);
+          resolve(null);
+        }
+      };
+
+      video.onerror = (e) => {
+        clearTimeout(timeout);
+        const errorCode = video.error?.code;
+        const errorMessage = video.error?.message;
+        console.error('[Thumbnail] Video load error:', e, 'code:', errorCode, 'message:', errorMessage);
+        resolve(null);
+      };
+
+      // データURLをソースに設定
+      video.src = dataUrl;
+      video.load();
     };
 
-    video.onerror = (e) => {
-      console.error('[Thumbnail] Video load error:', e);
-      cleanup();
+    reader.onerror = (e) => {
+      console.error('[Thumbnail] FileReader error:', e);
       resolve(null);
     };
 
-    // 動画を読み込み
-    video.src = objectUrl;
-    video.load();
+    // ファイルをデータURLとして読み込み
+    reader.readAsDataURL(file);
   });
 }
 
