@@ -1018,7 +1018,7 @@ export default function ProjectDetailPage() {
                     e.stopPropagation();
                     deleteMedia(item.id);
                   }}
-                  className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity"
+                  className="absolute top-2 left-2 z-30 p-1.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity"
                   title="削除"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -1061,7 +1061,7 @@ export default function ProjectDetailPage() {
                   </div>
                 ) : (
                   // 動画の場合：下部に表示（再生ボタンと重ならないように）
-                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
