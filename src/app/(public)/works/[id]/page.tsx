@@ -109,11 +109,11 @@ export default async function WorkDetailPage({ params }: PageProps) {
   // 掲載対象のメディアのみ（is_featured: trueは非掲載）
   const publishedMedia = typedProject.project_media?.filter((m) => !m.is_featured) || [];
 
-  // メディアをフェーズごとに分類
+  // メディアをフェーズごとに分類（画像と動画を含む）
   const mediaByPhase = {
-    before: publishedMedia.filter((m) => m.phase === 'before' && m.type === 'image'),
-    during: publishedMedia.filter((m) => m.phase === 'during' && m.type === 'image'),
-    after: publishedMedia.filter((m) => m.phase === 'after' && m.type === 'image'),
+    before: publishedMedia.filter((m) => m.phase === 'before'),
+    during: publishedMedia.filter((m) => m.phase === 'during'),
+    after: publishedMedia.filter((m) => m.phase === 'after'),
   };
 
   // メイン画像を取得
