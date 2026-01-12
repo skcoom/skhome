@@ -32,6 +32,7 @@ import type { Project, ProjectMedia, MediaType, MediaPhase, PendingClassificatio
 import { PickupSuggestions } from '@/components/admin/pickup-suggestions';
 import { DocumentManager } from '@/components/admin/document-manager';
 import { PhotoClassifier } from '@/components/admin/photo-classifier';
+import { InfoIntegrator } from '@/components/admin/info-integrator';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
@@ -592,7 +593,27 @@ export default function ProjectDetailPage() {
 
       {/* Project info */}
       <div className="rounded-lg bg-white p-6 shadow">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">基本情報</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-gray-900">基本情報</h2>
+          <InfoIntegrator
+            projectId={projectId}
+            currentProject={project}
+            onUpdate={async (updatedData) => {
+              const response = await fetch(`/api/projects/${project.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData),
+              });
+
+              if (!response.ok) {
+                throw new Error('更新に失敗しました');
+              }
+
+              // プロジェクト情報を更新
+              setProject({ ...project, ...updatedData });
+            }}
+          />
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           {project.client_name && (
             <div>

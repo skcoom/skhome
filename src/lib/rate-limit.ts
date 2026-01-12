@@ -184,4 +184,9 @@ export const RATE_LIMITS = {
     limit: 10,
     windowMs: 60 * 60 * 1000, // 1時間
   },
+  // 情報統合（高コスト）: 1時間に5回まで
+  infoIntegration: {
+    limit: 5,
+    windowMs: 60 * 60 * 1000, // 1時間
+  },
 } as const;
