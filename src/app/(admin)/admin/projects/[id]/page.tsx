@@ -89,7 +89,7 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
     video.muted = true;
     video.playsInline = true;
     video.preload = 'auto'; // metadataからautoに変更してより多くのデータを読み込む
-    video.crossOrigin = 'anonymous';
+    // crossOriginはblob URLの場合は設定しない（エラーの原因になる）
 
     // loadeddataイベントを使用（loadedmetadataより確実）
     video.onloadeddata = () => {
