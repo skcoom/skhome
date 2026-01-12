@@ -39,35 +39,26 @@ page-name/
 - ダークモード対応: `dark:` プレフィックス使用
 
 ## タスク
-1. 指定されたパスに基づいて適切な場所にpage.tsxを作成
-2. プロジェクトの既存パターンに従ったコンポーネント構造を使用
-3. Server Componentとして作成（必要ならClient Componentに変更）
-4. Tailwind CSSでスタイリング
-5. 必要に応じてlayout.tsxも作成
+1. テンプレートファイルを参照する
+2. 指定されたパスに基づいて適切な場所にpage.tsxを作成
+3. プロジェクトの既存パターンに従ったコンポーネント構造を使用
+4. Server Componentとして作成（必要ならClient Componentに変更）
+5. Tailwind CSSでスタイリング
+6. 必要に応じてlayout.tsxも作成
 
-## テンプレート例
+## テンプレート
 
-```tsx
-import { ReactNode } from 'react';
+以下のテンプレートを参照して作成する:
 
-interface PageProps {
-  params: Promise<{ id?: string }>;
-  searchParams: Promise<Record<string, string | string[]>>;
-}
-
-export default async function Page({ params, searchParams }: PageProps): Promise<ReactNode> {
-  return (
-    <main className="min-h-screen bg-white dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-8">
-        {/* コンテンツ */}
-      </div>
-    </main>
-  );
-}
-```
+| 種別 | テンプレート |
+|------|-------------|
+| ページ | `_config/templates/PAGE_TEMPLATE.tsx` |
+| コンポーネント | `_config/templates/COMPONENT_TEMPLATE.tsx` |
+| APIルート | `_config/templates/API_ROUTE_TEMPLATE.ts` |
 
 ## 参考資料
 - @CLAUDE.md - プロジェクト全体の規約
 - @src/app - 既存ページのパターン
+- @_config/templates - テンプレートファイル
 
 $ARGUMENTS にページパスを指定してください。
