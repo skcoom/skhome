@@ -962,6 +962,17 @@ export default function ProjectDetailPage() {
         {/* Media grid */}
         {selectedPhase !== 'ba_pairs' && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {/* Upload placeholder - 最初に配置 */}
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-colors"
+          >
+            <div className="text-center">
+              <Plus className="mx-auto h-8 w-8 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-500">追加</p>
+            </div>
+          </button>
+
           {media
             .filter((m) => m.phase === selectedPhase)
             .map((item) => (
@@ -1108,17 +1119,6 @@ export default function ProjectDetailPage() {
                 )}
               </div>
             ))}
-
-          {/* Upload placeholder */}
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-          >
-            <div className="text-center">
-              <Plus className="mx-auto h-8 w-8 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">追加</p>
-            </div>
-          </button>
         </div>
         )}
 
