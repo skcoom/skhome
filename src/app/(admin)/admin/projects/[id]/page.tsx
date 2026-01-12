@@ -75,7 +75,8 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
     // クリーンアップ
     const cleanup = () => {
       URL.revokeObjectURL(objectUrl);
-      video.remove();
+      video.src = '';
+      video.load();
     };
 
     // タイムアウト設定（15秒）
@@ -85,19 +86,10 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
       resolve(null);
     }, 15000);
 
-    // video要素の設定
+    // video要素の設定（DOMには追加しない - Chromeのセキュリティチェック回避）
     video.muted = true;
     video.playsInline = true;
-    video.autoplay = false;
     video.preload = 'metadata';
-    video.style.position = 'fixed';
-    video.style.top = '-9999px';
-    video.style.left = '-9999px';
-    video.style.width = '1px';
-    video.style.height = '1px';
-
-    // DOMに追加（一部ブラウザで必要）
-    document.body.appendChild(video);
 
     video.onloadedmetadata = () => {
       console.log('[Thumbnail] Metadata loaded. Duration:', video.duration, 'Size:', video.videoWidth, 'x', video.videoHeight);
@@ -110,19 +102,10 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
         return;
       }
 
-      // 再生を開始してデコーダを初期化
-      video.play().then(() => {
-        video.pause();
-        // シーク位置を設定
-        const seekTime = Math.min(0.5, video.duration * 0.1);
-        console.log('[Thumbnail] Seeking to:', seekTime);
-        video.currentTime = seekTime > 0.01 ? seekTime : 0.01;
-      }).catch((err) => {
-        console.warn('[Thumbnail] Play failed, trying seek directly:', err);
-        // play()が失敗してもシークを試行
-        const seekTime = Math.min(0.5, video.duration * 0.1);
-        video.currentTime = seekTime > 0.01 ? seekTime : 0.01;
-      });
+      // シーク位置を設定（0.1秒または動画長の10%の小さい方）
+      const seekTime = Math.max(0.1, Math.min(0.5, video.duration * 0.1));
+      console.log('[Thumbnail] Seeking to:', seekTime);
+      video.currentTime = seekTime;
     };
 
     video.onseeked = () => {
@@ -130,7 +113,7 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
       clearTimeout(timeout);
 
       // 少し待ってからキャプチャ（フレームのレンダリング待ち）
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         try {
           const maxWidth = 640;
           const scale = Math.min(1, maxWidth / video.videoWidth);
@@ -161,7 +144,7 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
           cleanup();
           resolve(null);
         }
-      }, 100);
+      });
     };
 
     video.onerror = () => {
