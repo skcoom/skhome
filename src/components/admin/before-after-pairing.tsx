@@ -6,6 +6,50 @@ import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import type { ProjectMedia, BeforeAfterPair } from '@/types/database';
 
+// デバウンス付きラベル入力コンポーネント
+function LabelInput({
+  pairId,
+  initialValue,
+  onSave
+}: {
+  pairId: string;
+  initialValue: string | null;
+  onSave: (pairId: string, label: string) => Promise<void>;
+}): React.ReactElement {
+  const [value, setValue] = useState(initialValue || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedValue, setLastSavedValue] = useState(initialValue || '');
+
+  useEffect(() => {
+    if (value === lastSavedValue) return;
+
+    const timer = setTimeout(async () => {
+      setIsSaving(true);
+      await onSave(pairId, value);
+      setLastSavedValue(value);
+      setIsSaving(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [value, pairId, onSave, lastSavedValue]);
+
+  return (
+    <div className="relative">
+      <Input
+        placeholder="ラベル（例：キッチン）"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="h-8 w-40 text-sm"
+      />
+      {isSaving && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface BeforeAfterPairingProps {
   projectId: string;
   media: ProjectMedia[];
@@ -100,7 +144,7 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
     }
   };
 
-  const updateLabel = async (pairId: string, label: string) => {
+  const updateLabel = useCallback(async (pairId: string, label: string) => {
     try {
       const response = await fetch(`/api/projects/${projectId}/before-after-pairs`, {
         method: 'PATCH',
@@ -116,7 +160,7 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
     } catch (err) {
       console.error('Update label error:', err);
     }
-  };
+  }, [projectId]);
 
   if (isLoading) {
     return (
@@ -148,11 +192,10 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
                     <span className="text-sm font-medium text-gray-500">
                       ペア {index + 1}
                     </span>
-                    <Input
-                      placeholder="ラベル（例：キッチン）"
-                      value={pair.label || ''}
-                      onChange={(e) => updateLabel(pair.id, e.target.value)}
-                      className="h-8 w-40 text-sm"
+                    <LabelInput
+                      pairId={pair.id}
+                      initialValue={pair.label}
+                      onSave={updateLabel}
                     />
                   </div>
                   <button
