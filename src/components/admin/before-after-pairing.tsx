@@ -19,8 +19,8 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
   const [selectedBefore, setSelectedBefore] = useState<string | null>(null);
   const [selectedAfter, setSelectedAfter] = useState<string | null>(null);
 
-  const beforeImages = media.filter(m => m.phase === 'before' && m.type === 'image' && !m.is_featured);
-  const afterImages = media.filter(m => m.phase === 'after' && m.type === 'image' && !m.is_featured);
+  const beforeImages = media.filter(m => m.phase === 'before' && m.type === 'image');
+  const afterImages = media.filter(m => m.phase === 'after' && m.type === 'image');
 
   const pairedBeforeIds = new Set(pairs.map(p => p.before_media_id));
   const pairedAfterIds = new Set(pairs.map(p => p.after_media_id));

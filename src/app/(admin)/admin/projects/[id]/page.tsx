@@ -59,57 +59,79 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
   console.log('[Thumbnail] Starting generation for:', file.name, 'size:', file.size, 'type:', file.type);
 
   return new Promise((resolve) => {
-    // FileReaderでデータURLとして読み込み（blob URLより互換性が高い）
-    const reader = new FileReader();
+    const video = document.createElement('video');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
 
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      console.log('[Thumbnail] FileReader loaded, data URL length:', dataUrl.length);
+    if (!ctx) {
+      console.error('[Thumbnail] Canvas context not available');
+      resolve(null);
+      return;
+    }
 
-      const video = document.createElement('video');
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+    const objectUrl = URL.createObjectURL(file);
+    console.log('[Thumbnail] Created object URL');
 
-      if (!ctx) {
-        console.error('[Thumbnail] Canvas context not available');
+    // クリーンアップ
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      video.remove();
+    };
+
+    // タイムアウト設定（15秒）
+    const timeout = setTimeout(() => {
+      console.error('[Thumbnail] Generation timed out');
+      cleanup();
+      resolve(null);
+    }, 15000);
+
+    // video要素の設定
+    video.muted = true;
+    video.playsInline = true;
+    video.autoplay = false;
+    video.preload = 'metadata';
+    video.style.position = 'fixed';
+    video.style.top = '-9999px';
+    video.style.left = '-9999px';
+    video.style.width = '1px';
+    video.style.height = '1px';
+
+    // DOMに追加（一部ブラウザで必要）
+    document.body.appendChild(video);
+
+    video.onloadedmetadata = () => {
+      console.log('[Thumbnail] Metadata loaded. Duration:', video.duration, 'Size:', video.videoWidth, 'x', video.videoHeight);
+
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.error('[Thumbnail] Video dimensions are 0');
+        clearTimeout(timeout);
+        cleanup();
         resolve(null);
         return;
       }
 
-      // タイムアウト設定（20秒）
-      const timeout = setTimeout(() => {
-        console.error('[Thumbnail] Generation timed out after 20 seconds');
-        video.src = '';
-        resolve(null);
-      }, 20000);
-
-      video.muted = true;
-      video.playsInline = true;
-      video.preload = 'auto';
-
-      // canplaythrough: 十分なデータがバッファされた時点で発火
-      video.oncanplaythrough = () => {
-        console.log('[Thumbnail] Video can play through. Duration:', video.duration, 'Size:', video.videoWidth, 'x', video.videoHeight);
-
-        if (video.videoWidth === 0 || video.videoHeight === 0) {
-          console.error('[Thumbnail] Video dimensions are 0');
-          clearTimeout(timeout);
-          resolve(null);
-          return;
-        }
-
-        // 動画の0.5秒目か、動画の長さの10%のどちらか小さい方を使用
+      // 再生を開始してデコーダを初期化
+      video.play().then(() => {
+        video.pause();
+        // シーク位置を設定
         const seekTime = Math.min(0.5, video.duration * 0.1);
         console.log('[Thumbnail] Seeking to:', seekTime);
-        video.currentTime = seekTime > 0 ? seekTime : 0.001;
-      };
+        video.currentTime = seekTime > 0.01 ? seekTime : 0.01;
+      }).catch((err) => {
+        console.warn('[Thumbnail] Play failed, trying seek directly:', err);
+        // play()が失敗してもシークを試行
+        const seekTime = Math.min(0.5, video.duration * 0.1);
+        video.currentTime = seekTime > 0.01 ? seekTime : 0.01;
+      });
+    };
 
-      video.onseeked = () => {
-        console.log('[Thumbnail] Seeked to:', video.currentTime);
-        clearTimeout(timeout);
+    video.onseeked = () => {
+      console.log('[Thumbnail] Seeked to:', video.currentTime);
+      clearTimeout(timeout);
 
+      // 少し待ってからキャプチャ（フレームのレンダリング待ち）
+      setTimeout(() => {
         try {
-          // キャンバスサイズを設定（最大640px幅、アスペクト比維持）
           const maxWidth = 640;
           const scale = Math.min(1, maxWidth / video.videoWidth);
           canvas.width = Math.floor(video.videoWidth * scale);
@@ -117,50 +139,40 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
 
           console.log('[Thumbnail] Canvas size:', canvas.width, 'x', canvas.height);
 
-          // 動画フレームをキャンバスに描画
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           console.log('[Thumbnail] Drew frame to canvas');
 
-          // JPEGとしてBlobを生成（品質80%）
           canvas.toBlob(
             (blob) => {
-              video.src = '';
-              if (blob) {
+              cleanup();
+              if (blob && blob.size > 1000) {
                 console.log('[Thumbnail] Generated blob, size:', blob.size);
+                resolve(blob);
               } else {
-                console.error('[Thumbnail] toBlob returned null');
+                console.error('[Thumbnail] Blob too small or null:', blob?.size);
+                resolve(null);
               }
-              resolve(blob);
             },
             'image/jpeg',
             0.8
           );
         } catch (err) {
           console.error('[Thumbnail] Error drawing to canvas:', err);
+          cleanup();
           resolve(null);
         }
-      };
-
-      video.onerror = (e) => {
-        clearTimeout(timeout);
-        const errorCode = video.error?.code;
-        const errorMessage = video.error?.message;
-        console.error('[Thumbnail] Video load error:', e, 'code:', errorCode, 'message:', errorMessage);
-        resolve(null);
-      };
-
-      // データURLをソースに設定
-      video.src = dataUrl;
-      video.load();
+      }, 100);
     };
 
-    reader.onerror = (e) => {
-      console.error('[Thumbnail] FileReader error:', e);
+    video.onerror = () => {
+      clearTimeout(timeout);
+      const err = video.error;
+      console.error('[Thumbnail] Video error - code:', err?.code, 'message:', err?.message);
+      cleanup();
       resolve(null);
     };
 
-    // ファイルをデータURLとして読み込み
-    reader.readAsDataURL(file);
+    video.src = objectUrl;
   });
 }
 
