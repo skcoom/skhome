@@ -105,13 +105,51 @@ export function PhotoClassifier({ projectId, files, onConfirm, onCancel }: Photo
     );
   };
 
-  // 確定
+  // 確定（各施工段階で必ず1枚以上をHP掲載にする）
   const handleConfirm = () => {
+    // 施工段階ごとにグループ化
+    const phaseGroups: Record<MediaPhase, ClassifiedPhoto[]> = {
+      before: [],
+      during: [],
+      after: [],
+    };
+
+    classifiedPhotos.forEach((photo) => {
+      phaseGroups[photo.classification.suggestedPhase].push(photo);
+    });
+
+    // 各施工段階で掲載対象を決定
+    const featuredTempIds = new Set<string>();
+
+    (['before', 'during', 'after'] as MediaPhase[]).forEach((phase) => {
+      const photos = phaseGroups[phase];
+      if (photos.length === 0) return;
+
+      // HP適性スコアが7以上のものを掲載
+      const highScorePhotos = photos.filter(
+        (p) => p.classification.hpSuitability >= 7
+      );
+
+      if (highScorePhotos.length > 0) {
+        // スコア7以上があれば、それらを掲載
+        highScorePhotos.forEach((p) => featuredTempIds.add(p.tempId));
+      } else {
+        // なければ、最もスコアが高い1枚を掲載
+        const bestPhoto = photos.reduce((best, current) =>
+          current.classification.hpSuitability > best.classification.hpSuitability
+            ? current
+            : best
+        );
+        featuredTempIds.add(bestPhoto.tempId);
+      }
+    });
+
+    // 結果を生成
     const results = classifiedPhotos.map((photo) => ({
       tempId: photo.tempId,
       phase: photo.classification.suggestedPhase,
       // is_featured が true = 非掲載、false = 掲載（DBの仕様に合わせる）
-      is_featured: photo.classification.hpSuitability < 7,
+      is_featured: !featuredTempIds.has(photo.tempId),
     }));
 
     onConfirm(results);
