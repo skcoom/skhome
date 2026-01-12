@@ -141,7 +141,7 @@ export function BeforeAfterSlider({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M15 19l-7-7 7-7M9 5l7 7-7 7"
+              d="M11 17l-5-5 5-5m2 10l5-5-5-5"
             />
           </svg>
         </div>
