@@ -28,8 +28,8 @@ import {
   Play,
 } from 'lucide-react';
 import type { Project, ProjectMedia, MediaType, MediaPhase } from '@/types/database';
-import { PickupSuggestions } from '@/components/admin/PickupSuggestions';
-import { DocumentManager } from '@/components/admin/DocumentManager';
+import { PickupSuggestions } from '@/components/admin/pickup-suggestions';
+import { DocumentManager } from '@/components/admin/document-manager';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },

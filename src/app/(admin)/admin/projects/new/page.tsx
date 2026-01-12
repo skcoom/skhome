@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { DocumentAnalyzer } from '@/components/admin/DocumentAnalyzer';
+import { DocumentAnalyzer } from '@/components/admin/document-analyzer';
 import type { ExtractedProjectData } from '@/types/document-analysis';
 import { PROJECT_TAGS } from '@/lib/constants';
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Phone, Mail, Clock, MapPin, CheckCircle, ArrowRight } from 'lucide-react';
-import { sendGAEvent } from '@/components/GoogleAnalytics';
+import { sendGAEvent } from '@/components/google-analytics';
 
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { Plus, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ProjectList } from '@/components/admin/ProjectList';
-import { ProjectFilters } from '@/components/admin/ProjectFilters';
+import { ProjectList } from '@/components/admin/project-list';
+import { ProjectFilters } from '@/components/admin/project-filters';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, ProjectWithDocumentStatus, DocumentType } from '@/types/database';
 

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { HeroSettings } from '@/components/admin/HeroSettings';
+import { HeroSettings } from '@/components/admin/hero-settings';
 
 export default async function SettingsPage() {
   const supabase = await createClient();

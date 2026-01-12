@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { FolderKanban, MapPin, Calendar } from 'lucide-react';
-import { StatusChanger } from './StatusChanger';
+import { StatusChanger } from './status-changer';
 import { DOCUMENT_TYPE_LABELS } from '@/lib/constants';
 import type { ProjectWithDocumentStatus, ProjectStatus } from '@/types/database';
 

@@ -1,6 +1,6 @@
-import { Header } from '@/components/public/Header';
-import { Footer } from '@/components/public/Footer';
-import { LineFloatingButton } from '@/components/ui/LineFloatingButton';
+import { Header } from '@/components/public/header';
+import { Footer } from '@/components/public/footer';
+import { LineFloatingButton } from '@/components/ui/line-floating-button';
 
 export const dynamic = 'force-dynamic';
 

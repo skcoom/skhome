@@ -6,7 +6,7 @@ import { ArrowLeft, Save, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FeaturedImageUploader } from '@/components/admin/FeaturedImageUploader';
+import { FeaturedImageUploader } from '@/components/admin/featured-image-uploader';
 
 interface Project {
   id: string;

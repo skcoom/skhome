@@ -60,9 +60,11 @@ npm run lint     # ESLintでコードチェック
 - ダークモード対応: `dark:`プレフィックス使用
 
 ### ファイル命名
-- コンポーネント: PascalCase (`Button.tsx`)
+- コンポーネント: kebab-case (`button.tsx`, `project-list.tsx`)
+- コンポーネント名（ファイル内）: PascalCase (`Button`, `ProjectList`)
 - ユーティリティ: camelCase (`formatDate.ts`)
 - ページ: Next.js規約に従う (`page.tsx`, `layout.tsx`)
+- フォルダ: kebab-case
 
 ## Important Notes
 
