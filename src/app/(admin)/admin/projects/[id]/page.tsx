@@ -33,6 +33,7 @@ import { PickupSuggestions } from '@/components/admin/pickup-suggestions';
 import { DocumentManager } from '@/components/admin/document-manager';
 import { PhotoClassifier } from '@/components/admin/photo-classifier';
 import { InfoIntegrator } from '@/components/admin/info-integrator';
+import { BeforeAfterPairing } from '@/components/admin/before-after-pairing';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
@@ -60,7 +61,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [media, setMedia] = useState<ProjectMedia[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedPhase, setSelectedPhase] = useState<'before' | 'during' | 'after'>('before');
+  const [selectedPhase, setSelectedPhase] = useState<'before' | 'during' | 'after' | 'ba_pairs'>('before');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   // アップロード進捗管理
@@ -938,10 +939,26 @@ export default function ProjectDetailPage() {
                 </button>
               );
             })}
+            <button
+              onClick={() => setSelectedPhase('ba_pairs')}
+              className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                selectedPhase === 'ba_pairs'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              ビフォーアフター設定
+            </button>
           </nav>
         </div>
 
+        {/* Before-After Pairing UI */}
+        {selectedPhase === 'ba_pairs' && (
+          <BeforeAfterPairing projectId={projectId} media={media} />
+        )}
+
         {/* Media grid */}
+        {selectedPhase !== 'ba_pairs' && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {media
             .filter((m) => m.phase === selectedPhase)
@@ -1101,13 +1118,14 @@ export default function ProjectDetailPage() {
             </div>
           </button>
         </div>
+        )}
 
         {/* Empty state */}
-        {media.filter((m) => m.phase === selectedPhase).length === 0 && (
+        {selectedPhase !== 'ba_pairs' && media.filter((m) => m.phase === selectedPhase).length === 0 && (
           <div className="text-center py-8">
             <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
             <p className="mt-2 text-sm text-gray-500">
-              {phaseLabels[selectedPhase]}の写真・動画がありません
+              {phaseLabels[selectedPhase as 'before' | 'during' | 'after']}の写真・動画がありません
             </p>
           </div>
         )}

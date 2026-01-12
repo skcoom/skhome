@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react';
-import type { ProjectMedia } from '@/types/database';
+import type { ProjectMedia, BeforeAfterPair } from '@/types/database';
+import { BeforeAfterSlider } from '@/components/ui/before-after-slider';
 
 interface GalleryProps {
   mediaByPhase: {
@@ -10,6 +11,7 @@ interface GalleryProps {
     during: ProjectMedia[];
     after: ProjectMedia[];
   };
+  beforeAfterPairs?: BeforeAfterPair[];
 }
 
 const phaseLabels = {
@@ -18,7 +20,7 @@ const phaseLabels = {
   after: '施工後',
 };
 
-export function WorkDetailGallery({ mediaByPhase }: GalleryProps) {
+export function WorkDetailGallery({ mediaByPhase, beforeAfterPairs = [] }: GalleryProps) {
   const [activePhase, setActivePhase] = useState<'before' | 'during' | 'after'>(() => {
     if (mediaByPhase.after.length > 0) return 'after';
     if (mediaByPhase.during.length > 0) return 'during';
@@ -158,36 +160,60 @@ export function WorkDetailGallery({ mediaByPhase }: GalleryProps) {
         </div>
       )}
 
-      {/* Before/After comparison if both exist (画像のみ) */}
-      {mediaByPhase.before.filter(m => m.type === 'image').length > 0 &&
-       mediaByPhase.after.filter(m => m.type === 'image').length > 0 && (
+      {/* Before/After comparison - ペアリング設定がある場合はスライダー、ない場合は並列表示 */}
+      {beforeAfterPairs.length > 0 ? (
         <div className="mt-16">
           <h3 className="text-xl font-medium text-[#333333] text-center mb-8">
             ビフォー・アフター
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <p className="text-sm text-[#999999] mb-3 text-center">施工前</p>
-              <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                <img
-                  src={mediaByPhase.before.find(m => m.type === 'image')!.file_url}
-                  alt="施工前"
-                  className="w-full h-full object-cover"
+          <div className="space-y-8">
+            {beforeAfterPairs.map((pair) => (
+              <div key={pair.id} className="max-w-3xl mx-auto">
+                {pair.label && (
+                  <p className="text-sm text-[#666666] mb-3 text-center font-medium">
+                    {pair.label}
+                  </p>
+                )}
+                <BeforeAfterSlider
+                  beforeImage={pair.before_media?.file_url || ''}
+                  afterImage={pair.after_media?.file_url || ''}
+                  className="rounded-lg shadow-lg"
                 />
               </div>
-            </div>
-            <div>
-              <p className="text-sm text-[#999999] mb-3 text-center">施工後</p>
-              <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
-                <img
-                  src={mediaByPhase.after.find(m => m.type === 'image')!.file_url}
-                  alt="施工後"
-                  className="w-full h-full object-cover"
-                />
+            ))}
+          </div>
+        </div>
+      ) : (
+        mediaByPhase.before.filter(m => m.type === 'image').length > 0 &&
+        mediaByPhase.after.filter(m => m.type === 'image').length > 0 && (
+          <div className="mt-16">
+            <h3 className="text-xl font-medium text-[#333333] text-center mb-8">
+              ビフォー・アフター
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <p className="text-sm text-[#999999] mb-3 text-center">施工前</p>
+                <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
+                  <img
+                    src={mediaByPhase.before.find(m => m.type === 'image')!.file_url}
+                    alt="施工前"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-[#999999] mb-3 text-center">施工後</p>
+                <div className="aspect-[4/3] bg-[#E5E4E0] rounded-lg overflow-hidden">
+                  <img
+                    src={mediaByPhase.after.find(m => m.type === 'image')!.file_url}
+                    alt="施工後"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Lightbox modal */}

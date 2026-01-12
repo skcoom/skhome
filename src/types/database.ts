@@ -120,6 +120,19 @@ export interface Contact {
   created_at: string;
 }
 
+/** ビフォーアフターのペア情報 */
+export interface BeforeAfterPair {
+  id: string;
+  project_id: string;
+  before_media_id: string;
+  after_media_id: string;
+  display_order: number;
+  label: string | null;
+  created_at: string;
+  before_media?: ProjectMedia;
+  after_media?: ProjectMedia;
+}
+
 /** AI写真分類の結果 */
 export interface PhotoClassificationResult {
   /** アップロード時の一時ID（ファイル名ベース） */
@@ -180,6 +193,11 @@ export interface Database {
         Row: Contact;
         Insert: Omit<Contact, 'id' | 'created_at'>;
         Update: Partial<Omit<Contact, 'id' | 'created_at'>>;
+      };
+      before_after_pairs: {
+        Row: BeforeAfterPair;
+        Insert: Omit<BeforeAfterPair, 'id' | 'created_at' | 'before_media' | 'after_media'>;
+        Update: Partial<Omit<BeforeAfterPair, 'id' | 'created_at' | 'before_media' | 'after_media'>>;
       };
     };
   };

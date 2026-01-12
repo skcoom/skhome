@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, MapPin, Calendar, Phone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import type { Project, ProjectMedia, ProjectTag } from '@/types/database';
+import type { Project, ProjectMedia, ProjectTag, BeforeAfterPair } from '@/types/database';
 import { WorkDetailGallery } from './gallery';
 import { DescriptionSection } from './description-section';
 import type { Metadata } from 'next';
@@ -115,6 +115,19 @@ export default async function WorkDetailPage({ params }: PageProps) {
     during: publishedMedia.filter((m) => m.phase === 'during'),
     after: publishedMedia.filter((m) => m.phase === 'after'),
   };
+
+  // ビフォーアフターペアを取得
+  const { data: beforeAfterPairs } = await supabase
+    .from('before_after_pairs')
+    .select(`
+      *,
+      before_media:project_media!before_media_id(*),
+      after_media:project_media!after_media_id(*)
+    `)
+    .eq('project_id', id)
+    .order('display_order', { ascending: true });
+
+  const typedPairs = (beforeAfterPairs || []) as BeforeAfterPair[];
 
   // メイン画像を取得
   // 1. main_media_idが設定されていればその画像を使用
@@ -285,7 +298,7 @@ export default async function WorkDetailPage({ params }: PageProps) {
               </h2>
             </div>
 
-            <WorkDetailGallery mediaByPhase={mediaByPhase} />
+            <WorkDetailGallery mediaByPhase={mediaByPhase} beforeAfterPairs={typedPairs} />
           </div>
         </section>
       )}
