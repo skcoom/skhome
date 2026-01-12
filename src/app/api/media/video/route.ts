@@ -4,10 +4,16 @@ import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    console.log('[VideoAPI] Received upload request');
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const projectId = formData.get('projectId') as string | null;
     const thumbnailBlob = formData.get('thumbnail') as Blob | null;
+
+    console.log('[VideoAPI] FormData contents:');
+    console.log('  - file:', file ? `${file.name} (${file.size} bytes)` : 'null');
+    console.log('  - projectId:', projectId);
+    console.log('  - thumbnail:', thumbnailBlob ? `Blob (${thumbnailBlob.size} bytes)` : 'null');
 
     if (!file) {
       return NextResponse.json(
@@ -57,11 +63,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // サムネイルをアップロード（クライアントから送信された場合）
     let thumbnailUrl: string | null = null;
+    console.log('[VideoAPI] Checking thumbnail:', thumbnailBlob ? `size=${thumbnailBlob.size}` : 'null');
+
     if (thumbnailBlob && thumbnailBlob.size > 0) {
       try {
         const thumbnailFileName = `${projectId}/${timestamp}_${randomStr}_thumb.jpg`;
+        console.log('[VideoAPI] Uploading thumbnail as:', thumbnailFileName);
+
         const thumbArrayBuffer = await thumbnailBlob.arrayBuffer();
         const thumbBuffer = Buffer.from(thumbArrayBuffer);
+        console.log('[VideoAPI] Thumbnail buffer size:', thumbBuffer.length);
 
         const { error: thumbUploadError } = await supabase.storage
           .from('project-media')
@@ -69,22 +80,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             contentType: 'image/jpeg',
           });
 
-        if (!thumbUploadError) {
+        if (thumbUploadError) {
+          console.error('[VideoAPI] Thumbnail upload error:', thumbUploadError);
+        } else {
           const { data: thumbUrlData } = supabase.storage
             .from('project-media')
             .getPublicUrl(thumbnailFileName);
           thumbnailUrl = thumbUrlData.publicUrl;
+          console.log('[VideoAPI] Thumbnail uploaded successfully:', thumbnailUrl);
         }
-      } catch {
-        console.warn('サムネイルのアップロードをスキップ');
+      } catch (err) {
+        console.error('[VideoAPI] Thumbnail upload exception:', err);
       }
+    } else {
+      console.log('[VideoAPI] No thumbnail to upload');
     }
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       file_url: videoUrlData.publicUrl,
       thumbnail_url: thumbnailUrl,
-    });
+    };
+    console.log('[VideoAPI] Returning response:', responseData);
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Video processing error:', error);
     return NextResponse.json(

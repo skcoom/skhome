@@ -56,66 +56,103 @@ const phaseLabels = {
 
 // クライアントサイドで動画からサムネイルを生成
 async function generateVideoThumbnail(file: File): Promise<Blob | null> {
+  console.log('[Thumbnail] Starting generation for:', file.name, 'size:', file.size);
+
   return new Promise((resolve) => {
     const video = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      console.warn('Canvas context not available');
+      console.error('[Thumbnail] Canvas context not available');
       resolve(null);
       return;
     }
 
-    // タイムアウト設定（10秒）
+    const objectUrl = URL.createObjectURL(file);
+    console.log('[Thumbnail] Created object URL:', objectUrl);
+
+    // タイムアウト設定（15秒）
     const timeout = setTimeout(() => {
-      console.warn('Video thumbnail generation timed out');
+      console.error('[Thumbnail] Generation timed out after 15 seconds');
+      URL.revokeObjectURL(objectUrl);
       video.src = '';
       resolve(null);
-    }, 10000);
+    }, 15000);
+
+    // クリーンアップ関数
+    const cleanup = () => {
+      clearTimeout(timeout);
+      URL.revokeObjectURL(objectUrl);
+    };
 
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'metadata';
+    video.preload = 'auto'; // metadataからautoに変更してより多くのデータを読み込む
+    video.crossOrigin = 'anonymous';
 
-    video.onloadedmetadata = () => {
-      // 動画の0.5秒目か、動画の長さの半分のどちらか小さい方を使用
-      const seekTime = Math.min(0.5, video.duration / 2);
-      // 既に0の場合、seekedイベントが発火しないため、わずかに異なる値を設定
+    // loadeddataイベントを使用（loadedmetadataより確実）
+    video.onloadeddata = () => {
+      console.log('[Thumbnail] Video data loaded. Duration:', video.duration, 'Size:', video.videoWidth, 'x', video.videoHeight);
+
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.error('[Thumbnail] Video dimensions are 0');
+        cleanup();
+        resolve(null);
+        return;
+      }
+
+      // 動画の0.5秒目か、動画の長さの10%のどちらか小さい方を使用
+      const seekTime = Math.min(0.5, video.duration * 0.1);
+      console.log('[Thumbnail] Seeking to:', seekTime);
       video.currentTime = seekTime > 0 ? seekTime : 0.001;
     };
 
     video.onseeked = () => {
-      clearTimeout(timeout);
+      console.log('[Thumbnail] Seeked to:', video.currentTime);
 
-      // キャンバスサイズを設定（最大640px幅、アスペクト比維持）
-      const maxWidth = 640;
-      const scale = Math.min(1, maxWidth / video.videoWidth);
-      canvas.width = video.videoWidth * scale;
-      canvas.height = video.videoHeight * scale;
+      try {
+        // キャンバスサイズを設定（最大640px幅、アスペクト比維持）
+        const maxWidth = 640;
+        const scale = Math.min(1, maxWidth / video.videoWidth);
+        canvas.width = Math.floor(video.videoWidth * scale);
+        canvas.height = Math.floor(video.videoHeight * scale);
 
-      // 動画フレームをキャンバスに描画
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        console.log('[Thumbnail] Canvas size:', canvas.width, 'x', canvas.height);
 
-      // JPEGとしてBlobを生成（品質80%）
-      canvas.toBlob(
-        (blob) => {
-          video.src = '';
-          resolve(blob);
-        },
-        'image/jpeg',
-        0.8
-      );
+        // 動画フレームをキャンバスに描画
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        console.log('[Thumbnail] Drew frame to canvas');
+
+        // JPEGとしてBlobを生成（品質80%）
+        canvas.toBlob(
+          (blob) => {
+            cleanup();
+            if (blob) {
+              console.log('[Thumbnail] Generated blob, size:', blob.size);
+            } else {
+              console.error('[Thumbnail] toBlob returned null');
+            }
+            resolve(blob);
+          },
+          'image/jpeg',
+          0.8
+        );
+      } catch (err) {
+        console.error('[Thumbnail] Error drawing to canvas:', err);
+        cleanup();
+        resolve(null);
+      }
     };
 
-    video.onerror = () => {
-      clearTimeout(timeout);
-      console.warn('Video load error during thumbnail generation');
+    video.onerror = (e) => {
+      console.error('[Thumbnail] Video load error:', e);
+      cleanup();
       resolve(null);
     };
 
-    // FileからObject URLを作成して読み込み
-    video.src = URL.createObjectURL(file);
+    // 動画を読み込み
+    video.src = objectUrl;
     video.load();
   });
 }
@@ -229,7 +266,9 @@ export default function ProjectDetailPage() {
         thumbnailUrl = result.thumbnail_url;
       } else {
         // 動画: まずクライアントサイドでサムネイルを生成
+        console.log('[Upload] Starting video upload for:', file.name);
         const thumbnailBlob = await generateVideoThumbnail(file);
+        console.log('[Upload] Thumbnail generation result:', thumbnailBlob ? `Blob size: ${thumbnailBlob.size}` : 'null');
 
         // 動画とサムネイルをAPIにアップロード
         const formData = new FormData();
@@ -237,6 +276,9 @@ export default function ProjectDetailPage() {
         formData.append('projectId', projectId);
         if (thumbnailBlob) {
           formData.append('thumbnail', thumbnailBlob, 'thumbnail.jpg');
+          console.log('[Upload] Thumbnail appended to FormData');
+        } else {
+          console.warn('[Upload] No thumbnail to append');
         }
 
         const response = await fetch('/api/media/video', {
@@ -250,8 +292,10 @@ export default function ProjectDetailPage() {
         }
 
         const result = await response.json();
+        console.log('[Upload] API response:', result);
         fileUrl = result.file_url;
         thumbnailUrl = result.thumbnail_url;
+        console.log('[Upload] thumbnail_url from API:', thumbnailUrl);
       }
 
       // AI分類モードの場合はDB登録をスキップ
