@@ -54,6 +54,72 @@ const phaseLabels = {
   after: '施工後',
 };
 
+// クライアントサイドで動画からサムネイルを生成
+async function generateVideoThumbnail(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      console.warn('Canvas context not available');
+      resolve(null);
+      return;
+    }
+
+    // タイムアウト設定（10秒）
+    const timeout = setTimeout(() => {
+      console.warn('Video thumbnail generation timed out');
+      video.src = '';
+      resolve(null);
+    }, 10000);
+
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+
+    video.onloadedmetadata = () => {
+      // 動画の0.5秒目か、動画の長さの半分のどちらか小さい方を使用
+      const seekTime = Math.min(0.5, video.duration / 2);
+      // 既に0の場合、seekedイベントが発火しないため、わずかに異なる値を設定
+      video.currentTime = seekTime > 0 ? seekTime : 0.001;
+    };
+
+    video.onseeked = () => {
+      clearTimeout(timeout);
+
+      // キャンバスサイズを設定（最大640px幅、アスペクト比維持）
+      const maxWidth = 640;
+      const scale = Math.min(1, maxWidth / video.videoWidth);
+      canvas.width = video.videoWidth * scale;
+      canvas.height = video.videoHeight * scale;
+
+      // 動画フレームをキャンバスに描画
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // JPEGとしてBlobを生成（品質80%）
+      canvas.toBlob(
+        (blob) => {
+          video.src = '';
+          resolve(blob);
+        },
+        'image/jpeg',
+        0.8
+      );
+    };
+
+    video.onerror = () => {
+      clearTimeout(timeout);
+      console.warn('Video load error during thumbnail generation');
+      resolve(null);
+    };
+
+    // FileからObject URLを作成して読み込み
+    video.src = URL.createObjectURL(file);
+    video.load();
+  });
+}
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
@@ -131,47 +197,6 @@ export default function ProjectDetailPage() {
     }
   }, [projectId, supabase]);
 
-  // 動画からサムネイル画像を生成する関数
-  const generateVideoThumbnail = (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.muted = true;
-      video.playsInline = true;
-      video.crossOrigin = 'anonymous';
-
-      video.onloadedmetadata = () => {
-        // 動画の最初のフレームを取得するため、少し先にシーク
-        video.currentTime = Math.min(0.5, video.duration / 2);
-      };
-
-      video.onseeked = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(video, 0, 0);
-
-        canvas.toBlob(
-          (blob) => {
-            URL.revokeObjectURL(video.src);
-            if (blob) resolve(blob);
-            else reject(new Error('サムネイル生成に失敗しました'));
-          },
-          'image/webp',
-          0.8
-        );
-      };
-
-      video.onerror = () => {
-        URL.revokeObjectURL(video.src);
-        reject(new Error('動画の読み込みに失敗しました'));
-      };
-
-      video.src = URL.createObjectURL(file);
-    });
-  };
-
   // 1ファイルをアップロードする関数（AI分類モード対応）
   const uploadSingleFile = async (
     file: File,
@@ -203,45 +228,30 @@ export default function ProjectDetailPage() {
         fileUrl = result.file_url;
         thumbnailUrl = result.thumbnail_url;
       } else {
-        const fileExt = file.name.split('.').pop();
-        const timestamp = Date.now();
-        const randomStr = Math.random().toString(36).slice(2);
-        const fileName = `${projectId}/${timestamp}_${randomStr}.${fileExt}`;
+        // 動画: まずクライアントサイドでサムネイルを生成
+        const thumbnailBlob = await generateVideoThumbnail(file);
 
-        const { error: storageError } = await supabase.storage
-          .from('project-media')
-          .upload(fileName, file);
-
-        if (storageError) {
-          throw new Error(storageError.message || '動画アップロードに失敗しました');
+        // 動画とサムネイルをAPIにアップロード
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', projectId);
+        if (thumbnailBlob) {
+          formData.append('thumbnail', thumbnailBlob, 'thumbnail.jpg');
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from('project-media')
-          .getPublicUrl(fileName);
+        const response = await fetch('/api/media/video', {
+          method: 'POST',
+          body: formData,
+        });
 
-        fileUrl = publicUrlData.publicUrl;
-
-        // サムネイル生成とアップロード
-        try {
-          const thumbnailBlob = await generateVideoThumbnail(file);
-          const thumbnailFileName = `${projectId}/${timestamp}_${randomStr}_thumb.webp`;
-
-          const { error: thumbStorageError } = await supabase.storage
-            .from('project-media')
-            .upload(thumbnailFileName, thumbnailBlob, {
-              contentType: 'image/webp',
-            });
-
-          if (!thumbStorageError) {
-            const { data: thumbUrlData } = supabase.storage
-              .from('project-media')
-              .getPublicUrl(thumbnailFileName);
-            thumbnailUrl = thumbUrlData.publicUrl;
-          }
-        } catch (thumbError) {
-          console.warn('サムネイル生成をスキップ:', thumbError);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '動画処理に失敗しました');
         }
+
+        const result = await response.json();
+        fileUrl = result.file_url;
+        thumbnailUrl = result.thumbnail_url;
       }
 
       // AI分類モードの場合はDB登録をスキップ
