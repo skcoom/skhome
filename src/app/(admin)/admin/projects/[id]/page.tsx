@@ -138,9 +138,11 @@ export default function ProjectDetailPage() {
       video.preload = 'metadata';
       video.muted = true;
       video.playsInline = true;
+      video.crossOrigin = 'anonymous';
 
-      video.onloadeddata = () => {
-        video.currentTime = 0;
+      video.onloadedmetadata = () => {
+        // 動画の最初のフレームを取得するため、少し先にシーク
+        video.currentTime = Math.min(0.5, video.duration / 2);
       };
 
       video.onseeked = () => {
