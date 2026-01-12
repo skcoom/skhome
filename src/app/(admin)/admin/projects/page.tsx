@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ProjectList } from '@/components/admin/project-list';
 import { ProjectFilters } from '@/components/admin/project-filters';
 import { createClient } from '@/lib/supabase/server';
-import type { Project, ProjectWithDocumentStatus, DocumentType } from '@/types/database';
+import type { ProjectWithDocumentStatus, DocumentType } from '@/types/database';
 
 interface PageProps {
   searchParams: Promise<{ status?: string; tag?: string; docStatus?: string }>;

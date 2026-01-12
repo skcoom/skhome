@@ -25,8 +25,8 @@ interface PageProps {
 
 // ページコンポーネント（Server Component）
 export default async function PageName({
-  params,
-  searchParams,
+  params: _params,
+  searchParams: _searchParams,
 }: PageProps): Promise<ReactNode> {
   // 動的パラメータの取得（必要な場合）
   // const { id } = await params;

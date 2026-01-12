@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ImageIcon, Film, Check, X, Loader2 } from 'lucide-react';
+import { Film, X, Loader2 } from 'lucide-react';
 import type { ProjectMedia, Project } from '@/types/database';
 
 type MediaWithProject = ProjectMedia & {
@@ -64,7 +64,7 @@ export function HeroSettings({ allMedia, initialHeroMedia }: HeroSettingsProps) 
 
       setSaveMessage({ type: 'success', text: '保存しました' });
       setTimeout(() => setSaveMessage(null), 3000);
-    } catch (error) {
+    } catch {
       setSaveMessage({ type: 'error', text: '保存に失敗しました' });
     } finally {
       setIsSaving(false);

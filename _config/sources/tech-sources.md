@@ -11,24 +11,45 @@ SKhomeプロジェクトで使用している技術の公式情報源。
 
 | ソース | URL | last_checked |
 |--------|-----|--------------|
-| Next.js Blog | https://nextjs.org/blog | - |
-| React Blog | https://react.dev/blog | - |
-| Supabase Blog | https://supabase.com/blog | - |
+| Next.js Blog | https://nextjs.org/blog | 2026-01-12 |
+| React Blog | https://react.dev/blog | 2026-01-12 |
+| Supabase Blog | https://supabase.com/blog | 2026-01-12 |
+| @supabase/ssr Releases | https://github.com/supabase/ssr/releases | 2026-01-12 |
 
 ### 中優先度（月1回チェック）
 
 | ソース | URL | last_checked |
 |--------|-----|--------------|
-| Tailwind CSS Blog | https://tailwindcss.com/blog | - |
-| Anthropic News | https://www.anthropic.com/news | - |
-| TypeScript Releases | https://github.com/microsoft/TypeScript/releases | - |
+| Tailwind CSS Blog | https://tailwindcss.com/blog | 2026-01-12 |
+| Anthropic News | https://www.anthropic.com/news | 2026-01-12 |
+| TypeScript Releases | https://github.com/microsoft/TypeScript/releases | 2026-01-12 |
 
 ### 低優先度（四半期チェック）
 
 | ソース | URL | last_checked |
 |--------|-----|--------------|
-| ESLint Blog | https://eslint.org/blog | - |
-| Vercel Blog | https://vercel.com/blog | - |
+| ESLint Blog | https://eslint.org/blog | 2026-01-12 |
+| Vercel Blog | https://vercel.com/blog | 2026-01-12 |
+
+---
+
+## ウォッチリスト（特定の変更を追跡）
+
+プロジェクトに影響する可能性がある、まだ対応されていない技術的変更。
+`/tech-updates` 実行時にこれらの項目も確認する。
+
+| 項目 | 関連技術 | 状況 | 追跡開始日 | 参考URL |
+|------|---------|------|-----------|---------|
+| Supabase SSR の Next.js proxy 対応 | Supabase, Next.js | 待機中 | 2026-01-12 | https://supabase.com/docs/guides/auth/server-side/nextjs |
+
+### ウォッチリスト詳細
+
+#### Supabase SSR の Next.js proxy 対応
+- **背景**: Next.js 16 で `middleware` が非推奨となり `proxy` への移行が推奨されている
+- **現状**: Supabase SSR (`@supabase/ssr`) はまだ middleware ベースの実装のみ対応
+- **影響ファイル**: `src/middleware.ts`, `src/lib/supabase/middleware.ts`
+- **対応方針**: Supabase が公式に proxy 対応を発表したら移行を検討
+- **確認ポイント**: Supabase Blog または GitHub (@supabase/ssr) で proxy 対応のアナウンス
 
 ---
 

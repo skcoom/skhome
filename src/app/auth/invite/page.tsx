@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 export default function InvitePage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(true);
+  const [_isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
     const handleInvite = async () => {
@@ -18,7 +18,7 @@ export default function InvitePage() {
 
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
-        const type = params.get('type');
+        const _type = params.get('type');
 
         if (!accessToken || !refreshToken) {
           // フラグメントにトークンがない場合、クエリパラメータを確認
