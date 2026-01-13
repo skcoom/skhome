@@ -11,27 +11,27 @@ SKhomeプロジェクトで使用している技術の公式情報源。
 
 | ソース | URL | last_checked |
 |--------|-----|--------------|
-| Next.js Blog | https://nextjs.org/blog | 2026-01-12 |
-| React Blog | https://react.dev/blog | 2026-01-12 |
-| Supabase Blog | https://supabase.com/blog | 2026-01-12 |
-| @supabase/ssr Releases | https://github.com/supabase/ssr/releases | 2026-01-12 |
+| Next.js Blog | https://nextjs.org/blog | 2026-01-13 |
+| React Blog | https://react.dev/blog | 2026-01-13 |
+| Supabase Blog | https://supabase.com/blog | 2026-01-13 |
+| @supabase/ssr Releases | https://github.com/supabase/ssr/releases | 2026-01-13 |
 
 ### 中優先度（月1回チェック）
 
 | ソース | URL | last_checked |
 |--------|-----|--------------|
-| Claude Code GitHub | https://github.com/anthropics/claude-code | - |
-| Anthropic Docs | https://docs.anthropic.com | - |
-| Tailwind CSS Blog | https://tailwindcss.com/blog | 2026-01-12 |
-| Anthropic News | https://www.anthropic.com/news | 2026-01-12 |
-| TypeScript Releases | https://github.com/microsoft/TypeScript/releases | 2026-01-12 |
+| Claude Code GitHub | https://github.com/anthropics/claude-code | 2026-01-13 |
+| Anthropic Docs | https://docs.anthropic.com | 2026-01-13 |
+| Tailwind CSS Blog | https://tailwindcss.com/blog | 2026-01-13 |
+| Anthropic News | https://www.anthropic.com/news | 2026-01-13 |
+| TypeScript Releases | https://github.com/microsoft/TypeScript/releases | 2026-01-13 |
 
 ### 低優先度（四半期チェック）
 
 | ソース | URL | last_checked |
 |--------|-----|--------------|
-| ESLint Blog | https://eslint.org/blog | 2026-01-12 |
-| Vercel Blog | https://vercel.com/blog | 2026-01-12 |
+| ESLint Blog | https://eslint.org/blog | 2026-01-13 |
+| Vercel Blog | https://vercel.com/blog | 2026-01-13 |
 
 ---
 
