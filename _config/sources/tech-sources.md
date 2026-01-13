@@ -20,6 +20,8 @@ SKhomeプロジェクトで使用している技術の公式情報源。
 
 | ソース | URL | last_checked |
 |--------|-----|--------------|
+| Claude Code GitHub | https://github.com/anthropics/claude-code | - |
+| Anthropic Docs | https://docs.anthropic.com | - |
 | Tailwind CSS Blog | https://tailwindcss.com/blog | 2026-01-12 |
 | Anthropic News | https://www.anthropic.com/news | 2026-01-12 |
 | TypeScript Releases | https://github.com/microsoft/TypeScript/releases | 2026-01-12 |
