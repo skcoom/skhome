@@ -93,9 +93,6 @@ function NewBlogPostContent() {
       return;
     }
 
-    const project = projects.find((p) => p.id === selectedProjectId);
-    if (!project) return;
-
     setIsGenerating(true);
     setError('');
 
@@ -106,11 +103,7 @@ function NewBlogPostContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: project.name,
-          category: project.category,
-          description: project.description || '',
-          clientName: project.client_name || '',
-          address: project.address || '',
+          projectId: selectedProjectId,
         }),
       });
 
