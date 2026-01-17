@@ -152,6 +152,169 @@ export interface BeforeAfterPair {
   after_media?: ProjectMedia;
 }
 
+// ========================================
+// 原価管理システム - 型定義
+// ========================================
+
+/** 進捗工程フェーズ */
+export type ProgressPhase =
+  | '着工準備'
+  | '解体'
+  | '下地工事'
+  | '設備工事'
+  | '仕上げ工事'
+  | '検査・引渡し'
+  | 'その他';
+
+/** 発注ステータス */
+export type OrderStatus = 'draft' | 'ordered' | 'delivered';
+
+/** 追加工事ステータス */
+export type AdditionalWorkStatus = 'proposed' | 'accepted' | 'declined';
+
+/** 発注先マスタ */
+export interface Supplier {
+  id: string;
+  name: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  is_active: boolean;
+  created_by?: string;
+  created_at: string;
+}
+
+/** 発注情報 */
+export interface Order {
+  id: string;
+  project_id: string;
+  supplier_id: string;
+  order_date: string;
+  delivery_date?: string;
+  status: OrderStatus;
+  total_amount: number;
+  tax_amount: number;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  supplier?: Supplier;
+  items?: OrderItem[];
+}
+
+/** 発注明細 */
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  item_name: string;
+  specification?: string;
+  quantity: number;
+  unit?: string;
+  unit_price: number;
+  amount: number;
+  sort_order: number;
+}
+
+/** 人工記録 */
+export interface LaborRecord {
+  id: string;
+  project_id: string;
+  work_date: string;
+  worker_count: number;
+  description?: string;
+  created_by?: string;
+  created_at: string;
+}
+
+/** 現場予算 */
+export interface ProjectBudget {
+  id: string;
+  project_id: string;
+  estimate_amount: number;
+  material_budget: number;
+  labor_budget?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 追加工事マスタ */
+export interface AdditionalWorkTemplate {
+  id: string;
+  name: string;
+  category: string;
+  default_price: number;
+  description?: string;
+  notes?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+/** 現場別追加工事 */
+export interface ProjectAdditionalWork {
+  id: string;
+  project_id: string;
+  template_id?: string;
+  name: string;
+  price: number;
+  status: AdditionalWorkStatus;
+  notes?: string;
+  created_at: string;
+  template?: AdditionalWorkTemplate;
+}
+
+/** システム設定 */
+export interface SystemSetting {
+  id: string;
+  key: string;
+  value: string;
+  description?: string;
+  updated_at: string;
+}
+
+/** コスト消化サマリー */
+export interface CostSummary {
+  estimate_amount: number;
+  allowable_cost: number;
+  material_budget: number;
+  labor_budget: number;
+  allowable_labor_count: number;
+  material_spent: number;
+  labor_spent: number;
+  remaining_material: number;
+  remaining_labor: number;
+  material_percentage: number;
+  labor_percentage: number;
+  projected_cost: number;
+  projected_profit: number;
+  projected_profit_rate: number;
+}
+
+/** 利益サマリー（一覧用） */
+export interface ProfitSummary {
+  project_id: string;
+  project_name: string;
+  status: ProjectStatus;
+  estimate_amount: number;
+  material_budget: number;
+  labor_budget: number;
+  material_spent: number;
+  labor_spent: number;
+  material_percentage: number;
+  labor_percentage: number;
+  projected_profit_rate: number;
+  remaining_labor_count: number;
+  has_warning: boolean;
+  warning_type?: 'over_budget' | 'near_limit';
+}
+
+/** 進捗記録（拡張版） */
+export interface ProjectProgressExtended extends ProjectProgress {
+  phase?: ProgressPhase;
+  progress_percentage?: number;
+}
+
 /** AI写真分類の結果 */
 export interface PhotoClassificationResult {
   /** アップロード時の一時ID（ファイル名ベース） */

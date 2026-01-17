@@ -11,6 +11,9 @@ import {
   LogOut,
   Home,
   Settings,
+  Truck,
+  Calculator,
+  Wrench,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -18,6 +21,9 @@ import { useRouter } from 'next/navigation';
 const navigation = [
   { name: 'ダッシュボード', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: '現場管理', href: '/admin/projects', icon: FolderKanban },
+  { name: '利益管理', href: '/admin/profit', icon: Calculator },
+  { name: '発注先管理', href: '/admin/suppliers', icon: Truck },
+  { name: '追加工事マスタ', href: '/admin/additional-works', icon: Wrench },
   { name: 'ブログ管理', href: '/admin/blog', icon: FileText },
   { name: 'ユーザー管理', href: '/admin/users', icon: Users },
   { name: 'お問い合わせ', href: '/admin/contacts', icon: MessageSquare },
