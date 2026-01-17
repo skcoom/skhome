@@ -31,7 +31,7 @@ export function useCanvasDrag({
   initialTransform = defaultTransform,
   onTransformChange,
   minScale = 0.5,
-  maxScale = 2,
+  maxScale = 4,
 }: UseCanvasDragOptions = {}): UseCanvasDragReturn {
   const [transform, setTransform] = useState<ImageTransform>(initialTransform);
   const [isDragging, setIsDragging] = useState(false);

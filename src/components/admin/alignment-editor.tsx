@@ -226,7 +226,7 @@ export function AlignmentEditor({
                 <input
                   type="range"
                   min="0.5"
-                  max="2"
+                  max="4"
                   step="0.05"
                   value={activeDrag.transform.scale}
                   onChange={(e) => activeDrag.setScale(Number(e.target.value))}
