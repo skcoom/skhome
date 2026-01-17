@@ -4,8 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Loader2, Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
-import type { ProjectMedia, BeforeAfterPair, AlignmentSettings } from '@/types/database';
+import type { ProjectMedia, BeforeAfterPair, AlignmentSettings, ImageTransform } from '@/types/database';
 import { AlignmentEditor } from './alignment-editor';
+
+// 構図調整スタイルを生成
+function getAlignmentStyle(transform?: ImageTransform): React.CSSProperties {
+  if (!transform) return {};
+  return {
+    transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
+    transformOrigin: 'center center',
+  };
+}
 
 // デバウンス付きラベル入力コンポーネント
 function LabelInput({
@@ -234,12 +243,16 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">施工前</p>
-                    <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
+                    <div
+                      className="rounded-lg overflow-hidden bg-gray-100"
+                      style={{ aspectRatio: pair.alignment_settings?.viewport.aspectRatio || '4/3' }}
+                    >
                       {pair.before_media ? (
                         <img
                           src={pair.before_media.thumbnail_url || pair.before_media.file_url}
                           alt="施工前"
                           className="w-full h-full object-cover"
+                          style={getAlignmentStyle(pair.alignment_settings?.before)}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -250,12 +263,16 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">施工後</p>
-                    <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
+                    <div
+                      className="rounded-lg overflow-hidden bg-gray-100"
+                      style={{ aspectRatio: pair.alignment_settings?.viewport.aspectRatio || '4/3' }}
+                    >
                       {pair.after_media ? (
                         <img
                           src={pair.after_media.thumbnail_url || pair.after_media.file_url}
                           alt="施工後"
                           className="w-full h-full object-cover"
+                          style={getAlignmentStyle(pair.alignment_settings?.after)}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
