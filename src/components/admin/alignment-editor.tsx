@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, RotateCcw, Save, Loader2, Eye, EyeOff, Wand2 } from 'lucide-react';
+import { X, RotateCcw, Save, Loader2, Eye, EyeOff, Wand2, Sparkles } from 'lucide-react';
 import { useCanvasDrag } from '@/hooks/use-canvas-drag';
+import { calculateAlignment } from '@/lib/image-alignment';
 import type { BeforeAfterPair, AlignmentSettings, ImageTransform } from '@/types/database';
 
 interface AlignmentEditorProps {
@@ -26,6 +27,9 @@ export function AlignmentEditor({
   onSave,
 }: AlignmentEditorProps): React.ReactElement {
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoAligning, setIsAutoAligning] = useState(false);
+  const [isAiAligning, setIsAiAligning] = useState(false);
+  const [alignmentMessage, setAlignmentMessage] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<'before' | 'after'>('after');
   const [showGuide, setShowGuide] = useState(false);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
@@ -65,12 +69,66 @@ export function AlignmentEditor({
   };
 
   const handleAutoAlign = useCallback(async () => {
-    // 簡易的な自動アライメント：両方の画像を中央に配置し、同じスケールに
-    beforeDrag.setOffset(0, 0);
-    beforeDrag.setScale(1);
-    afterDrag.setOffset(0, 0);
-    afterDrag.setScale(1);
-  }, [beforeDrag, afterDrag]);
+    if (!pair.before_media?.file_url || !pair.after_media?.file_url) return;
+
+    setIsAutoAligning(true);
+    setAlignmentMessage(null);
+
+    try {
+      const result = await calculateAlignment(
+        pair.before_media.file_url,
+        pair.after_media.file_url
+      );
+
+      beforeDrag.setOffset(result.before.offsetX, result.before.offsetY);
+      beforeDrag.setScale(result.before.scale);
+      afterDrag.setOffset(result.after.offsetX, result.after.offsetY);
+      afterDrag.setScale(result.after.scale);
+
+      setAlignmentMessage('エッジ検出による自動調整を適用しました');
+    } catch (error) {
+      console.error('Auto alignment failed:', error);
+      setAlignmentMessage('自動調整に失敗しました');
+    } finally {
+      setIsAutoAligning(false);
+    }
+  }, [pair.before_media?.file_url, pair.after_media?.file_url, beforeDrag, afterDrag]);
+
+  const handleAiAlign = useCallback(async () => {
+    if (!pair.before_media?.file_url || !pair.after_media?.file_url) return;
+
+    setIsAiAligning(true);
+    setAlignmentMessage(null);
+
+    try {
+      const response = await fetch('/api/alignment/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          beforeImageUrl: pair.before_media.file_url,
+          afterImageUrl: pair.after_media.file_url,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI analysis failed');
+      }
+
+      const result = await response.json();
+
+      beforeDrag.setOffset(result.before.offsetX, result.before.offsetY);
+      beforeDrag.setScale(result.before.scale);
+      afterDrag.setOffset(result.after.offsetX, result.after.offsetY);
+      afterDrag.setScale(result.after.scale);
+
+      setAlignmentMessage(result.explanation || 'AI調整を適用しました');
+    } catch (error) {
+      console.error('AI alignment failed:', error);
+      setAlignmentMessage('AI調整に失敗しました');
+    } finally {
+      setIsAiAligning(false);
+    }
+  }, [pair.before_media?.file_url, pair.after_media?.file_url, beforeDrag, afterDrag]);
 
   const getImageStyle = (transform: ImageTransform): React.CSSProperties => ({
     transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
@@ -272,13 +330,38 @@ export function AlignmentEditor({
                   variant="outline"
                   size="sm"
                   onClick={handleAutoAlign}
+                  disabled={isAutoAligning || isAiAligning}
                   className="gap-2"
                 >
-                  <Wand2 className="h-4 w-4" />
+                  {isAutoAligning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4" />
+                  )}
                   自動調整
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAiAlign}
+                  disabled={isAutoAligning || isAiAligning}
+                  className="gap-2"
+                >
+                  {isAiAligning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  AI調整
                 </Button>
               </div>
             </div>
+
+            {alignmentMessage && (
+              <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded-lg">
+                {alignmentMessage}
+              </div>
+            )}
           </div>
         </div>
 
