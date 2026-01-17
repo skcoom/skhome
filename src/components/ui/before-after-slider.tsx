@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
+import type { AlignmentSettings, ImageTransform } from '@/types/database';
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
@@ -10,7 +11,16 @@ interface BeforeAfterSliderProps {
   afterLabel?: string;
   aspectRatio?: string;
   className?: string;
+  alignmentSettings?: AlignmentSettings | null;
 }
+
+const getImageStyle = (transform?: ImageTransform): React.CSSProperties => {
+  if (!transform) return {};
+  return {
+    transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
+    transformOrigin: 'center center',
+  };
+};
 
 export function BeforeAfterSlider({
   beforeImage,
@@ -19,10 +29,15 @@ export function BeforeAfterSlider({
   afterLabel = '施工後',
   aspectRatio = '4/3',
   className = '',
+  alignmentSettings,
 }: BeforeAfterSliderProps): React.ReactElement {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const effectiveAspectRatio = alignmentSettings?.viewport.aspectRatio || aspectRatio;
+  const beforeTransform = alignmentSettings?.before;
+  const afterTransform = alignmentSettings?.after;
 
   const updateSliderPosition = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -90,7 +105,7 @@ export function BeforeAfterSlider({
     <div
       ref={containerRef}
       className={`relative overflow-hidden select-none ${className}`}
-      style={{ aspectRatio }}
+      style={{ aspectRatio: effectiveAspectRatio }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
       role="slider"
@@ -107,6 +122,7 @@ export function BeforeAfterSlider({
           alt={afterLabel}
           fill
           className="object-cover"
+          style={getImageStyle(afterTransform)}
           sizes="(max-width: 768px) 100vw, 50vw"
         />
       </div>
@@ -121,6 +137,7 @@ export function BeforeAfterSlider({
             alt={beforeLabel}
             fill
             className="object-cover"
+            style={getImageStyle(beforeTransform)}
             sizes="(max-width: 768px) 100vw, 50vw"
           />
         </div>

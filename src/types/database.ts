@@ -120,6 +120,24 @@ export interface Contact {
   created_at: string;
 }
 
+/** 画像の位置調整設定 */
+export interface ImageTransform {
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+}
+
+/** ビフォーアフター構図調整設定 */
+export interface AlignmentSettings {
+  before: ImageTransform;
+  after: ImageTransform;
+  viewport: {
+    aspectRatio: '4/3' | '16/9' | '1/1' | 'original';
+  };
+  autoAligned: boolean;
+  updatedAt: string;
+}
+
 /** ビフォーアフターのペア情報 */
 export interface BeforeAfterPair {
   id: string;
@@ -128,6 +146,7 @@ export interface BeforeAfterPair {
   after_media_id: string;
   display_order: number;
   label: string | null;
+  alignment_settings: AlignmentSettings | null;
   created_at: string;
   before_media?: ProjectMedia;
   after_media?: ProjectMedia;

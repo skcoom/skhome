@@ -177,6 +177,7 @@ export function WorkDetailGallery({ mediaByPhase, beforeAfterPairs = [] }: Galle
                 <BeforeAfterSlider
                   beforeImage={pair.before_media?.file_url || ''}
                   afterImage={pair.after_media?.file_url || ''}
+                  alignmentSettings={pair.alignment_settings}
                   className="rounded-lg shadow-lg"
                 />
               </div>

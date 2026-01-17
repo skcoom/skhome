@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
-import type { ProjectMedia, BeforeAfterPair } from '@/types/database';
+import { Plus, Trash2, Loader2, Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
+import type { ProjectMedia, BeforeAfterPair, AlignmentSettings } from '@/types/database';
+import { AlignmentEditor } from './alignment-editor';
 
 // デバウンス付きラベル入力コンポーネント
 function LabelInput({
@@ -62,6 +63,7 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
   const [error, setError] = useState<string | null>(null);
   const [selectedBefore, setSelectedBefore] = useState<string | null>(null);
   const [selectedAfter, setSelectedAfter] = useState<string | null>(null);
+  const [editingPair, setEditingPair] = useState<BeforeAfterPair | null>(null);
 
   const beforeImages = media.filter(m => m.phase === 'before' && m.type === 'image');
   const afterImages = media.filter(m => m.phase === 'after' && m.type === 'image');
@@ -162,6 +164,20 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
     }
   }, [projectId]);
 
+  const updateAlignmentSettings = useCallback(async (pairId: string, settings: AlignmentSettings) => {
+    const response = await fetch(`/api/projects/${projectId}/before-after-pairs`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pair_id: pairId, alignment_settings: settings }),
+    });
+
+    if (!response.ok) throw new Error('構図設定の保存に失敗しました');
+
+    setPairs(prev =>
+      prev.map(p => (p.id === pairId ? { ...p, alignment_settings: settings } : p))
+    );
+  }, [projectId]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -198,13 +214,22 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
                       onSave={updateLabel}
                     />
                   </div>
-                  <button
-                    onClick={() => deletePair(pair.id)}
-                    disabled={isSaving}
-                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => setEditingPair(pair)}
+                      className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded"
+                      title="構図調整"
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deletePair(pair.id)}
+                      disabled={isSaving}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -337,6 +362,16 @@ export function BeforeAfterPairing({ projectId, media }: BeforeAfterPairingProps
         <p className="text-sm text-gray-500 text-center">
           施工前と施工後の画像を選択してペアを作成すると、公開ページでスライダー比較が表示されます。
         </p>
+      )}
+
+      {editingPair && (
+        <AlignmentEditor
+          pair={editingPair}
+          onClose={() => setEditingPair(null)}
+          onSave={async (settings) => {
+            await updateAlignmentSettings(editingPair.id, settings);
+          }}
+        />
       )}
     </div>
   );

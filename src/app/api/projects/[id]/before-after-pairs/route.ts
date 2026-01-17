@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
+import type { AlignmentSettings } from '@/types/database';
 
 type Params = Promise<{ id: string }>;
 
@@ -101,15 +102,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
     const supabase = await createClient();
     const body = await request.json();
-    const { pair_id, label, display_order } = body;
+    const { pair_id, label, display_order, alignment_settings } = body;
 
     if (!pair_id) {
       return NextResponse.json({ error: 'pair_idは必須です' }, { status: 400 });
     }
 
-    const updateData: { label?: string | null; display_order?: number } = {};
+    const updateData: {
+      label?: string | null;
+      display_order?: number;
+      alignment_settings?: AlignmentSettings | null;
+    } = {};
     if (label !== undefined) updateData.label = label;
     if (display_order !== undefined) updateData.display_order = display_order;
+    if (alignment_settings !== undefined) updateData.alignment_settings = alignment_settings;
 
     const { data, error } = await supabase
       .from('before_after_pairs')
