@@ -9,7 +9,7 @@ export const organizationData = {
   description: 'お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。',
   url: siteUrl,
   logo: `${siteUrl}/logo.png`,
-  telephone: '048-711-1359',
+  telephone: '090-3357-4379',
   email: 'info@skcoom.co.jp',
   address: {
     '@type': 'PostalAddress',

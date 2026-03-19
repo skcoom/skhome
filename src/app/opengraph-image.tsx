@@ -100,7 +100,7 @@ export default async function Image() {
               }}
             >
               <span style={{ fontSize: 20, color: 'white' }}>
-                048-711-1359
+                090-3357-4379
               </span>
             </div>
           </div>

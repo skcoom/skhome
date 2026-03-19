@@ -73,7 +73,7 @@ const jsonLd = {
   url: siteUrl,
   logo: `${siteUrl}/logo.png`,
   image: `${siteUrl}/og-image.png`,
-  telephone: '048-711-1359',
+  telephone: '090-3357-4379',
   email: 'info@skcoom.co.jp',
   address: {
     '@type': 'PostalAddress',

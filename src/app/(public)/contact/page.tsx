@@ -135,7 +135,7 @@ export default function ContactPage() {
                 <Phone className="h-5 w-5 text-[#26A69A]" />
               </div>
               <h3 className="text-sm font-medium text-[#999999] mb-2">お電話</h3>
-              <p className="text-xl font-medium text-[#26A69A] mb-1">048-711-1359</p>
+              <p className="text-xl font-medium text-[#26A69A] mb-1">090-3357-4379</p>
               <p className="text-xs text-[#999999]">受付: 8:00〜19:00（日曜定休）</p>
             </div>
 
@@ -305,11 +305,11 @@ export default function ContactPage() {
                   お急ぎの場合は、お電話でのお問い合わせをおすすめします。
                 </p>
                 <a
-                  href="tel:048-711-1359"
+                  href="tel:090-3357-4379"
                   className="inline-flex items-center text-[#26A69A] font-medium text-sm"
                 >
                   <Phone className="mr-2 h-4 w-4" />
-                  048-711-1359
+                  090-3357-4379
                 </a>
               </div>
 

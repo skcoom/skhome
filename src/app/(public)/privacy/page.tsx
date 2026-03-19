@@ -207,7 +207,7 @@ export default function PrivacyPage() {
                   <p className="text-[#333333] font-medium mb-2">株式会社SKコーム</p>
                   <p className="text-[#666666] text-sm">
                     〒336-0926 埼玉県さいたま市緑区東浦和8-2-12<br />
-                    電話：048-711-1359<br />
+                    電話：090-3357-4379<br />
                     メール：info@skcoom.co.jp
                   </p>
                 </div>

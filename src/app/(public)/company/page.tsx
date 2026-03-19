@@ -153,7 +153,7 @@ export default function CompanyPage() {
                     ['資本金', '100万円'],
                     ['事業内容', '内装リフォーム'],
                     ['所在地', '〒336-0926 埼玉県さいたま市緑区東浦和8-2-12'],
-                    ['電話番号', '048-711-1359'],
+                    ['電話番号', '090-3357-4379'],
                     ['メール', 'info@skcoom.co.jp'],
                     ['営業時間', '8:00〜19:00（日曜定休）'],
                   ].map(([label, value], index) => (
@@ -203,7 +203,7 @@ export default function CompanyPage() {
                   </div>
                   <div>
                     <p className="font-medium text-[#333333] mb-1">電話番号</p>
-                    <p className="text-[#666666] text-sm">048-711-1359</p>
+                    <p className="text-[#666666] text-sm">090-3357-4379</p>
                   </div>
                 </div>
 
@@ -261,11 +261,11 @@ export default function CompanyPage() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a
-              href="tel:048-711-1359"
+              href="tel:090-3357-4379"
               className="inline-flex items-center justify-center border border-[#26A69A] text-[#26A69A] px-8 py-4 text-sm tracking-wide hover:bg-[#26A69A] hover:text-white transition-colors"
             >
               <Phone className="mr-3 h-4 w-4" />
-              048-711-1359
+              090-3357-4379
             </a>
             <Link
               href="/contact"
