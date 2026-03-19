@@ -36,11 +36,11 @@ export default function RentalRenovationPage() {
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
             <a
-              href="tel:048-873-5765"
+              href="tel:090-3357-4379"
               className="inline-flex items-center justify-center gap-2 border border-[#26A69A] text-[#26A69A] px-8 py-4 rounded-lg text-sm tracking-wide transition-colors hover:bg-[#26A69A] hover:text-white"
             >
               <Phone className="w-4 h-4" />
-              048-873-5765
+              090-3357-4379
             </a>
             <a
               href="https://lin.ee/JDHT8YK"
@@ -409,11 +409,11 @@ export default function RentalRenovationPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <a
-              href="tel:048-873-5765"
+              href="tel:090-3357-4379"
               className="inline-flex items-center justify-center gap-2 border border-[#26A69A] text-[#26A69A] px-8 py-4 rounded-lg text-sm tracking-wide transition-colors hover:bg-[#26A69A] hover:text-white"
             >
               <Phone className="w-4 h-4" />
-              048-873-5765
+              090-3357-4379
             </a>
             <a
               href="https://lin.ee/JDHT8YK"
