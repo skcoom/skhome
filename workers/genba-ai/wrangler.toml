@@ -1,0 +1,26 @@
+name = "skhome-genba-ai"
+main = "src/index.ts"
+compatibility_date = "2026-07-09"
+
+[vars]
+SUPABASE_URL = "https://YOUR_PROJECT.supabase.co"
+PUBLIC_BASE_URL = "http://localhost:8787"
+ANTHROPIC_MODEL = "claude-haiku-4-5"
+LINE_API_BASE_URL = "https://api.line.me"
+LINE_DATA_API_BASE_URL = "https://api-data.line.me"
+
+[triggers]
+crons = ["* * * * *", "0 23 * * SUN"]
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "skhome-genba-ai-photos"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1

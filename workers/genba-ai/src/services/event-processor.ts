@@ -1,0 +1,763 @@
+import { getDisplayName, getLineContent, getSenderId, getSourceId } from "../clients/line";
+import { SupabaseClient } from "../clients/supabase";
+import { buildMatchContext } from "../engine/context";
+import { classifySite } from "../engine/site-matcher";
+import { extractSiteName, normalizeSiteText } from "../engine/normalization";
+import type {
+  Env,
+  LineImageMessage,
+  LineMessageEvent,
+  LineTextMessage,
+  MatcherResult,
+  MediaPhase,
+  SiteRecord,
+  StoredLineEvent,
+  VisionImage,
+} from "../types";
+import { pushWithTemplate, replyWithTemplate, TemplateNotApprovedError } from "./templates";
+
+export interface ArchivedImage {
+  key: string;
+  contentType: string;
+}
+
+export interface PreparedEvent {
+  event: LineMessageEvent;
+  row: StoredLineEvent;
+  isNew: boolean;
+  replyToken: string | null;
+}
+
+function safeKeyPart(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 180);
+}
+
+function fallbackBurstId(sourceId: string, senderId: string | null, timestamp: number): string {
+  return `burst:${safeKeyPart(sourceId)}:${safeKeyPart(senderId ?? "unknown")}:${Math.floor(timestamp / 300_000)}`;
+}
+
+export function imageObjectKey(event: LineMessageEvent): string {
+  return `raw/${safeKeyPart(getSourceId(event.source))}/${safeKeyPart(event.message.id)}`;
+}
+
+async function archiveImage(event: LineMessageEvent, env: Env): Promise<ArchivedImage> {
+  const key = imageObjectKey(event);
+  const existing = await env.PHOTOS.head(key);
+  if (existing) {
+    return {
+      key,
+      contentType: existing.httpMetadata?.contentType ?? "application/octet-stream",
+    };
+  }
+  const content = await getLineContent(event.message.id, env);
+  await env.PHOTOS.put(key, content.bytes, {
+    httpMetadata: { contentType: content.contentType },
+    customMetadata: {
+      messageId: event.message.id,
+      sourceId: getSourceId(event.source),
+      receivedAt: new Date(event.timestamp).toISOString(),
+    },
+  });
+  return { key, contentType: content.contentType };
+}
+
+export async function archiveMessageImages(
+  events: LineMessageEvent[],
+  env: Env,
+): Promise<Map<string, ArchivedImage>> {
+  const archived = new Map<string, ArchivedImage>();
+  await Promise.all(events.map(async (event) => {
+    if (event.message.type === "image") archived.set(event.message.id, await archiveImage(event, env));
+  }));
+  return archived;
+}
+
+function toBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 32_768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768));
+  }
+  return btoa(binary);
+}
+
+function visionMediaType(contentType: string | null): VisionImage["mediaType"] | null {
+  if (contentType === "image/jpeg" || contentType === "image/png" || contentType === "image/gif" || contentType === "image/webp") {
+    return contentType;
+  }
+  return null;
+}
+
+async function loadVisionImages(events: StoredLineEvent[], env: Env): Promise<VisionImage[]> {
+  const images: VisionImage[] = [];
+  for (const event of events) {
+    if (!event.r2_key || images.length >= 10) continue;
+    const mediaType = visionMediaType(event.content_type);
+    if (!mediaType) continue;
+    const object = await env.PHOTOS.get(event.r2_key);
+    if (!object || object.size > 7_000_000) continue;
+    images.push({ mediaType, data: toBase64(await object.arrayBuffer()) });
+  }
+  return images;
+}
+
+function phaseLabel(phase: MediaPhase): string {
+  if (phase === "before") return "施工前";
+  if (phase === "during") return "施工中";
+  if (phase === "after") return "施工後";
+  return "";
+}
+
+async function observeNormalizationHit(
+  text: string | null,
+  result: MatcherResult,
+  lineEventId: string,
+  db: SupabaseClient,
+): Promise<void> {
+  if (!text || result.action !== "assign" || !result.site_id || !result.site_name) return;
+  const observed = extractSiteName(text);
+  if (observed === result.site_name) return;
+  const normalizedObserved = normalizeSiteText(observed);
+  const normalizedSite = normalizeSiteText(result.site_name);
+  if (!normalizedObserved.includes(normalizedSite) && !normalizedSite.includes(normalizedObserved)) return;
+  try {
+    await db.insertCorrectionLog({
+      line_event_id: lineEventId,
+      site_id: result.site_id,
+      observed_alias: observed,
+      normalized_alias: normalizedObserved,
+      log_type: "normalization_hit",
+      details: { source: "normalization" },
+    });
+  } catch (error) {
+    console.warn("normalization observation could not be recorded", error instanceof Error ? error.message : error);
+  }
+}
+
+async function recordImages(
+  site: SiteRecord | null,
+  events: StoredLineEvent[],
+  result: MatcherResult,
+  db: SupabaseClient,
+): Promise<string> {
+  const burstIds = [...new Set(events.map((event) => event.burst_id).filter((id): id is string => Boolean(id)))];
+  const burstId = burstIds[0];
+  if (!burstId || burstIds.length !== 1) throw new Error("A recorded photo set must have exactly one burst id");
+  if (result.action !== "assign" && result.action !== "create") throw new Error("Only assign/create can record images");
+  return db.recordLineBurst({
+    burstId,
+    siteId: site?.id ?? null,
+    action: result.action,
+    phase: result.phase,
+    confidence: result.confidence,
+    newSiteName: result.new_site_name ?? null,
+  });
+}
+
+function firstReplyToken(prepared: PreparedEvent[], eventIds: Set<string>): string | null {
+  return prepared.find((item) => eventIds.has(item.row.id) && item.replyToken)?.replyToken ?? null;
+}
+
+function startOfTodayJst(): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = new Map(formatter.formatToParts(new Date()).map((part) => [part.type, part.value]));
+  return new Date(`${parts.get("year")}-${parts.get("month")}-${parts.get("day")}T00:00:00+09:00`).toISOString();
+}
+
+async function safeAlert(
+  reason: string,
+  eventIds: string[],
+  db: SupabaseClient,
+  env: Env,
+): Promise<void> {
+  try {
+    const representativeId = eventIds[0];
+    if (!representativeId) return;
+    await pushWithTemplate(
+      "T-07",
+      { エラー要約: reason },
+      env.LINE_SUMMARY_USER_ID,
+      db,
+      env,
+      representativeId,
+    );
+    await db.updateLineEvents([representativeId], { reply_sent_at: new Date().toISOString() });
+  } catch (error) {
+    if (error instanceof TemplateNotApprovedError) {
+      console.warn(error.message);
+      return;
+    }
+    const message = error instanceof Error ? error.message : "unknown LINE reply error";
+    console.error("LINE reply failed after ledger processing", message);
+    if (eventIds[0]) {
+      await db.updateLineEvents([eventIds[0]], { error: message.slice(0, 1000) }).catch(() => undefined);
+    }
+  }
+}
+
+async function safeReply(
+  templateId: "T-01" | "T-02" | "T-03" | "T-04" | "T-05",
+  values: Record<string, string | number>,
+  token: string | null,
+  eventIds: string[],
+  sourceId: string,
+  db: SupabaseClient,
+  env: Env,
+): Promise<void> {
+  if (!token) return;
+  try {
+    const sent = await db.getReplyEvents(sourceId, startOfTodayJst());
+    if (sent.length >= 10) {
+      const alreadyAlerted = sent.some((event) => event.error === "daily_reply_limit_alerted");
+      if (!alreadyAlerted) {
+        await safeAlert("1日の自発発言上限（10回）に達しました", eventIds, db, env);
+        if (eventIds[0]) await db.updateLineEvents([eventIds[0]], { error: "daily_reply_limit_alerted" });
+      }
+      return;
+    }
+    await replyWithTemplate(templateId, values, token, db, env);
+    if (eventIds[0]) {
+      await db.updateLineEvents([eventIds[0]], {
+        reply_sent_at: new Date().toISOString(),
+        ...(templateId === "T-01"
+          ? { correction_open_until: new Date(Date.now() + 30 * 60_000).toISOString() }
+          : {}),
+      });
+    }
+  } catch (error) {
+    if (error instanceof TemplateNotApprovedError) {
+      console.warn(error.message);
+      return;
+    }
+    throw error;
+  }
+}
+
+function failureCategory(error: string): string {
+  if (error.startsWith("Confirmation delivery unavailable")) return "確認返信の期限内に判定できませんでした";
+  if (error.startsWith("Claude") || error.includes("AI")) return "AI判定で同じエラーが2回連続しました";
+  if (error.startsWith("Supabase")) return "台帳処理で同じエラーが2回連続しました";
+  if (error.startsWith("LINE")) return "LINE連携で同じエラーが2回連続しました";
+  return "現場記録処理で同じエラーが2回連続しました";
+}
+
+async function repeatedFailureRows(db: SupabaseClient): Promise<StoredLineEvent[] | null> {
+  const terminal = await db.getTerminalFailure();
+  if (terminal) return [terminal];
+  const rows = await db.getLatestProcessedEvents();
+  const seen = new Set<string>();
+  const attempts: StoredLineEvent[] = [];
+  for (const row of rows) {
+    const key = row.burst_id ?? row.message_id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    attempts.push(row);
+    if (attempts.length === 2) break;
+  }
+  return attempts.length === 2
+    && attempts[0]?.state === "failed"
+    && attempts[1]?.state === "failed"
+    && Boolean(attempts[0].error)
+    && Boolean(attempts[1].error)
+    && attempts[0].error?.split(":", 1)[0] === attempts[1].error?.split(":", 1)[0]
+    ? attempts
+    : null;
+}
+
+async function applyBurstResult(
+  result: MatcherResult,
+  events: StoredLineEvent[],
+  prepared: PreparedEvent[],
+  contextSites: SiteRecord[],
+  db: SupabaseClient,
+  env: Env,
+): Promise<void> {
+  const ids = events.map((event) => event.id);
+  const token = firstReplyToken(prepared, new Set(ids));
+  if (result.action === "ignore") {
+    await db.updateLineEvents(ids, {
+      action: "ignore",
+      phase: result.phase,
+      confidence: result.confidence,
+      state: "ignored",
+      processed_at: new Date().toISOString(),
+    });
+    return;
+  }
+
+  const burstEvents = events.filter((event) => event.r2_key);
+  let site = result.site_id ? contextSites.find((item) => item.id === result.site_id) : undefined;
+  if (result.action === "create" && result.new_site_name) {
+    const siteId = await recordImages(null, burstEvents, result, db);
+    try {
+      site = await db.getSiteById(siteId) ?? undefined;
+      if (site) {
+        await safeReply("T-04", {
+          現場名: site.name,
+          URL: `${env.PUBLIC_BASE_URL}/sites/${site.genba_page_token}`,
+        }, token, ids, events[0]?.source_id ?? "", db, env);
+      }
+    } catch (error) {
+      console.error("new site was recorded but its confirmation could not be sent", error instanceof Error ? error.message : error);
+    }
+    return;
+  }
+  if (result.action === "assign" && site) {
+    await recordImages(site, burstEvents, result, db);
+    await safeReply("T-01", {
+      現場名: site.name,
+      n: events.filter((event) => event.r2_key).length,
+      工程: phaseLabel(result.phase),
+      URL: `${env.PUBLIC_BASE_URL}/sites/${site.genba_page_token}`,
+    }, token, ids, events[0]?.source_id ?? "", db, env);
+    return;
+  }
+
+  if (!token) {
+    const error = "Confirmation delivery unavailable: reply token expired before recovery";
+    await db.updateLineEvents(ids, {
+      site_id: result.site_id ?? null,
+      action: result.action,
+      phase: result.phase,
+      confidence: result.confidence,
+      candidates: result.candidates,
+      new_site_name: result.new_site_name ?? null,
+      state: "failed",
+      error,
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    await safeAlert(failureCategory(error), ids, db, env).catch((alertError) => {
+      console.error("terminal confirmation alert could not be sent", alertError instanceof Error ? alertError.message : alertError);
+    });
+    return;
+  }
+
+  await db.updateLineEvents(ids, {
+    site_id: result.site_id ?? null,
+    action: result.action,
+    phase: result.phase,
+    confidence: result.confidence,
+    candidates: result.candidates,
+    new_site_name: result.new_site_name ?? null,
+    state: "awaiting_confirmation",
+    processed_at: new Date().toISOString(),
+  });
+  const candidateSites = result.candidates
+    .map((id) => contextSites.find((candidate) => candidate.id === id))
+    .filter((candidate): candidate is SiteRecord => Boolean(candidate));
+  if (result.action === "ask_similar") {
+    const existing = site ?? candidateSites[0];
+    if (existing) {
+      await safeReply("T-03", {
+        新しい名前: result.new_site_name ?? "未確定",
+        既存の現場名: existing.name,
+      }, token, ids, events[0]?.source_id ?? "", db, env);
+    }
+    return;
+  }
+  await safeReply("T-02", {
+    候補1: candidateSites[0]?.name ?? "",
+    候補2: candidateSites[1]?.name ?? "",
+    候補3: candidateSites[2]?.name ?? "",
+  }, token, ids, events[0]?.source_id ?? "", db, env);
+}
+
+async function processImageBurst(
+  burstId: string,
+  prepared: PreparedEvent[],
+  db: SupabaseClient,
+  env: Env,
+): Promise<void> {
+  const allEvents = await db.getBurstEvents(burstId);
+  const newEvents = prepared.filter((item) => item.isNew && item.row.burst_id === burstId).map((item) => item.row);
+  const priorRecorded = allEvents.find((event) => event.state === "recorded" && event.site_id);
+  if (priorRecorded?.site_id) {
+    const sites = await db.getAllSites();
+    const site = sites.find((candidate) => candidate.id === priorRecorded.site_id);
+    if (site) {
+      const eventsToAttach = newEvents.length > 0
+        ? newEvents
+        : allEvents.filter((event) => event.state === "archived" || event.state === "processing");
+      await recordImages(site, eventsToAttach, {
+        action: "assign",
+        site_id: site.id,
+        site_name: site.name,
+        candidates: [],
+        phase: priorRecorded.phase ?? "unknown",
+        confidence: priorRecorded.confidence ?? 0.85,
+        reasoning: "同一送信者の5分以内の写真バースト",
+      }, db);
+    }
+    return;
+  }
+  const priorAwaiting = allEvents.find((event) => event.state === "awaiting_confirmation");
+  if (priorAwaiting) {
+    const newlyAttached = allEvents.filter((event) => event.state === "archived" || event.state === "processing");
+    await db.updateLineEvents(newlyAttached.map((event) => event.id), {
+      site_id: priorAwaiting.site_id,
+      action: priorAwaiting.action,
+      phase: priorAwaiting.phase,
+      confidence: priorAwaiting.confidence,
+      candidates: priorAwaiting.candidates ?? [],
+      new_site_name: priorAwaiting.new_site_name ?? null,
+      state: "awaiting_confirmation",
+      processed_at: priorAwaiting.processed_at,
+      processing_started_at: null,
+    });
+    return;
+  }
+  await db.updateLineEvents(allEvents.map((event) => event.id), { state: "processing" });
+  try {
+    const context = await buildMatchContext(allEvents, db);
+    const images = await loadVisionImages(allEvents, env);
+    const result = await classifySite(context, images, env);
+    await observeNormalizationHit(context.event.text, result, allEvents[0]?.id ?? "", db);
+    await applyBurstResult(result, allEvents, prepared, context.sites, db, env);
+  } catch (error) {
+    const refreshed = await db.getBurstEvents(burstId).catch(() => null);
+    if (!refreshed) throw error;
+    const refreshedImages = refreshed.filter((event) => event.r2_key);
+    const committed = refreshedImages.length > 0
+      && refreshedImages.every((event) => event.state === "recorded" && Boolean(event.site_id));
+    if (!committed) {
+      await db.updateLineEvents(allEvents.map((event) => event.id), {
+        state: "failed",
+        error: error instanceof Error ? error.message.slice(0, 1000) : "unknown error",
+        processed_at: new Date().toISOString(),
+      });
+    }
+    throw error;
+  }
+}
+
+function parseCandidateIndex(text: string): number | null {
+  const normalized = text.normalize("NFKC").trim();
+  const symbols: Record<string, number> = { "①": 0, "②": 1, "③": 2, "一": 0, "二": 1, "三": 2 };
+  if (normalized in symbols) return symbols[normalized] ?? null;
+  if (/^[123]$/u.test(normalized)) return Number(normalized) - 1;
+  return null;
+}
+
+function looksLikeExplicitSiteName(text: string): boolean {
+  const value = text.trim();
+  if (value.length < 2 || value.length > 60) return false;
+  if (/お疲れ|ありがとう|了解|よろしく|ですか|でしょうか|[?？!！]/u.test(value)) return false;
+  if (/完了しました|始めます|はじめます|お願いします/u.test(value)) return false;
+  return /(?:邸|ビル|ハイツ|マンション|アパート|店舗|クリニック|工事|号室|\d{3,4})$/u.test(value);
+}
+
+function findSiteByAnswer(
+  text: string,
+  sites: SiteRecord[],
+  aliases: Awaited<ReturnType<SupabaseClient["getAliases"]>>,
+): SiteRecord | undefined {
+  const normalized = normalizeSiteText(text);
+  const direct = sites.find((candidate) => normalizeSiteText(candidate.name) === normalized);
+  if (direct) return direct;
+  const alias = aliases.find((candidate) => normalizeSiteText(candidate.alias) === normalized);
+  return alias ? sites.find((candidate) => candidate.id === alias.site_id) : undefined;
+}
+
+async function resolvePendingQuestion(
+  current: PreparedEvent,
+  db: SupabaseClient,
+  env: Env,
+): Promise<boolean> {
+  const text = (current.row.text_content ?? "").trim();
+  if (!text) return false;
+  const since = new Date(new Date(current.row.received_at).getTime() - 24 * 3_600_000).toISOString();
+  const pending = await db.findPendingQuestion(current.row.source_id, since, current.row.received_at);
+  if (!pending || !pending.burst_id) return false;
+  const [sites, aliases] = await Promise.all([db.getActiveSites(), db.getAliases()]);
+  const candidates = Array.isArray(pending.candidates) ? pending.candidates : [];
+  const index = parseCandidateIndex(text);
+  let site = index === null ? undefined : sites.find((candidate) => candidate.id === candidates[index]);
+  let learnedAlias: string | null = null;
+  if (!site && /^はい$/u.test(text) && pending.site_id) {
+    site = sites.find((candidate) => candidate.id === pending.site_id);
+    learnedAlias = pending.new_site_name ?? null;
+  }
+  if (!site && !/^別$/u.test(text)) {
+    site = findSiteByAnswer(text, sites, aliases);
+    if (site) learnedAlias = text;
+  }
+  let proposedSiteName: string | null = null;
+  if (!site && (/^別$/u.test(text) || looksLikeExplicitSiteName(text))) {
+    const proposed = /^別$/u.test(text) ? pending.new_site_name : extractSiteName(text);
+    if (proposed && proposed.length >= 2) proposedSiteName = proposed;
+  }
+  if (!site && !proposedSiteName) return false;
+  const shouldLearn = Boolean(
+    learnedAlias
+    && site
+    && normalizeSiteText(learnedAlias) !== normalizeSiteText(site.name),
+  );
+  const resolvedSiteId = await db.resolveBurstCorrection({
+    answerEventId: current.row.id,
+    burstId: pending.burst_id,
+    expectedState: "awaiting_confirmation",
+    siteId: site?.id ?? null,
+    newSiteName: proposedSiteName,
+    observedAlias: learnedAlias,
+    originalSiteId: pending.site_id,
+    learnAlias: shouldLearn,
+    details: { answer: text, burst_id: pending.burst_id, source: "confirmation_reply" },
+  });
+  if (!resolvedSiteId) {
+    await db.updateLineEvents([current.row.id], {
+      action: "ignore",
+      state: "ignored",
+      processed_at: new Date().toISOString(),
+    });
+    return true;
+  }
+  const resolvedSiteName = site?.name ?? proposedSiteName ?? "未確定";
+  await safeReply("T-05", {
+    誤った現場名: pending.new_site_name ?? sites.find((candidate) => candidate.id === pending.site_id)?.name ?? "未確定",
+    正しい現場名: resolvedSiteName,
+  }, current.replyToken, [current.row.id], current.row.source_id, db, env);
+  return true;
+}
+
+async function resolveRecordedCorrection(
+  current: PreparedEvent,
+  db: SupabaseClient,
+  env: Env,
+): Promise<boolean> {
+  const text = (current.row.text_content ?? "").trim();
+  if (!text) return false;
+  const since = new Date(new Date(current.row.received_at).getTime() - 30 * 60_000).toISOString();
+  const recent = await db.findRecentRecordedPhoto(current.row.source_id, since, current.row.received_at);
+  if (!recent?.burst_id || !recent.site_id) return false;
+  const [sites, aliases] = await Promise.all([db.getAllSites(), db.getAliases()]);
+  const oldSite = sites.find((candidate) => candidate.id === recent.site_id);
+  if (!oldSite) return false;
+  let newSite = findSiteByAnswer(text, sites, aliases);
+  const proposedSiteName = !newSite && looksLikeExplicitSiteName(text) ? extractSiteName(text) : null;
+  if (!newSite && !proposedSiteName) return false;
+  if (newSite?.id === oldSite.id) return false;
+  const resolvedSiteId = await db.resolveBurstCorrection({
+    answerEventId: current.row.id,
+    burstId: recent.burst_id,
+    expectedState: "recorded",
+    siteId: newSite?.id ?? null,
+    newSiteName: proposedSiteName,
+    observedAlias: text,
+    originalSiteId: oldSite.id,
+    learnAlias: Boolean(newSite && normalizeSiteText(text) !== normalizeSiteText(newSite.name)),
+    details: { answer: text, burst_id: recent.burst_id, source: "recorded_burst_reply" },
+  });
+  if (!resolvedSiteId) {
+    await db.updateLineEvents([current.row.id], {
+      action: "ignore",
+      state: "ignored",
+      processed_at: new Date().toISOString(),
+    });
+    return true;
+  }
+  const resolvedSiteName = newSite?.name ?? proposedSiteName ?? "未確定";
+  await safeReply("T-05", {
+    誤った現場名: oldSite.name,
+    正しい現場名: resolvedSiteName,
+  }, current.replyToken, [current.row.id], current.row.source_id, db, env);
+  return true;
+}
+
+async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env: Env): Promise<void> {
+  try {
+    if (await resolvePendingQuestion(current, db, env)) return;
+    if (await resolveRecordedCorrection(current, db, env)) return;
+    const context = await buildMatchContext([current.row], db);
+    const result = await classifySite(context, [], env);
+    await observeNormalizationHit(context.event.text, result, current.row.id, db);
+    if (result.action === "ignore") {
+      await db.updateLineEvents([current.row.id], {
+        action: "ignore",
+        state: "ignored",
+        confidence: result.confidence,
+        processed_at: new Date().toISOString(),
+      });
+      return;
+    }
+    let site = result.site_id ? context.sites.find((candidate) => candidate.id === result.site_id) : undefined;
+    if (
+      (result.action === "assign" && site)
+      || (result.action === "create" && Boolean(result.new_site_name))
+    ) {
+      const siteId = await db.recordLineText({
+        eventId: current.row.id,
+        siteId: site?.id ?? null,
+        action: result.action,
+        phase: result.phase,
+        confidence: result.confidence,
+        newSiteName: result.new_site_name ?? null,
+        description: current.row.text_content ?? "",
+      });
+      if (result.action === "create") {
+        try {
+          site = await db.getSiteById(siteId) ?? undefined;
+          if (site) {
+            await safeReply("T-04", {
+              現場名: site.name,
+              URL: `${env.PUBLIC_BASE_URL}/sites/${site.genba_page_token}`,
+            }, current.replyToken, [current.row.id], current.row.source_id, db, env);
+          }
+        } catch (error) {
+          console.error("text site was recorded but its confirmation could not be sent", error instanceof Error ? error.message : error);
+        }
+      }
+      return;
+    }
+    await db.updateLineEvents([current.row.id], {
+      action: result.action,
+      candidates: result.candidates,
+      new_site_name: result.new_site_name ?? null,
+      state: "awaiting_confirmation",
+      confidence: result.confidence,
+      processed_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    const refreshed = await db.getLineEvent(current.row.id).catch(() => null);
+    if (!refreshed) throw error;
+    if (refreshed.state !== "recorded" && refreshed.state !== "ignored") {
+      await db.updateLineEvents([current.row.id], {
+        state: "failed",
+        error: error instanceof Error ? error.message.slice(0, 1000) : "unknown error",
+        processed_at: new Date().toISOString(),
+      });
+    }
+    throw error;
+  }
+}
+
+export async function registerMessageEvents(
+  events: LineMessageEvent[],
+  archived: Map<string, ArchivedImage>,
+  env: Env,
+): Promise<PreparedEvent[]> {
+  const messageEvents = [...events]
+    .filter((event) => event.message.type === "image" || event.message.type === "text")
+    .sort((left, right) => left.timestamp - right.timestamp);
+  if (env.TEST_MODE === "true") return [];
+
+  const db = new SupabaseClient(env);
+  const rows: Array<Record<string, unknown>> = [];
+  const eventByMessageId = new Map(messageEvents.map((event) => [event.message.id, event]));
+  const localBursts: Array<{ sourceId: string; senderId: string | null; timestamp: number; burstId: string }> = [];
+  for (const event of messageEvents) {
+    const sourceId = getSourceId(event.source);
+    const senderId = getSenderId(event.source);
+    const receivedAt = new Date(event.timestamp).toISOString();
+    let burstId: string | null = null;
+    if (event.message.type === "image") {
+      const localRecent = [...localBursts].reverse().find((candidate) =>
+        candidate.sourceId === sourceId
+        && candidate.senderId === senderId
+        && event.timestamp - candidate.timestamp <= 5 * 60_000,
+      );
+      const since = new Date(event.timestamp - 5 * 60_000).toISOString();
+      const recent = localRecent ? null : await db.findRecentBurst(sourceId, senderId, since, receivedAt);
+      burstId = localRecent?.burstId ?? recent?.burst_id ?? fallbackBurstId(sourceId, senderId, event.timestamp);
+      localBursts.push({ sourceId, senderId, timestamp: event.timestamp, burstId });
+    }
+    const image = archived.get(event.message.id);
+    rows.push({
+      message_id: event.message.id,
+      webhook_event_id: event.webhookEventId ?? null,
+      event_type: `message:${event.message.type}`,
+      source_type: event.source.type,
+      source_id: sourceId,
+      sender_id: senderId,
+      sender_name: null,
+      raw_payload: event,
+      text_content: event.message.type === "text" ? (event.message as LineTextMessage).text : null,
+      r2_key: image?.key ?? null,
+      content_type: image?.contentType ?? null,
+      burst_id: burstId,
+      state: event.message.type === "image" ? "archived" : "received",
+      received_at: receivedAt,
+    });
+  }
+  const claimedRows = await db.registerLineEventsBatch(rows);
+  return claimedRows.flatMap((row) => {
+    const event = eventByMessageId.get(row.message_id) ?? row.raw_payload;
+    return event ? [{ event, row, isNew: true, replyToken: event.replyToken ?? null }] : [];
+  });
+}
+
+async function hydrateSenderNames(
+  prepared: PreparedEvent[],
+  db: SupabaseClient,
+  env: Env,
+): Promise<PreparedEvent[]> {
+  return Promise.all(prepared.map(async (item) => {
+    const senderName = await getDisplayName(item.event.source, env).catch(() => null);
+    if (!senderName) return item;
+    await db.updateLineEvents([item.row.id], { sender_name: senderName });
+    return { ...item, row: { ...item.row, sender_name: senderName } };
+  }));
+}
+
+export async function processPreparedMessageEvents(
+  input: PreparedEvent[],
+  env: Env,
+): Promise<void> {
+  if (env.TEST_MODE === "true") return;
+  const db = new SupabaseClient(env);
+  const prepared = await hydrateSenderNames(input, db, env);
+
+  const failures = await repeatedFailureRows(db);
+  if (failures?.[0]?.error) {
+    if (!failures.some((failure) => failure.reply_sent_at)) {
+      await safeAlert(
+        failureCategory(failures[0].error),
+        failures.map((failure) => failure.id),
+        db,
+        env,
+      );
+    }
+    return;
+  }
+
+  for (const item of prepared.filter((candidate) => candidate.isNew && candidate.event.message.type === "text")) {
+    await processTextEvent(item, db, env);
+  }
+  const bursts = new Set(
+    prepared.filter((item) => item.isNew && item.event.message.type === "image")
+      .map((item) => item.row.burst_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  for (const burstId of bursts) {
+    if (await db.claimBurst(burstId)) {
+      await processImageBurst(burstId, prepared, db, env);
+      continue;
+    }
+    const existingBurst = await db.getBurstEvents(burstId);
+    if (existingBurst.some((event) => event.state === "recorded" && event.site_id)) {
+      await processImageBurst(burstId, prepared, db, env);
+    }
+  }
+}
+
+export async function recoverPendingEvents(env: Env, scheduledTime: number): Promise<void> {
+  if (env.TEST_MODE === "true") return;
+  const db = new SupabaseClient(env);
+  if (await repeatedFailureRows(db)) return;
+  const receivedCutoff = new Date(scheduledTime - 2 * 60_000).toISOString();
+  const processingCutoff = new Date(scheduledTime - 10 * 60_000).toISOString();
+  const textId = await db.claimRecoverableText(receivedCutoff, processingCutoff);
+  if (textId) {
+    const row = await db.getLineEvent(textId);
+    if (row) {
+      await processTextEvent({ event: row.raw_payload, row, isNew: true, replyToken: null }, db, env);
+    }
+  }
+  const burstId = await db.claimRecoverableBurst(receivedCutoff, processingCutoff);
+  if (burstId) await processImageBurst(burstId, [], db, env);
+}
