@@ -137,4 +137,13 @@ export interface BotTemplate {
   approved_by: string | null;
 }
 
-export type TemplateId = "T-01" | "T-02" | "T-03" | "T-04" | "T-05" | "T-06" | "T-07";
+export type GroupTemplateId =
+  | "photo_auto"
+  | "photo_ask"
+  | "answer_done"
+  | "correction_done"
+  | "create_confirm"
+  | "create_done";
+
+export type PushTemplateId = "T-06" | "T-07";
+export type TemplateId = GroupTemplateId | PushTemplateId;

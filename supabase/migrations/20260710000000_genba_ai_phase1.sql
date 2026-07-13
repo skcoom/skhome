@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS public.site_aliases (
 );
 
 CREATE TABLE IF NOT EXISTS public.bot_templates (
-  template_id TEXT PRIMARY KEY CHECK (template_id ~ '^T-0[1-7]$'),
+  template_id TEXT PRIMARY KEY CHECK (template_id IN (
+    'photo_auto', 'photo_ask', 'answer_done', 'correction_done',
+    'create_confirm', 'create_done', 'T-06', 'T-07'
+  )),
   body TEXT NOT NULL CHECK (length(body) > 0),
   variables TEXT[] NOT NULL DEFAULT '{}',
   approved_at TIMESTAMP WITH TIME ZONE,
@@ -168,21 +171,14 @@ AS $$
 DECLARE
   resolved_site_id UUID := p_site_id;
 BEGIN
-  IF p_action NOT IN ('assign', 'create') THEN
-    RAISE EXCEPTION 'invalid record action';
+  IF p_action <> 'assign' THEN
+    RAISE EXCEPTION 'new sites require explicit confirmation';
   END IF;
   IF p_phase NOT IN ('before', 'during', 'after', 'unknown') THEN
     RAISE EXCEPTION 'invalid media phase';
   END IF;
 
-  IF p_action = 'create' THEN
-    IF p_new_site_name IS NULL OR length(btrim(p_new_site_name)) < 2 THEN
-      RAISE EXCEPTION 'new site name is required';
-    END IF;
-    INSERT INTO public.projects (name, status, is_public)
-    VALUES (btrim(p_new_site_name), 'in_progress', FALSE)
-    RETURNING id INTO resolved_site_id;
-  ELSIF resolved_site_id IS NULL THEN
+  IF resolved_site_id IS NULL THEN
     RAISE EXCEPTION 'site id is required for assign';
   END IF;
 
@@ -211,7 +207,7 @@ BEGIN
       action = p_action,
       phase = p_phase,
       confidence = p_confidence,
-      new_site_name = CASE WHEN p_action = 'create' THEN p_new_site_name ELSE NULL END,
+      new_site_name = NULL,
       state = 'recorded',
       error = NULL,
       processed_at = NOW(),
@@ -250,8 +246,8 @@ DECLARE
   resolved_site_id UUID := p_site_id;
   event_received_at TIMESTAMP WITH TIME ZONE;
 BEGIN
-  IF p_action NOT IN ('assign', 'create') THEN
-    RAISE EXCEPTION 'invalid text record action';
+  IF p_action <> 'assign' THEN
+    RAISE EXCEPTION 'new sites require explicit confirmation';
   END IF;
   IF p_phase NOT IN ('before', 'during', 'after', 'unknown') THEN
     RAISE EXCEPTION 'invalid text phase';
@@ -268,14 +264,7 @@ BEGIN
     RAISE EXCEPTION 'text line event was not found';
   END IF;
 
-  IF p_action = 'create' THEN
-    IF p_new_site_name IS NULL OR length(btrim(p_new_site_name)) < 2 THEN
-      RAISE EXCEPTION 'new site name is required';
-    END IF;
-    INSERT INTO public.projects (name, status, is_public)
-    VALUES (btrim(p_new_site_name), 'in_progress', FALSE)
-    RETURNING id INTO resolved_site_id;
-  ELSIF resolved_site_id IS NULL THEN
+  IF resolved_site_id IS NULL THEN
     RAISE EXCEPTION 'site id is required for assign';
   END IF;
 
@@ -291,7 +280,7 @@ BEGIN
       action = p_action,
       phase = p_phase,
       confidence = p_confidence,
-      new_site_name = CASE WHEN p_action = 'create' THEN p_new_site_name ELSE NULL END,
+      new_site_name = NULL,
       state = 'recorded',
       error = NULL,
       processed_at = NOW(),
@@ -567,6 +556,14 @@ BEGIN
     IF p_new_site_name IS NULL OR length(btrim(p_new_site_name)) < 2 THEN
       RAISE EXCEPTION 'new site name is required';
     END IF;
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.line_events
+      WHERE id = p_answer_event_id
+        AND btrim(COALESCE(text_content, ''), E' \t\n\r　') = 'はい'
+    ) THEN
+      RAISE EXCEPTION 'new sites require an explicit affirmative answer';
+    END IF;
     INSERT INTO public.projects (name, status, is_public)
     VALUES (btrim(p_new_site_name), 'in_progress', FALSE)
     RETURNING id INTO resolved_site_id;
@@ -601,6 +598,18 @@ BEGIN
       correction_open_until = NULL
   WHERE burst_id = p_burst_id;
 
+  -- 確認・訂正に使ったテキストは進捗記録へ混ぜず、写真だけを確定現場へ移す。
+  UPDATE public.line_events
+  SET site_id = NULL,
+      action = 'ignore',
+      confidence = 1,
+      state = 'ignored',
+      processed_at = NOW(),
+      processing_started_at = NULL,
+      burst_id = NULL
+  WHERE burst_id = p_burst_id
+    AND event_type = 'message:text';
+
   UPDATE public.line_events
   SET site_id = NULL,
       action = 'ignore',
@@ -619,16 +628,20 @@ BEGIN
     ON CONFLICT (site_id, alias) DO NOTHING;
   END IF;
 
-  INSERT INTO public.correction_logs (
-    line_event_id, original_site_id, site_id, observed_alias, log_type, details
-  ) VALUES (
-    p_answer_event_id,
-    p_original_site_id,
-    resolved_site_id,
-    p_observed_alias,
-    'correction',
-    COALESCE(p_details, '{}'::JSONB)
-  );
+  -- 確認質問への通常回答は訂正ログへ混ぜない。既に記録済みの現場を
+  -- 別現場へ直したときだけ、週報と回帰候補の源泉として残す。
+  IF p_original_site_id IS NOT NULL AND p_original_site_id IS DISTINCT FROM resolved_site_id THEN
+    INSERT INTO public.correction_logs (
+      line_event_id, original_site_id, site_id, observed_alias, log_type, details
+    ) VALUES (
+      p_answer_event_id,
+      p_original_site_id,
+      resolved_site_id,
+      p_observed_alias,
+      'correction',
+      COALESCE(p_details, '{}'::JSONB)
+    );
+  END IF;
 
   RETURN resolved_site_id;
 END;
@@ -639,11 +652,12 @@ GRANT EXECUTE ON FUNCTION public.resolve_line_burst_correction(UUID, TEXT, TEXT,
 
 INSERT INTO public.bot_templates (template_id, body, variables)
 VALUES
-  ('T-01', E'📁 {現場名}の写真{n}枚、記録しました（{工程}）\n現場ページ → {URL}\n※違う現場だったら、現場名だけ返信してください', ARRAY['現場名', 'n', '工程', 'URL']),
-  ('T-02', E'{"with_candidates":"❓ この写真はどの現場ですか？\\n候補: ①{候補1} ②{候補2} ③{候補3}\\n番号か現場名で返信してください","without_candidates":"❓ この写真はどの現場ですか？\\n現場名を返信してください"}', ARRAY['候補1', '候補2', '候補3']),
-  ('T-03', E'❓「{新しい名前}」は「{既存の現場名}」と同じ現場ですか？\n同じなら「はい」、別の現場なら「別」と返信してください', ARRAY['新しい名前', '既存の現場名']),
-  ('T-04', E'🆕 新しい現場「{現場名}」を台帳に作りました\n現場ページ → {URL}\n以後この現場の写真は自動でここにまとまります', ARRAY['現場名', 'URL']),
-  ('T-05', E'✏️ 「{誤った現場名}」→「{正しい現場名}」に直しました\nこの呼び方も覚えたので、次からは自動で振り分けます', ARRAY['誤った現場名', '正しい現場名']),
+  ('photo_auto', E'📷 写真{count}枚を「{site}」の記録として保存しました。\n違う現場のときは「訂正 エトワール905」のように返信してください。', ARRAY['count', 'site']),
+  ('photo_ask', E'📷 写真{count}枚を受け取りました。\nどの現場の写真か教えてください（例: エトワール905 のように部屋番号まで）。', ARRAY['count']),
+  ('answer_done', E'✅ 「{site}」の記録として保存しました。', ARRAY['site']),
+  ('correction_done', E'✅ 「{site}」の記録に直しました。訂正ありがとうございます。', ARRAY['site']),
+  ('create_confirm', E'❓ 「{name}」は登録のない現場です。新しい現場として登録してよいですか？\n「はい」で登録します。名前が違うときは正しい現場名を返信してください。', ARRAY['name']),
+  ('create_done', E'✅ 新しい現場「{name}」を登録し、写真を保存しました。', ARRAY['name']),
   ('T-06', E'📋 今週の現場（{期間}）\n【動いた現場】{n}件\n・{現場名} +{枚数}枚（{工程}）\n（…現場ぶん繰り返し）\n【完工候補】{完工候補} → 実績ページの下書きを作れます\n【{日数}日以上動きなし】{停滞現場}\n【今週の学習】{誤判定と訂正の要約}\n詳細 → {週報ページURL}', ARRAY['期間', 'n', '現場名', '枚数', '工程', '完工候補', '日数', '停滞現場', '誤判定と訂正の要約', '週報ページURL']),
   ('T-07', E'⚠️ 現場記録AIを一時停止しました\n理由: {エラー要約}\n写真は退避済みで失われていません。復旧はセッションで相談してください', ARRAY['エラー要約'])
 ON CONFLICT (template_id) DO NOTHING;

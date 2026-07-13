@@ -44,15 +44,22 @@ Claudeは `claude-haiku-4-5` が既定です。実データの回帰結果が基
 
 ## テンプレート承認
 
-migrationはT-01〜T-07を承認前ドラフトとして登録するため、`approved_at` と `approved_by` はNULLです。この状態では送信関数が必ず拒否します。L3の文面承認後に、承認者を明示して対象行を更新してください。
+migrationは2026-07-11版のグループ文面6種（`photo_auto`、`photo_ask`、`answer_done`、`correction_done`、`create_confirm`、`create_done`）と個人宛てのT-06/T-07を、承認前ドラフトとして登録します。`approved_at` と `approved_by` がNULLの間は送信関数が必ず拒否します。検証用グループへ接続する前に、承認者を明示して対象行を更新してください。
 
-> 注意: 依頼指定の「初期案」はT-01〜T-07ですが、そのファイルが参照する2026-07-11版はグループ文面を6つのslugへ再編しています。ID・件数・新規現場確認フローが一致しないため、どちらをL3承認するか決まるまで、下記UPDATEは実行しないでください。実装は依頼文に明記されたT-01〜T-07を保持しています。
+グループ返信関数は6種のID、push関数はT-06/T-07しか型として受け付けません。本文はDBから取得するため、コードから自由文を送る経路はありません。
 
 ```sql
 UPDATE public.bot_templates
 SET approved_at = NOW(), approved_by = '<承認者>'
-WHERE template_id IN ('T-01', 'T-02', 'T-03', 'T-04', 'T-05', 'T-06', 'T-07');
+WHERE template_id IN (
+  'photo_auto', 'photo_ask', 'answer_done', 'correction_done',
+  'create_confirm', 'create_done', 'T-06', 'T-07'
+);
 ```
+
+未登録の現場名は、写真原本をR2へ保持したまま`awaiting_confirmation`で止めます。利用者が完全一致の「はい」を返した場合だけprojectsと写真台帳を同じDB処理で確定します。記録済み写真の訂正は`訂正 現場名`という明示形式だけを受け付け、訂正先も未登録なら同じ確認を挟みます。
+
+写真に紐づかない通常テキストは、既存現場を安全に特定できた場合だけ工程記録へ追加します。未登録現場・曖昧なテキストは、承認済みの専用文面が台帳にないため新規現場を作らず、内部では`text_requires_known_site`として観測します。
 
 ## 初期alias seed
 
@@ -112,7 +119,7 @@ Cron配線のローカル確認（毎分の孤児回収と月曜週報）:
 curl 'http://127.0.0.1:8787/cdn-cgi/handler/scheduled?cron=0+23+*+*+SUN&format=json'
 ```
 
-毎分の回収処理は、R2・DBへ退避済みなのに処理が中断した画像とtextを、初回を含め2回まで処理します（再試行は1回）。回収時点ではLINEのreply tokenを安全に再利用できないため、判定が確認質問（T-02/T-03）に倒れた場合は誤assignせずfailedにし、T-07を週報送信先へpushしてWorkerの後続処理を停止します。グループへの有料pushは行いません。
+毎分の回収処理は、R2・DBへ退避済みなのに処理が中断した画像とtextを、初回を含め2回まで処理します（再試行は1回）。回収時点ではLINEのreply tokenを安全に再利用できないため、写真判定が`photo_ask`または`create_confirm`を必要とする場合は誤assignせずfailedにし、T-07を週報送信先へpushしてWorkerの後続処理を停止します。グループへの有料pushは行いません。
 
 デプロイ前bundle確認とデプロイ:
 
@@ -128,6 +135,8 @@ npx wrangler deploy
 ## 5分バーストとreply token
 
 LINE公式仕様ではreply tokenは1回だけ、受信後1分以内の利用が推奨されます。そのため、最初のwebhook内の写真群を即時判定・返信し、同じ送信者から5分以内に届く後続webhookは同じ`burst_id`・同じ現場へ無返信で追加します。5分経過後に総枚数を返信する方式はreply tokenの保証時間を超えるため採用していません。
+
+現場ページ自体は推測不能トークンと`noindex`付きで配信しますが、2026-07-11版のグループ文面にはURL変数がないため、グループ返信へURLを追加していません。
 
 ## 社内写真の分離
 

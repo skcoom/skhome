@@ -4,9 +4,9 @@ import { SupabaseClient } from "../clients/supabase";
 import { buildMatchContext } from "../engine/context";
 import { classifySite } from "../engine/site-matcher";
 import { extractSiteName, normalizeSiteText } from "../engine/normalization";
-import { createSiteToken } from "../security/site-token";
 import type {
   Env,
+  GroupTemplateId,
   LineImageMessage,
   LineMessageEvent,
   LineTextMessage,
@@ -16,9 +16,16 @@ import type {
   StoredLineEvent,
   VisionImage,
 } from "../types";
+import {
+  bareSiteNameAnswer,
+  explicitCorrectionTarget,
+  isAffirmativeAnswer,
+  isNegativeAnswer,
+  pendingSiteNameAnswer,
+} from "./answers";
 import { burstIdWithoutSender } from "./burst";
 import {
-  confirmationReplyFor,
+  photoReplyFor,
   pushWithTemplate,
   replyWithTemplate,
   TemplateNotApprovedError,
@@ -111,13 +118,6 @@ async function loadVisionImages(events: StoredLineEvent[], env: Env): Promise<Vi
   return images;
 }
 
-function phaseLabel(phase: MediaPhase): string {
-  if (phase === "before") return "施工前";
-  if (phase === "during") return "施工中";
-  if (phase === "after") return "施工後";
-  return "";
-}
-
 async function observeNormalizationHit(
   text: string | null,
   result: MatcherResult,
@@ -153,14 +153,13 @@ async function recordImages(
   const burstIds = [...new Set(events.map((event) => event.burst_id).filter((id): id is string => Boolean(id)))];
   const burstId = burstIds[0];
   if (!burstId || burstIds.length !== 1) throw new Error("A recorded photo set must have exactly one burst id");
-  if (result.action !== "assign" && result.action !== "create") throw new Error("Only assign/create can record images");
+  if (result.action !== "assign" || !site) throw new Error("Only an existing-site assignment can record images directly");
   return db.recordLineBurst({
     burstId,
-    siteId: site?.id ?? null,
-    action: result.action,
+    siteId: site.id,
+    action: "assign",
     phase: result.phase,
     confidence: result.confidence,
-    newSiteName: result.new_site_name ?? null,
   });
 }
 
@@ -211,7 +210,7 @@ async function safeAlert(
 }
 
 async function safeReply(
-  templateId: "T-01" | "T-02" | "T-03" | "T-04" | "T-05",
+  templateId: GroupTemplateId,
   values: Record<string, string | number>,
   token: string | null,
   eventIds: string[],
@@ -234,7 +233,7 @@ async function safeReply(
     if (eventIds[0]) {
       await db.updateLineEvents([eventIds[0]], {
         reply_sent_at: new Date().toISOString(),
-        ...(templateId === "T-01"
+        ...(templateId === "photo_auto"
           ? { correction_open_until: new Date(Date.now() + 30 * 60_000).toISOString() }
           : {}),
       });
@@ -301,32 +300,18 @@ async function applyBurstResult(
   }
 
   const burstEvents = events.filter((event) => event.r2_key);
-  let site = result.site_id ? contextSites.find((item) => item.id === result.site_id) : undefined;
-  if (result.action === "create" && result.new_site_name) {
-    const siteId = await recordImages(null, burstEvents, result, db);
-    try {
-      site = await db.getSiteById(siteId) ?? undefined;
-      if (site) {
-        const pageToken = await createSiteToken(site.id, env.LINE_CHANNEL_SECRET);
-        await safeReply("T-04", {
-          現場名: site.name,
-          URL: `${env.PUBLIC_BASE_URL}/sites/${pageToken}`,
-        }, token, ids, events[0]?.source_id ?? "", db, env);
-      }
-    } catch (error) {
-      console.error("new site was recorded but its confirmation could not be sent", error instanceof Error ? error.message : error);
-    }
-    return;
-  }
+  const site = result.site_id ? contextSites.find((item) => item.id === result.site_id) : undefined;
   if (result.action === "assign" && site) {
     await recordImages(site, burstEvents, result, db);
-    const pageToken = await createSiteToken(site.id, env.LINE_CHANNEL_SECRET);
-    await safeReply("T-01", {
-      現場名: site.name,
-      n: events.filter((event) => event.r2_key).length,
-      工程: phaseLabel(result.phase),
-      URL: `${env.PUBLIC_BASE_URL}/sites/${pageToken}`,
-    }, token, ids, events[0]?.source_id ?? "", db, env);
+    await safeReply(
+      "photo_auto",
+      { count: burstEvents.length, site: site.name },
+      token,
+      ids,
+      events[0]?.source_id ?? "",
+      db,
+      env,
+    );
     return;
   }
 
@@ -360,7 +345,7 @@ async function applyBurstResult(
     state: "awaiting_confirmation",
     processed_at: new Date().toISOString(),
   });
-  const confirmation = confirmationReplyFor(result, contextSites);
+  const confirmation = photoReplyFor(result, contextSites, burstEvents.length);
   await safeReply(
     confirmation.templateId,
     confirmation.values,
@@ -440,22 +425,6 @@ async function processImageBurst(
   }
 }
 
-function parseCandidateIndex(text: string): number | null {
-  const normalized = text.normalize("NFKC").trim();
-  const symbols: Record<string, number> = { "①": 0, "②": 1, "③": 2, "一": 0, "二": 1, "三": 2 };
-  if (normalized in symbols) return symbols[normalized] ?? null;
-  if (/^[123]$/u.test(normalized)) return Number(normalized) - 1;
-  return null;
-}
-
-function looksLikeExplicitSiteName(text: string): boolean {
-  const value = text.trim();
-  if (value.length < 2 || value.length > 60) return false;
-  if (/お疲れ|ありがとう|了解|よろしく|ですか|でしょうか|[?？!！]/u.test(value)) return false;
-  if (/完了しました|始めます|はじめます|お願いします/u.test(value)) return false;
-  return /(?:邸|ビル|ハイツ|マンション|アパート|店舗|クリニック|工事|号室|\d{3,4})$/u.test(value);
-}
-
 function findSiteByAnswer(
   text: string,
   sites: SiteRecord[],
@@ -478,38 +447,142 @@ async function resolvePendingQuestion(
   const since = new Date(new Date(current.row.received_at).getTime() - 24 * 3_600_000).toISOString();
   const pending = await db.findPendingQuestion(current.row.source_id, since, current.row.received_at);
   if (!pending || !pending.burst_id) return false;
-  const [sites, aliases] = await Promise.all([db.getActiveSites(), db.getAliases()]);
-  const candidates = Array.isArray(pending.candidates) ? pending.candidates : [];
-  const index = parseCandidateIndex(text);
-  let site = index === null ? undefined : sites.find((candidate) => candidate.id === candidates[index]);
-  let learnedAlias: string | null = null;
-  if (!site && /^はい$/u.test(text) && pending.site_id) {
-    site = sites.find((candidate) => candidate.id === pending.site_id);
-    learnedAlias = pending.new_site_name ?? null;
-  }
-  if (!site && !/^別$/u.test(text)) {
-    site = findSiteByAnswer(text, sites, aliases);
-    if (site) learnedAlias = text;
-  }
-  let proposedSiteName: string | null = null;
-  if (!site && (/^別$/u.test(text) || looksLikeExplicitSiteName(text))) {
-    const proposed = /^別$/u.test(text) ? pending.new_site_name : extractSiteName(text);
-    if (proposed && proposed.length >= 2) proposedSiteName = proposed;
-  }
-  if (!site && !proposedSiteName) return false;
-  const shouldLearn = Boolean(
-    learnedAlias
-    && site
-    && normalizeSiteText(learnedAlias) !== normalizeSiteText(site.name),
+  const burstEvents = await db.getBurstEvents(pending.burst_id);
+  const isRecordedCorrection = burstEvents.some(
+    (event) => Boolean(event.r2_key) && event.state === "recorded",
   );
+  const expectedState = isRecordedCorrection ? "recorded" : "awaiting_confirmation";
+
+  if (isNegativeAnswer(text)) {
+    const awaitingIds = burstEvents
+      .filter((event) => event.state === "awaiting_confirmation")
+      .map((event) => event.id);
+    await db.updateLineEvents(awaitingIds, {
+      site_id: null,
+      action: "ignore",
+      state: "ignored",
+      error: "site_creation_cancelled",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+      burst_id: null,
+    });
+    await db.updateLineEvents([current.row.id], {
+      action: "ignore",
+      state: "ignored",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    return true;
+  }
+
+  if (pending.action === "create" && pending.new_site_name && isAffirmativeAnswer(text)) {
+    const resolvedSiteId = await db.resolveBurstCorrection({
+      answerEventId: current.row.id,
+      burstId: pending.burst_id,
+      expectedState,
+      siteId: null,
+      newSiteName: pending.new_site_name,
+      observedAlias: pending.new_site_name,
+      originalSiteId: isRecordedCorrection ? pending.site_id : null,
+      learnAlias: false,
+      details: { answer: text, burst_id: pending.burst_id, source: "site_creation_confirmation" },
+    });
+    if (!resolvedSiteId) {
+      const awaitingIds = burstEvents
+        .filter((event) => event.state === "awaiting_confirmation")
+        .map((event) => event.id);
+      await db.updateLineEvents(awaitingIds, {
+        action: "ignore",
+        state: "ignored",
+        processed_at: new Date().toISOString(),
+        processing_started_at: null,
+        burst_id: null,
+      });
+      await db.updateLineEvents([current.row.id], {
+        action: "ignore",
+        state: "ignored",
+        processed_at: new Date().toISOString(),
+      });
+      return true;
+    }
+    const createdSite = await db.getSiteById(resolvedSiteId);
+    await safeReply(
+      "create_done",
+      { name: createdSite?.name ?? pending.new_site_name },
+      current.replyToken,
+      [current.row.id],
+      current.row.source_id,
+      db,
+      env,
+    );
+    return true;
+  }
+
+  const answerName = pendingSiteNameAnswer(text);
+  if (!answerName) return false;
+  const [sites, aliases] = await Promise.all([db.getAllSites(), db.getAliases()]);
+  const site = findSiteByAnswer(answerName, sites, aliases);
+  if (!site) {
+    const awaitingIds = burstEvents
+      .filter((event) => event.state === "awaiting_confirmation")
+      .map((event) => event.id);
+    await db.updateLineEvents(awaitingIds, {
+      site_id: isRecordedCorrection ? pending.site_id : null,
+      action: "create",
+      new_site_name: answerName,
+      state: "awaiting_confirmation",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    await db.updateLineEvents([current.row.id], {
+      action: "ignore",
+      state: "ignored",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    await safeReply(
+      "create_confirm",
+      { name: answerName },
+      current.replyToken,
+      [current.row.id],
+      current.row.source_id,
+      db,
+      env,
+    );
+    return true;
+  }
+
+  if (isRecordedCorrection && site.id === pending.site_id) {
+    const awaitingIds = burstEvents
+      .filter((event) => event.state === "awaiting_confirmation")
+      .map((event) => event.id);
+    await db.updateLineEvents(awaitingIds, {
+      site_id: null,
+      action: "ignore",
+      state: "ignored",
+      error: "correction_target_unchanged",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+      burst_id: null,
+    });
+    await db.updateLineEvents([current.row.id], {
+      action: "ignore",
+      state: "ignored",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    return true;
+  }
+
+  const shouldLearn = normalizeSiteText(answerName) !== normalizeSiteText(site.name);
   const resolvedSiteId = await db.resolveBurstCorrection({
     answerEventId: current.row.id,
     burstId: pending.burst_id,
-    expectedState: "awaiting_confirmation",
-    siteId: site?.id ?? null,
-    newSiteName: proposedSiteName,
-    observedAlias: learnedAlias,
-    originalSiteId: pending.site_id,
+    expectedState,
+    siteId: site.id,
+    newSiteName: null,
+    observedAlias: answerName,
+    originalSiteId: isRecordedCorrection ? pending.site_id : null,
     learnAlias: shouldLearn,
     details: { answer: text, burst_id: pending.burst_id, source: "confirmation_reply" },
   });
@@ -521,11 +594,15 @@ async function resolvePendingQuestion(
     });
     return true;
   }
-  const resolvedSiteName = site?.name ?? proposedSiteName ?? "未確定";
-  await safeReply("T-05", {
-    誤った現場名: pending.new_site_name ?? sites.find((candidate) => candidate.id === pending.site_id)?.name ?? "未確定",
-    正しい現場名: resolvedSiteName,
-  }, current.replyToken, [current.row.id], current.row.source_id, db, env);
+  await safeReply(
+    isRecordedCorrection ? "correction_done" : "answer_done",
+    { site: site.name },
+    current.replyToken,
+    [current.row.id],
+    current.row.source_id,
+    db,
+    env,
+  );
   return true;
 }
 
@@ -535,26 +612,58 @@ async function resolveRecordedCorrection(
   env: Env,
 ): Promise<boolean> {
   const text = (current.row.text_content ?? "").trim();
-  if (!text) return false;
+  const target = explicitCorrectionTarget(text);
+  if (!target) return false;
   const since = new Date(new Date(current.row.received_at).getTime() - 30 * 60_000).toISOString();
   const recent = await db.findRecentRecordedPhoto(current.row.source_id, since, current.row.received_at);
   if (!recent?.burst_id || !recent.site_id) return false;
   const [sites, aliases] = await Promise.all([db.getAllSites(), db.getAliases()]);
   const oldSite = sites.find((candidate) => candidate.id === recent.site_id);
   if (!oldSite) return false;
-  let newSite = findSiteByAnswer(text, sites, aliases);
-  const proposedSiteName = !newSite && looksLikeExplicitSiteName(text) ? extractSiteName(text) : null;
-  if (!newSite && !proposedSiteName) return false;
-  if (newSite?.id === oldSite.id) return false;
+  const newSite = findSiteByAnswer(target, sites, aliases);
+  if (newSite?.id === oldSite.id) {
+    await db.updateLineEvents([current.row.id], {
+      action: "ignore",
+      state: "ignored",
+      error: "correction_target_unchanged",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    return true;
+  }
+  if (!newSite) {
+    await db.updateLineEvents([current.row.id], {
+      burst_id: recent.burst_id,
+      site_id: oldSite.id,
+      action: "create",
+      phase: recent.phase ?? "unknown",
+      confidence: 1,
+      candidates: [],
+      new_site_name: target,
+      state: "awaiting_confirmation",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    await safeReply(
+      "create_confirm",
+      { name: target },
+      current.replyToken,
+      [current.row.id],
+      current.row.source_id,
+      db,
+      env,
+    );
+    return true;
+  }
   const resolvedSiteId = await db.resolveBurstCorrection({
     answerEventId: current.row.id,
     burstId: recent.burst_id,
     expectedState: "recorded",
-    siteId: newSite?.id ?? null,
-    newSiteName: proposedSiteName,
-    observedAlias: text,
+    siteId: newSite.id,
+    newSiteName: null,
+    observedAlias: target,
     originalSiteId: oldSite.id,
-    learnAlias: Boolean(newSite && normalizeSiteText(text) !== normalizeSiteText(newSite.name)),
+    learnAlias: normalizeSiteText(target) !== normalizeSiteText(newSite.name),
     details: { answer: text, burst_id: recent.burst_id, source: "recorded_burst_reply" },
   });
   if (!resolvedSiteId) {
@@ -565,18 +674,33 @@ async function resolveRecordedCorrection(
     });
     return true;
   }
-  const resolvedSiteName = newSite?.name ?? proposedSiteName ?? "未確定";
-  await safeReply("T-05", {
-    誤った現場名: oldSite.name,
-    正しい現場名: resolvedSiteName,
-  }, current.replyToken, [current.row.id], current.row.source_id, db, env);
+  await safeReply(
+    "correction_done",
+    { site: newSite.name },
+    current.replyToken,
+    [current.row.id],
+    current.row.source_id,
+    db,
+    env,
+  );
   return true;
 }
 
 async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env: Env): Promise<void> {
   try {
+    const text = (current.row.text_content ?? "").trim();
+    if (explicitCorrectionTarget(text)) {
+      if (await resolveRecordedCorrection(current, db, env)) return;
+      await db.updateLineEvents([current.row.id], {
+        action: "ignore",
+        state: "ignored",
+        error: "correction_target_not_found",
+        processed_at: new Date().toISOString(),
+        processing_started_at: null,
+      });
+      return;
+    }
     if (await resolvePendingQuestion(current, db, env)) return;
-    if (await resolveRecordedCorrection(current, db, env)) return;
     const context = await buildMatchContext([current.row], db);
     const result = await classifySite(context, [], env);
     await observeNormalizationHit(context.event.text, result, current.row.id, db);
@@ -589,73 +713,44 @@ async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env:
       });
       return;
     }
-    let site = result.site_id ? context.sites.find((candidate) => candidate.id === result.site_id) : undefined;
-    if (
-      (result.action === "assign" && site)
-      || (result.action === "create" && Boolean(result.new_site_name))
-    ) {
-      const siteId = await db.recordLineText({
+    const site = result.site_id ? context.sites.find((candidate) => candidate.id === result.site_id) : undefined;
+    if (result.action === "assign" && site) {
+      const exactSiteAnswer = bareSiteNameAnswer(text)
+        ? findSiteByAnswer(text, context.sites, context.aliases)
+        : undefined;
+      if (exactSiteAnswer?.id === site.id) {
+        await db.updateLineEvents([current.row.id], {
+          site_id: null,
+          action: "ignore",
+          state: "ignored",
+          error: "site_name_without_pending_question",
+          processed_at: new Date().toISOString(),
+          processing_started_at: null,
+        });
+        return;
+      }
+      await db.recordLineText({
         eventId: current.row.id,
-        siteId: site?.id ?? null,
-        action: result.action,
+        siteId: site.id,
+        action: "assign",
         phase: result.phase,
         confidence: result.confidence,
-        newSiteName: result.new_site_name ?? null,
         description: current.row.text_content ?? "",
       });
-      if (result.action === "create") {
-        try {
-          site = await db.getSiteById(siteId) ?? undefined;
-          if (site) {
-            const pageToken = await createSiteToken(site.id, env.LINE_CHANNEL_SECRET);
-            await safeReply("T-04", {
-              現場名: site.name,
-              URL: `${env.PUBLIC_BASE_URL}/sites/${pageToken}`,
-            }, current.replyToken, [current.row.id], current.row.source_id, db, env);
-          }
-        } catch (error) {
-          console.error("text site was recorded but its confirmation could not be sent", error instanceof Error ? error.message : error);
-        }
-      }
-      return;
-    }
-    if (!current.replyToken) {
-      const error = "Confirmation delivery unavailable: reply token expired before recovery";
-      await db.updateLineEvents([current.row.id], {
-        site_id: result.site_id ?? null,
-        action: result.action,
-        phase: result.phase,
-        confidence: result.confidence,
-        candidates: result.candidates,
-        new_site_name: result.new_site_name ?? null,
-        state: "failed",
-        error,
-        processed_at: new Date().toISOString(),
-        processing_started_at: null,
-      });
-      await safeAlert(failureCategory(error), [current.row.id], db, env);
       return;
     }
     await db.updateLineEvents([current.row.id], {
-      site_id: result.site_id ?? null,
+      site_id: null,
       action: result.action,
       phase: result.phase,
       candidates: result.candidates,
       new_site_name: result.new_site_name ?? null,
-      state: "awaiting_confirmation",
+      state: "ignored",
       confidence: result.confidence,
+      error: "text_requires_known_site",
       processed_at: new Date().toISOString(),
+      processing_started_at: null,
     });
-    const confirmation = confirmationReplyFor(result, context.sites);
-    await safeReply(
-      confirmation.templateId,
-      confirmation.values,
-      current.replyToken,
-      [current.row.id],
-      current.row.source_id,
-      db,
-      env,
-    );
   } catch (error) {
     const refreshed = await db.getLineEvent(current.row.id).catch(() => null);
     if (!refreshed) throw error;

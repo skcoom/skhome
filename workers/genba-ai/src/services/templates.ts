@@ -1,39 +1,37 @@
 import { SupabaseClient } from "../clients/supabase";
-import type { BotTemplate, Env, MatcherResult, SiteRecord, TemplateId } from "../types";
+import type {
+  BotTemplate,
+  Env,
+  GroupTemplateId,
+  MatcherResult,
+  PushTemplateId,
+  SiteRecord,
+  TemplateId,
+} from "../types";
 
 export class TemplateNotApprovedError extends Error {}
 
-export function confirmationReplyFor(
+export function photoReplyFor(
   result: MatcherResult,
   sites: SiteRecord[],
+  count: number,
 ): {
-  templateId: "T-02" | "T-03";
+  templateId: "photo_auto" | "photo_ask" | "create_confirm";
   values: Record<string, string | number>;
 } {
-  const candidateSites = result.candidates
-    .map((id) => sites.find((candidate) => candidate.id === id))
-    .filter((candidate): candidate is SiteRecord => Boolean(candidate));
-  if (result.action === "ask_similar") {
-    const existing = result.site_id
-      ? sites.find((candidate) => candidate.id === result.site_id) ?? candidateSites[0]
-      : candidateSites[0];
-    if (existing) {
-      return {
-        templateId: "T-03",
-        values: {
-          新しい名前: result.new_site_name ?? "未確定",
-          既存の現場名: existing.name,
-        },
-      };
-    }
+  if (result.action === "assign" && result.site_id) {
+    const site = sites.find((candidate) => candidate.id === result.site_id);
+    if (site) return { templateId: "photo_auto", values: { count, site: site.name } };
+  }
+  if (result.action === "create" && result.new_site_name) {
+    return {
+      templateId: "create_confirm",
+      values: { name: result.new_site_name },
+    };
   }
   return {
-    templateId: "T-02",
-    values: {
-      候補1: candidateSites[0]?.name ?? "",
-      候補2: candidateSites[1]?.name ?? "",
-      候補3: candidateSites[2]?.name ?? "",
-    },
+    templateId: "photo_ask",
+    values: { count },
   };
 }
 
@@ -66,15 +64,6 @@ export function renderTemplateRecord(
     throw new TemplateNotApprovedError(`Template ${template.template_id} is not approved`);
   }
   let rendered = template.body;
-  if (template.template_id === "T-02") {
-    const variants = JSON.parse(template.body) as { with_candidates?: unknown; without_candidates?: unknown };
-    const hasCandidates = ["候補1", "候補2", "候補3"].some((key) => String(values[key] ?? "") !== "");
-    const selected = hasCandidates ? variants.with_candidates : variants.without_candidates;
-    if (typeof selected !== "string" || selected.length === 0) {
-      throw new Error("Approved T-02 body must contain both message variants");
-    }
-    rendered = selected;
-  }
   for (const variable of template.variables) {
     if (!(variable in values)) throw new Error(`Missing template variable: ${variable}`);
     rendered = rendered.split(`{${variable}}`).join(String(values[variable]));
@@ -118,7 +107,7 @@ async function approvedText(
 }
 
 export async function replyWithTemplate(
-  templateId: TemplateId,
+  templateId: GroupTemplateId,
   values: Record<string, string | number>,
   replyToken: string,
   db: SupabaseClient,
@@ -132,7 +121,7 @@ export async function replyWithTemplate(
 }
 
 export async function pushWithTemplate(
-  templateId: TemplateId,
+  templateId: PushTemplateId,
   values: Record<string, string | number>,
   recipientId: string,
   db: SupabaseClient,

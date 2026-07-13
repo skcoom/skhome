@@ -107,10 +107,9 @@ export class SupabaseClient {
   async recordLineBurst(args: {
     burstId: string;
     siteId: string | null;
-    action: "assign" | "create";
+    action: "assign";
     phase: "before" | "during" | "after" | "unknown";
     confidence: number;
-    newSiteName: string | null;
   }): Promise<string> {
     return this.request<string>(
       "rpc/record_line_burst",
@@ -122,7 +121,7 @@ export class SupabaseClient {
           p_action: args.action,
           p_phase: args.phase,
           p_confidence: args.confidence,
-          p_new_site_name: args.newSiteName,
+          p_new_site_name: null,
         }),
       },
     );
@@ -131,10 +130,9 @@ export class SupabaseClient {
   async recordLineText(args: {
     eventId: string;
     siteId: string | null;
-    action: "assign" | "create";
+    action: "assign";
     phase: "before" | "during" | "after" | "unknown";
     confidence: number;
-    newSiteName: string | null;
     description: string;
   }): Promise<string> {
     return this.request<string>(
@@ -147,7 +145,7 @@ export class SupabaseClient {
           p_action: args.action,
           p_phase: args.phase,
           p_confidence: args.confidence,
-          p_new_site_name: args.newSiteName,
+          p_new_site_name: null,
           p_description: args.description,
         }),
       },
