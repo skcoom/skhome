@@ -13,10 +13,23 @@ test("extracts moved, completion and seven-day stalled sites", () => {
     ],
     [{ project_id: "active", phase: "after", created_at: "2026-01-10T00:00:00Z" }],
     [],
+    [],
   );
   assert.equal(summary.moved[0]?.count, 1);
   assert.equal(summary.completionCandidates[0]?.id, "active");
   assert.equal(summary.stalled[0]?.id, "stalled");
+});
+
+test("includes a text-only after report as a completion candidate", () => {
+  const summary = summarizeWeeklyData(
+    new Date("2026-01-12T08:00:00+09:00"),
+    [{ id: "text-complete", name: "サンプルC", status: "in_progress" }],
+    [],
+    [{ site_id: "text-complete" }],
+    [],
+  );
+  assert.equal(summary.moved.length, 0);
+  assert.equal(summary.completionCandidates[0]?.id, "text-complete");
 });
 
 test("expands only the approved T-06 repeat line", () => {

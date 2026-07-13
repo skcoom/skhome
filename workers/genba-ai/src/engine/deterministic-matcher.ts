@@ -174,6 +174,7 @@ export function matchDeterministically(
           candidates: [site.id],
           site_id: site.id,
           site_name: site.name,
+          new_site_name: extractSiteName(text),
           confidence: 0.8,
           reasoning: "既存現場と類似する別表記のため確認する",
         });

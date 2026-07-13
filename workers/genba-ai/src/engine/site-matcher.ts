@@ -9,5 +9,6 @@ export async function classifySite(
   env: Env,
 ): Promise<MatcherResult> {
   const ai = await matchWithClaude(context, images, env, prompt);
-  return applyConservativeGuard(context, ai);
+  const visionEvidenceComplete = images.length > 0 && images.length === context.event.images;
+  return applyConservativeGuard(context, ai, visionEvidenceComplete);
 }

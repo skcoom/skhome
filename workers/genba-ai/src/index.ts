@@ -13,7 +13,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/health") {
       return Response.json({ ok: true, service: "genba-ai" });
     }
-    const siteMatch = url.pathname.match(/^\/sites\/([0-9a-f-]{36})$/iu);
+    const siteMatch = url.pathname.match(/^\/sites\/([^/]+)$/u);
     if (request.method === "GET" && siteMatch?.[1]) {
       return handleSitePage(request, siteMatch[1], env);
     }

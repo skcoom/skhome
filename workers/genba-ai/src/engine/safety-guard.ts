@@ -3,7 +3,10 @@ import type { MatchContext, MatcherResult } from "../types";
 import { matchDeterministically } from "./deterministic-matcher";
 import { normalizeSiteText, type AliasCluster, type AliasDictionary } from "./normalization";
 
-function dictionaryForContext(context: MatchContext): AliasDictionary {
+export function mergeAliasDictionary(
+  context: MatchContext,
+  baseDictionary: AliasDictionary,
+): AliasDictionary {
   const learnedBySite = new Map<string, string[]>();
   for (const alias of context.aliases) {
     learnedBySite.set(alias.site_id, [...(learnedBySite.get(alias.site_id) ?? []), alias.alias]);
@@ -15,9 +18,16 @@ function dictionaryForContext(context: MatchContext): AliasDictionary {
       : [];
   });
   return {
-    ...(aliases as AliasDictionary),
-    clusters: [...learnedClusters, ...(aliases as AliasDictionary).clusters],
+    ...baseDictionary,
+    // Static caution/client clusters must win over rows seeded into site_aliases.
+    // A broad alias can legitimately be attached to multiple projects; evaluating
+    // learned rows first would downgrade that ambiguity to a normal property match.
+    clusters: [...baseDictionary.clusters, ...learnedClusters],
   };
+}
+
+function dictionaryForContext(context: MatchContext): AliasDictionary {
+  return mergeAliasDictionary(context, aliases as AliasDictionary);
 }
 
 function askForConflict(
@@ -42,7 +52,11 @@ function askForConflict(
   return result;
 }
 
-export function applyConservativeGuard(context: MatchContext, ai: MatcherResult): MatcherResult {
+export function applyConservativeGuard(
+  context: MatchContext,
+  ai: MatcherResult,
+  visionEvidenceComplete: boolean,
+): MatcherResult {
   const deterministic = matchDeterministically(
     {
       sender: context.event.sender,
@@ -56,6 +70,15 @@ export function applyConservativeGuard(context: MatchContext, ai: MatcherResult)
     dictionaryForContext(context),
   );
   if (deterministic.action === "ignore") return deterministic;
+  if (
+    ai.action === "ignore"
+    && ai.confidence >= 0.85
+    && context.event.images > 0
+    && !context.event.text
+    && visionEvidenceComplete
+  ) {
+    return ai;
+  }
   if (deterministic.action === "ask" || deterministic.action === "ask_similar") return deterministic;
   if (ai.action === "assign" && deterministic.action === "assign" && deterministic.site_id !== ai.site_id) {
     return askForConflict(ai, deterministic, "AI判定と正規化照合が一致しないため確認する");

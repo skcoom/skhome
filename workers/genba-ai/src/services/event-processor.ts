@@ -1,8 +1,10 @@
 import { getDisplayName, getLineContent, getSenderId, getSourceId } from "../clients/line";
+import { canAddVisionImage } from "../clients/anthropic";
 import { SupabaseClient } from "../clients/supabase";
 import { buildMatchContext } from "../engine/context";
 import { classifySite } from "../engine/site-matcher";
 import { extractSiteName, normalizeSiteText } from "../engine/normalization";
+import { createSiteToken } from "../security/site-token";
 import type {
   Env,
   LineImageMessage,
@@ -14,7 +16,13 @@ import type {
   StoredLineEvent,
   VisionImage,
 } from "../types";
-import { pushWithTemplate, replyWithTemplate, TemplateNotApprovedError } from "./templates";
+import { burstIdWithoutSender } from "./burst";
+import {
+  confirmationReplyFor,
+  pushWithTemplate,
+  replyWithTemplate,
+  TemplateNotApprovedError,
+} from "./templates";
 
 export interface ArchivedImage {
   key: string;
@@ -90,13 +98,15 @@ function visionMediaType(contentType: string | null): VisionImage["mediaType"] |
 
 async function loadVisionImages(events: StoredLineEvent[], env: Env): Promise<VisionImage[]> {
   const images: VisionImage[] = [];
+  let totalBytes = 0;
   for (const event of events) {
     if (!event.r2_key || images.length >= 10) continue;
     const mediaType = visionMediaType(event.content_type);
     if (!mediaType) continue;
     const object = await env.PHOTOS.get(event.r2_key);
-    if (!object || object.size > 7_000_000) continue;
+    if (!object || !canAddVisionImage(totalBytes, object.size, images.length)) continue;
     images.push({ mediaType, data: toBase64(await object.arrayBuffer()) });
+    totalBytes += object.size;
   }
   return images;
 }
@@ -297,9 +307,10 @@ async function applyBurstResult(
     try {
       site = await db.getSiteById(siteId) ?? undefined;
       if (site) {
+        const pageToken = await createSiteToken(site.id, env.LINE_CHANNEL_SECRET);
         await safeReply("T-04", {
           現場名: site.name,
-          URL: `${env.PUBLIC_BASE_URL}/sites/${site.genba_page_token}`,
+          URL: `${env.PUBLIC_BASE_URL}/sites/${pageToken}`,
         }, token, ids, events[0]?.source_id ?? "", db, env);
       }
     } catch (error) {
@@ -309,11 +320,12 @@ async function applyBurstResult(
   }
   if (result.action === "assign" && site) {
     await recordImages(site, burstEvents, result, db);
+    const pageToken = await createSiteToken(site.id, env.LINE_CHANNEL_SECRET);
     await safeReply("T-01", {
       現場名: site.name,
       n: events.filter((event) => event.r2_key).length,
       工程: phaseLabel(result.phase),
-      URL: `${env.PUBLIC_BASE_URL}/sites/${site.genba_page_token}`,
+      URL: `${env.PUBLIC_BASE_URL}/sites/${pageToken}`,
     }, token, ids, events[0]?.source_id ?? "", db, env);
     return;
   }
@@ -348,24 +360,16 @@ async function applyBurstResult(
     state: "awaiting_confirmation",
     processed_at: new Date().toISOString(),
   });
-  const candidateSites = result.candidates
-    .map((id) => contextSites.find((candidate) => candidate.id === id))
-    .filter((candidate): candidate is SiteRecord => Boolean(candidate));
-  if (result.action === "ask_similar") {
-    const existing = site ?? candidateSites[0];
-    if (existing) {
-      await safeReply("T-03", {
-        新しい名前: result.new_site_name ?? "未確定",
-        既存の現場名: existing.name,
-      }, token, ids, events[0]?.source_id ?? "", db, env);
-    }
-    return;
-  }
-  await safeReply("T-02", {
-    候補1: candidateSites[0]?.name ?? "",
-    候補2: candidateSites[1]?.name ?? "",
-    候補3: candidateSites[2]?.name ?? "",
-  }, token, ids, events[0]?.source_id ?? "", db, env);
+  const confirmation = confirmationReplyFor(result, contextSites);
+  await safeReply(
+    confirmation.templateId,
+    confirmation.values,
+    token,
+    ids,
+    events[0]?.source_id ?? "",
+    db,
+    env,
+  );
 }
 
 async function processImageBurst(
@@ -603,9 +607,10 @@ async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env:
         try {
           site = await db.getSiteById(siteId) ?? undefined;
           if (site) {
+            const pageToken = await createSiteToken(site.id, env.LINE_CHANNEL_SECRET);
             await safeReply("T-04", {
               現場名: site.name,
-              URL: `${env.PUBLIC_BASE_URL}/sites/${site.genba_page_token}`,
+              URL: `${env.PUBLIC_BASE_URL}/sites/${pageToken}`,
             }, current.replyToken, [current.row.id], current.row.source_id, db, env);
           }
         } catch (error) {
@@ -614,14 +619,43 @@ async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env:
       }
       return;
     }
+    if (!current.replyToken) {
+      const error = "Confirmation delivery unavailable: reply token expired before recovery";
+      await db.updateLineEvents([current.row.id], {
+        site_id: result.site_id ?? null,
+        action: result.action,
+        phase: result.phase,
+        confidence: result.confidence,
+        candidates: result.candidates,
+        new_site_name: result.new_site_name ?? null,
+        state: "failed",
+        error,
+        processed_at: new Date().toISOString(),
+        processing_started_at: null,
+      });
+      await safeAlert(failureCategory(error), [current.row.id], db, env);
+      return;
+    }
     await db.updateLineEvents([current.row.id], {
+      site_id: result.site_id ?? null,
       action: result.action,
+      phase: result.phase,
       candidates: result.candidates,
       new_site_name: result.new_site_name ?? null,
       state: "awaiting_confirmation",
       confidence: result.confidence,
       processed_at: new Date().toISOString(),
     });
+    const confirmation = confirmationReplyFor(result, context.sites);
+    await safeReply(
+      confirmation.templateId,
+      confirmation.values,
+      current.replyToken,
+      [current.row.id],
+      current.row.source_id,
+      db,
+      env,
+    );
   } catch (error) {
     const refreshed = await db.getLineEvent(current.row.id).catch(() => null);
     if (!refreshed) throw error;
@@ -656,15 +690,19 @@ export async function registerMessageEvents(
     const receivedAt = new Date(event.timestamp).toISOString();
     let burstId: string | null = null;
     if (event.message.type === "image") {
-      const localRecent = [...localBursts].reverse().find((candidate) =>
-        candidate.sourceId === sourceId
-        && candidate.senderId === senderId
-        && event.timestamp - candidate.timestamp <= 5 * 60_000,
-      );
-      const since = new Date(event.timestamp - 5 * 60_000).toISOString();
-      const recent = localRecent ? null : await db.findRecentBurst(sourceId, senderId, since, receivedAt);
-      burstId = localRecent?.burstId ?? recent?.burst_id ?? fallbackBurstId(sourceId, senderId, event.timestamp);
-      localBursts.push({ sourceId, senderId, timestamp: event.timestamp, burstId });
+      if (!senderId) {
+        burstId = burstIdWithoutSender(sourceId, event.message.id);
+      } else {
+        const localRecent = [...localBursts].reverse().find((candidate) =>
+          candidate.sourceId === sourceId
+          && candidate.senderId === senderId
+          && event.timestamp - candidate.timestamp <= 5 * 60_000,
+        );
+        const since = new Date(event.timestamp - 5 * 60_000).toISOString();
+        const recent = localRecent ? null : await db.findRecentBurst(sourceId, senderId, since, receivedAt);
+        burstId = localRecent?.burstId ?? recent?.burst_id ?? fallbackBurstId(sourceId, senderId, event.timestamp);
+        localBursts.push({ sourceId, senderId, timestamp: event.timestamp, burstId });
+      }
     }
     const image = archived.get(event.message.id);
     rows.push({

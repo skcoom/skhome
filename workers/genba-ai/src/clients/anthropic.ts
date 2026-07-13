@@ -3,6 +3,15 @@ import type { Env, MatchContext, MatcherAction, MatcherResult, MediaPhase, Visio
 const actions = new Set<MatcherAction>(["assign", "ask", "ask_similar", "create", "ignore"]);
 const phases = new Set<MediaPhase>(["before", "during", "after", "unknown"]);
 
+export const MAX_VISION_IMAGE_BYTES = 7_000_000;
+export const MAX_VISION_TOTAL_BYTES = 18 * 1024 * 1024;
+
+export function canAddVisionImage(currentBytes: number, imageBytes: number, imageCount: number): boolean {
+  return imageCount < 10
+    && imageBytes <= MAX_VISION_IMAGE_BYTES
+    && currentBytes + imageBytes <= MAX_VISION_TOTAL_BYTES;
+}
+
 function parseJson(text: string): unknown {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");

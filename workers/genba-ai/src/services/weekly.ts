@@ -17,6 +17,10 @@ interface CorrectionRow {
   created_at: string;
 }
 
+interface WeeklyCompletionRow {
+  site_id: string;
+}
+
 export interface WeeklySummary {
   start: Date;
   end: Date;
@@ -44,6 +48,7 @@ export function summarizeWeeklyData(
   scheduledAt: Date,
   sites: SiteRecord[],
   media: WeeklyMediaRow[],
+  completionEvents: WeeklyCompletionRow[],
   corrections: CorrectionRow[],
 ): WeeklySummary {
   const end = startOfJstDay(scheduledAt);
@@ -60,7 +65,14 @@ export function summarizeWeeklyData(
       phases: [...new Set(rows.map((row) => row.phase))],
     }];
   }).sort((left, right) => right.count - left.count);
-  const completionCandidates = moved.filter((item) => item.phases.includes("after")).map((item) => item.site);
+  const completionSiteIds = new Set([
+    ...moved.filter((item) => item.phases.includes("after")).map((item) => item.site.id),
+    ...completionEvents.map((event) => event.site_id),
+  ]);
+  const completionCandidates = [...completionSiteIds].flatMap((siteId) => {
+    const site = siteById.get(siteId);
+    return site ? [site] : [];
+  });
   const stalledCutoff = end.getTime() - 7 * 24 * 3_600_000;
   const stalled = sites.filter((site) =>
     (site.status === "planning" || site.status === "in_progress")
@@ -123,12 +135,13 @@ export async function verifyWeeklyToken(token: string, secret: string): Promise<
 async function loadSummary(scheduledAt: Date, db: SupabaseClient): Promise<WeeklySummary> {
   const end = startOfJstDay(scheduledAt);
   const start = new Date(end.getTime() - 7 * 24 * 3_600_000);
-  const [sites, media, corrections] = await Promise.all([
+  const [sites, media, completionEvents, corrections] = await Promise.all([
     db.getAllSites(),
     db.getWeeklyMedia(start.toISOString(), end.toISOString()),
+    db.getWeeklyCompletionEvents(start.toISOString(), end.toISOString()),
     db.getCorrections(start.toISOString(), end.toISOString()),
   ]);
-  return summarizeWeeklyData(scheduledAt, sites, media, corrections);
+  return summarizeWeeklyData(scheduledAt, sites, media, completionEvents, corrections);
 }
 
 function weeklyValues(summary: WeeklySummary, reportUrl: string): {

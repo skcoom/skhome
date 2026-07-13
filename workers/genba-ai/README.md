@@ -8,7 +8,7 @@ LINE Messaging APIのwebhookを受け、原本画像をR2へ先に保存して�
 - `src/services/event-processor.ts`: R2先行保存、冪等化、5分バースト、台帳記録・訂正学習
 - `src/engine/`: 48h/24h文脈、正規化・安全判定、Claude判定
 - `prompts/site-matcher.md`: 判定プロンプトv0.1
-- `src/services/site-page.ts`: UUIDトークン付き現場ページ・画像配信
+- `src/services/site-page.ts`: HMAC署名付き現場トークンによる現場ページ・画像配信
 - `src/services/weekly.ts`: 完工候補・7日停滞・学習ログを含む週報
 - `scripts/seed-aliases.ts`: 初期辞書から既存projectsへaliasを投入
 - `scripts/run-regression.ts`: JSONL回帰テストCLI
@@ -45,6 +45,8 @@ Claudeは `claude-haiku-4-5` が既定です。実データの回帰結果が基
 ## テンプレート承認
 
 migrationはT-01〜T-07を承認前ドラフトとして登録するため、`approved_at` と `approved_by` はNULLです。この状態では送信関数が必ず拒否します。L3の文面承認後に、承認者を明示して対象行を更新してください。
+
+> 注意: 依頼指定の「初期案」はT-01〜T-07ですが、そのファイルが参照する2026-07-11版はグループ文面を6つのslugへ再編しています。ID・件数・新規現場確認フローが一致しないため、どちらをL3承認するか決まるまで、下記UPDATEは実行しないでください。実装は依頼文に明記されたT-01〜T-07を保持しています。
 
 ```sql
 UPDATE public.bot_templates
@@ -110,7 +112,7 @@ Cron配線のローカル確認（毎分の孤児回収と月曜週報）:
 curl 'http://127.0.0.1:8787/cdn-cgi/handler/scheduled?cron=0+23+*+*+SUN&format=json'
 ```
 
-毎分の回収処理は、R2・DBへ退避済みなのに処理が中断した画像とtextを再処理します。回収時点ではLINEのreply tokenを安全に再利用できないため、判定が確認質問（T-02/T-03）に倒れた場合は誤assignせずfailedにし、T-07を週報送信先へpushしてWorkerの後続処理を停止します。グループへの有料pushは行いません。
+毎分の回収処理は、R2・DBへ退避済みなのに処理が中断した画像とtextを、初回を含め2回まで処理します（再試行は1回）。回収時点ではLINEのreply tokenを安全に再利用できないため、判定が確認質問（T-02/T-03）に倒れた場合は誤assignせずfailedにし、T-07を週報送信先へpushしてWorkerの後続処理を停止します。グループへの有料pushは行いません。
 
 デプロイ前bundle確認とデプロイ:
 
@@ -126,3 +128,9 @@ npx wrangler deploy
 ## 5分バーストとreply token
 
 LINE公式仕様ではreply tokenは1回だけ、受信後1分以内の利用が推奨されます。そのため、最初のwebhook内の写真群を即時判定・返信し、同じ送信者から5分以内に届く後続webhookは同じ`burst_id`・同じ現場へ無返信で追加します。5分経過後に総枚数を返信する方式はreply tokenの保証時間を超えるため採用していません。
+
+## 社内写真の分離
+
+R2キー・LINE message ID・生payloadはRLSを有効にした`line_events`だけに保存します。既存`project_media`には現場台帳との関連を示す非掲載行だけを作り、公開projectのanon queryへR2キーや現場ページtokenを出しません。現場ページtokenはDBへ保存せず、現場IDを`LINE_CHANNEL_SECRET`でHMAC署名して生成します。
+
+Claude Visionへ渡す画像は1枚7MB以下・最大10枚に加え、base64化後のAPIリクエストが32MB制限を超えないよう原本合計18MiBまでに制限しています。対象外になった原本もR2には残ります。

@@ -66,7 +66,6 @@ export interface SiteRecord {
   id: string;
   name: string;
   status?: string;
-  genba_page_token?: string;
   last_line_activity_at?: string;
 }
 
@@ -99,6 +98,7 @@ export interface StoredLineEvent {
   received_at: string;
   processed_at: string | null;
   reply_sent_at: string | null;
+  attempt_count: number;
 }
 
 export interface MatchContext {

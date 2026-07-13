@@ -29,3 +29,24 @@ test("all event-history lookups are bounded by the event timestamp", async () =>
     globalThis.fetch = originalFetch;
   }
 });
+
+test("weekly media includes only photos received from LINE", async () => {
+  const requested: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    requested.push(String(input));
+    return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const db = new SupabaseClient({
+      SUPABASE_URL: "https://example.invalid",
+      SUPABASE_SERVICE_ROLE_KEY: "test-key",
+    } as Env);
+    await db.getWeeklyMedia("2026-01-01T00:00:00.000Z", "2026-01-08T00:00:00.000Z");
+    assert.equal(requested.length, 1);
+    assert.match(requested[0] ?? "", /line_events\?select=/u);
+    assert.match(requested[0] ?? "", /r2_key=not\.is\.null/u);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

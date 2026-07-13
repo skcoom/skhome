@@ -1,19 +1,7 @@
 -- SKコーム現場管理AI フェーズ1: 既存スキーマは変更・削除せず、列とテーブルを追加する。
 
 ALTER TABLE public.projects
-  ADD COLUMN IF NOT EXISTS genba_page_token UUID NOT NULL DEFAULT uuid_generate_v4(),
   ADD COLUMN IF NOT EXISTS last_line_activity_at TIMESTAMP WITH TIME ZONE;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_genba_page_token
-  ON public.projects(genba_page_token);
-
-ALTER TABLE public.project_media
-  ADD COLUMN IF NOT EXISTS line_message_id TEXT,
-  ADD COLUMN IF NOT EXISTS r2_key TEXT;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_project_media_line_message_id
-  ON public.project_media(line_message_id)
-  WHERE line_message_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.site_aliases (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -67,8 +55,18 @@ CREATE TABLE IF NOT EXISTS public.line_events (
   processing_started_at TIMESTAMP WITH TIME ZONE,
   reply_sent_at TIMESTAMP WITH TIME ZONE,
   correction_open_until TIMESTAMP WITH TIME ZONE,
+  attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+-- project_media は既存台帳との関連だけを保持する。社内限定のR2キー・LINE識別子は
+-- RLSで閉じた line_events にのみ保存し、既存公開ページには is_featured=TRUE で非掲載にする。
+ALTER TABLE public.project_media
+  ADD COLUMN IF NOT EXISTS genba_line_event_id UUID REFERENCES public.line_events(id) ON DELETE SET NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_media_genba_line_event_id
+  ON public.project_media(genba_line_event_id)
+  WHERE genba_line_event_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.correction_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -133,7 +131,9 @@ BEGIN
 
   RETURN QUERY
   UPDATE public.line_events AS le
-  SET state = 'processing', processing_started_at = NOW()
+  SET state = 'processing',
+      processing_started_at = NOW(),
+      attempt_count = le.attempt_count + 1
   WHERE le.message_id IN (
       SELECT value->>'message_id' FROM jsonb_array_elements(p_events)
     )
@@ -187,25 +187,24 @@ BEGIN
   END IF;
 
   INSERT INTO public.project_media (
-    project_id, type, phase, file_url, r2_key, line_message_id, is_featured
+    project_id, type, phase, file_url, genba_line_event_id, is_featured
   )
   SELECT
     resolved_site_id,
     'image',
     CASE WHEN p_phase = 'unknown' THEN 'during' ELSE p_phase END,
-    'r2://' || le.r2_key,
-    le.r2_key,
-    le.message_id,
-    FALSE
+    'internal://genba-ai',
+    le.id,
+    TRUE
   FROM public.line_events AS le
   WHERE le.burst_id = p_burst_id
     AND le.r2_key IS NOT NULL
-  ON CONFLICT (line_message_id) WHERE line_message_id IS NOT NULL
+  ON CONFLICT (genba_line_event_id) WHERE genba_line_event_id IS NOT NULL
   DO UPDATE SET
     project_id = EXCLUDED.project_id,
     phase = EXCLUDED.phase,
     file_url = EXCLUDED.file_url,
-    r2_key = EXCLUDED.r2_key;
+    is_featured = TRUE;
 
   UPDATE public.line_events
   SET site_id = resolved_site_id,
@@ -326,7 +325,9 @@ BEGIN
   END IF;
 
   UPDATE public.line_events
-  SET state = 'processing', processing_started_at = NOW()
+  SET state = 'processing',
+      processing_started_at = NOW(),
+      attempt_count = attempt_count + 1
   WHERE burst_id = p_burst_id AND state = 'archived';
 
   RETURN FOUND;
@@ -357,6 +358,7 @@ BEGIN
         state = 'processing'
         AND COALESCE(processing_started_at, received_at) < p_processing_cutoff
       )
+      OR (state = 'failed' AND attempt_count < 2)
     )
   ORDER BY received_at ASC
   LIMIT 1;
@@ -378,13 +380,16 @@ BEGIN
           state = 'processing'
           AND COALESCE(processing_started_at, received_at) < p_processing_cutoff
         )
+        OR (state = 'failed' AND attempt_count < 2)
       )
   ) THEN
     RETURN NULL;
   END IF;
 
   UPDATE public.line_events
-  SET state = 'processing', processing_started_at = NOW()
+  SET state = 'processing',
+      processing_started_at = NOW(),
+      attempt_count = attempt_count + 1
   WHERE burst_id = candidate_burst_id
     AND (
       state = 'archived'
@@ -392,6 +397,7 @@ BEGIN
         state = 'processing'
         AND COALESCE(processing_started_at, received_at) < p_processing_cutoff
       )
+      OR (state = 'failed' AND attempt_count < 2)
     );
 
   RETURN candidate_burst_id;
@@ -414,7 +420,9 @@ DECLARE
   claimed_id UUID;
 BEGIN
   UPDATE public.line_events AS le
-  SET state = 'processing', processing_started_at = NOW()
+  SET state = 'processing',
+      processing_started_at = NOW(),
+      attempt_count = le.attempt_count + 1
   WHERE le.id = (
     SELECT candidate.id
     FROM public.line_events AS candidate
@@ -425,6 +433,7 @@ BEGIN
           candidate.state = 'processing'
           AND COALESCE(candidate.processing_started_at, candidate.received_at) < p_processing_cutoff
         )
+        OR (candidate.state = 'failed' AND candidate.attempt_count < 2)
       )
     ORDER BY candidate.received_at ASC
     FOR UPDATE SKIP LOCKED
@@ -469,7 +478,10 @@ AS $$
   FROM public.line_events AS le
   WHERE (
     le.state = 'failed'
-    AND le.error LIKE 'Confirmation delivery unavailable:%'
+    AND (
+      le.error LIKE 'Confirmation delivery unavailable:%'
+      OR le.attempt_count >= 2
+    )
   ) OR le.error = 'daily_reply_limit_alerted'
   ORDER BY le.processed_at DESC
   LIMIT 1;
@@ -561,24 +573,23 @@ BEGIN
   END IF;
 
   INSERT INTO public.project_media (
-    project_id, type, phase, file_url, r2_key, line_message_id, is_featured
+    project_id, type, phase, file_url, genba_line_event_id, is_featured
   )
   SELECT
     resolved_site_id,
     'image',
     CASE WHEN le.phase IN ('before', 'during', 'after') THEN le.phase ELSE 'during' END,
-    'r2://' || le.r2_key,
-    le.r2_key,
-    le.message_id,
-    FALSE
+    'internal://genba-ai',
+    le.id,
+    TRUE
   FROM public.line_events AS le
   WHERE le.burst_id = p_burst_id
     AND le.r2_key IS NOT NULL
-  ON CONFLICT (line_message_id) WHERE line_message_id IS NOT NULL
+  ON CONFLICT (genba_line_event_id) WHERE genba_line_event_id IS NOT NULL
   DO UPDATE SET
     project_id = EXCLUDED.project_id,
     file_url = EXCLUDED.file_url,
-    r2_key = EXCLUDED.r2_key;
+    is_featured = TRUE;
 
   UPDATE public.line_events
   SET site_id = resolved_site_id,

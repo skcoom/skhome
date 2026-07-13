@@ -103,7 +103,7 @@ async function matchLive(testCase: RegressionCase, sites: SiteRecord[]): Promise
     aliases: aliasRows,
   };
   const env = { ANTHROPIC_API_KEY: apiKey, ANTHROPIC_MODEL: model } as Env;
-  return applyConservativeGuard(context, await matchWithClaude(context, [], env, prompt));
+  return applyConservativeGuard(context, await matchWithClaude(context, [], env, prompt), false);
 }
 
 const casesPath = argument("--cases");

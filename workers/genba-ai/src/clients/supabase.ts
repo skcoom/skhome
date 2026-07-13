@@ -82,7 +82,7 @@ export class SupabaseClient {
 
   async getActiveSites(): Promise<SiteRecord[]> {
     return this.request<SiteRecord[]>(
-      "projects?select=id,name,status,genba_page_token,last_line_activity_at&status=in.(planning,in_progress)&order=updated_at.desc",
+      "projects?select=id,name,status,last_line_activity_at&status=in.(planning,in_progress)&order=updated_at.desc",
     );
   }
 
@@ -216,16 +216,9 @@ export class SupabaseClient {
     );
   }
 
-  async getSiteByToken(token: string): Promise<SiteRecord | null> {
-    const rows = await this.request<SiteRecord[]>(
-      `projects?select=id,name,status,genba_page_token,last_line_activity_at&genba_page_token=eq.${encodeURIComponent(token)}&limit=1`,
-    );
-    return rows[0] ?? null;
-  }
-
   async getSiteById(siteId: string): Promise<SiteRecord | null> {
     const rows = await this.request<SiteRecord[]>(
-      `projects?select=id,name,status,genba_page_token,last_line_activity_at&id=eq.${encodeURIComponent(siteId)}&limit=1`,
+      `projects?select=id,name,status,last_line_activity_at&id=eq.${encodeURIComponent(siteId)}&limit=1`,
     );
     return rows[0] ?? null;
   }
@@ -237,9 +230,21 @@ export class SupabaseClient {
     caption: string | null;
     created_at: string;
   }>> {
-    return this.request(
-      `project_media?select=id,phase,r2_key,caption,created_at&project_id=eq.${encodeURIComponent(siteId)}&r2_key=not.is.null&order=created_at.desc`,
+    const rows = await this.request<Array<{
+      id: string;
+      phase: "before" | "during" | "after" | "unknown" | null;
+      r2_key: string;
+      received_at: string;
+    }>>(
+      `line_events?select=id,phase,r2_key,received_at&site_id=eq.${encodeURIComponent(siteId)}&state=eq.recorded&r2_key=not.is.null&order=received_at.desc`,
     );
+    return rows.map((row) => ({
+      id: row.id,
+      phase: row.phase === "before" || row.phase === "after" ? row.phase : "during",
+      r2_key: row.r2_key,
+      caption: null,
+      created_at: row.received_at,
+    }));
   }
 
   async getSiteProgress(siteId: string): Promise<Array<{
@@ -255,14 +260,14 @@ export class SupabaseClient {
 
   async mediaBelongsToSite(siteId: string, r2Key: string): Promise<boolean> {
     const rows = await this.request<Array<{ id: string }>>(
-      `project_media?select=id&project_id=eq.${encodeURIComponent(siteId)}&r2_key=eq.${encodeURIComponent(r2Key)}&limit=1`,
+      `line_events?select=id&site_id=eq.${encodeURIComponent(siteId)}&state=eq.recorded&r2_key=eq.${encodeURIComponent(r2Key)}&limit=1`,
     );
     return rows.length === 1;
   }
 
   async getAllSites(): Promise<SiteRecord[]> {
     return this.request<SiteRecord[]>(
-      "projects?select=id,name,status,genba_page_token,last_line_activity_at&order=updated_at.desc",
+      "projects?select=id,name,status,last_line_activity_at&order=updated_at.desc",
     );
   }
 
@@ -271,8 +276,19 @@ export class SupabaseClient {
     phase: "before" | "during" | "after";
     created_at: string;
   }>> {
+    const rows = await this.request<Array<{
+      site_id: string;
+      phase: "before" | "during" | "after";
+      received_at: string;
+    }>>(
+      `line_events?select=site_id,phase,received_at&state=eq.recorded&site_id=not.is.null&r2_key=not.is.null&phase=in.(before,during,after)&received_at=gte.${encodeURIComponent(since)}&received_at=lt.${encodeURIComponent(until)}&order=received_at.asc`,
+    );
+    return rows.map((row) => ({ project_id: row.site_id, phase: row.phase, created_at: row.received_at }));
+  }
+
+  async getWeeklyCompletionEvents(since: string, until: string): Promise<Array<{ site_id: string }>> {
     return this.request(
-      `project_media?select=project_id,phase,created_at&created_at=gte.${encodeURIComponent(since)}&created_at=lt.${encodeURIComponent(until)}&order=created_at.asc`,
+      `line_events?select=site_id&state=eq.recorded&site_id=not.is.null&phase=eq.after&received_at=gte.${encodeURIComponent(since)}&received_at=lt.${encodeURIComponent(until)}&order=received_at.asc`,
     );
   }
 

@@ -1,4 +1,5 @@
 import { SupabaseClient } from "../clients/supabase";
+import { verifySiteToken } from "../security/site-token";
 import type { Env, SiteRecord } from "../types";
 
 type SiteMedia = Awaited<ReturnType<SupabaseClient["getSiteMedia"]>>[number];
@@ -68,7 +69,8 @@ function pageHeaders(contentType: string): HeadersInit {
 
 export async function handleSitePage(request: Request, token: string, env: Env): Promise<Response> {
   const db = new SupabaseClient(env);
-  const site = await db.getSiteByToken(token);
+  const siteId = await verifySiteToken(token, env.LINE_CHANNEL_SECRET);
+  const site = siteId ? await db.getSiteById(siteId) : null;
   if (!site) return new Response("Not found", { status: 404, headers: pageHeaders("text/plain; charset=utf-8") });
   const [media, progress] = await Promise.all([db.getSiteMedia(site.id), db.getSiteProgress(site.id)]);
   const phase = new URL(request.url).searchParams.get("phase") ?? "all";
@@ -85,7 +87,8 @@ export async function handleMedia(token: string, encodedKey: string, env: Env): 
     return new Response("Not found", { status: 404, headers: pageHeaders("text/plain; charset=utf-8") });
   }
   const db = new SupabaseClient(env);
-  const site = await db.getSiteByToken(token);
+  const siteId = await verifySiteToken(token, env.LINE_CHANNEL_SECRET);
+  const site = siteId ? await db.getSiteById(siteId) : null;
   if (!site || !(await db.mediaBelongsToSite(site.id, key))) {
     return new Response("Not found", { status: 404, headers: pageHeaders("text/plain; charset=utf-8") });
   }

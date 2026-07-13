@@ -1,7 +1,41 @@
 import { SupabaseClient } from "../clients/supabase";
-import type { BotTemplate, Env, TemplateId } from "../types";
+import type { BotTemplate, Env, MatcherResult, SiteRecord, TemplateId } from "../types";
 
 export class TemplateNotApprovedError extends Error {}
+
+export function confirmationReplyFor(
+  result: MatcherResult,
+  sites: SiteRecord[],
+): {
+  templateId: "T-02" | "T-03";
+  values: Record<string, string | number>;
+} {
+  const candidateSites = result.candidates
+    .map((id) => sites.find((candidate) => candidate.id === id))
+    .filter((candidate): candidate is SiteRecord => Boolean(candidate));
+  if (result.action === "ask_similar") {
+    const existing = result.site_id
+      ? sites.find((candidate) => candidate.id === result.site_id) ?? candidateSites[0]
+      : candidateSites[0];
+    if (existing) {
+      return {
+        templateId: "T-03",
+        values: {
+          新しい名前: result.new_site_name ?? "未確定",
+          既存の現場名: existing.name,
+        },
+      };
+    }
+  }
+  return {
+    templateId: "T-02",
+    values: {
+      候補1: candidateSites[0]?.name ?? "",
+      候補2: candidateSites[1]?.name ?? "",
+      候補3: candidateSites[2]?.name ?? "",
+    },
+  };
+}
 
 async function sendLineText(
   path: "/v2/bot/message/reply" | "/v2/bot/message/push",
