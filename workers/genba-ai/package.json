@@ -1,0 +1,23 @@
+{
+  "name": "@skhome/genba-ai-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "test:regression": "tsx scripts/run-regression.ts",
+    "seed:aliases": "tsx scripts/seed-aliases.ts",
+    "smoke:mock-line": "node scripts/mock-line-server.mjs",
+    "smoke:webhook": "node scripts/smoke-webhook.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260708.1",
+    "@types/node": "26.1.1",
+    "tsx": "4.23.0",
+    "typescript": "7.0.2",
+    "wrangler": "4.110.0"
+  }
+}
