@@ -1,5 +1,44 @@
+export interface WorkerExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
+export interface WorkerScheduledController {
+  readonly scheduledTime: number;
+  readonly cron: string;
+}
+
+interface PhotoHttpMetadata {
+  contentType?: string;
+}
+
+interface PhotoObjectMetadata {
+  httpMetadata?: PhotoHttpMetadata;
+}
+
+interface PhotoObjectBody extends PhotoObjectMetadata {
+  readonly size: number;
+  readonly body: ReadableStream<Uint8Array>;
+  readonly httpEtag: string;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+interface PhotoPutOptions {
+  httpMetadata?: PhotoHttpMetadata;
+  customMetadata?: Record<string, string>;
+}
+
+export interface PhotoBucket {
+  head(key: string): Promise<PhotoObjectMetadata | null>;
+  get(key: string): Promise<PhotoObjectBody | null>;
+  put(
+    key: string,
+    value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | Blob | null,
+    options?: PhotoPutOptions,
+  ): Promise<unknown>;
+}
+
 export interface Env {
-  PHOTOS: R2Bucket;
+  PHOTOS: PhotoBucket;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   PUBLIC_BASE_URL: string;

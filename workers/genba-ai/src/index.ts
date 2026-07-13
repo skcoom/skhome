@@ -2,10 +2,10 @@ import { handleWebhook } from "./services/webhook";
 import { handleMedia, handleSitePage } from "./services/site-page";
 import { handleWeeklyPage, runWeeklySummary } from "./services/weekly";
 import { recoverPendingEvents } from "./services/event-processor";
-import type { Env } from "./types";
+import type { Env, WorkerExecutionContext, WorkerScheduledController } from "./types";
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: WorkerExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "POST" && url.pathname === "/webhook") {
       return handleWebhook(request, env, ctx);
@@ -30,9 +30,9 @@ export default {
   },
 
   async scheduled(
-    controller: ScheduledController,
+    controller: WorkerScheduledController,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: WorkerExecutionContext,
   ): Promise<void> {
     if (controller.cron === "0 23 * * SUN") {
       ctx.waitUntil(runWeeklySummary(env, controller.scheduledTime));

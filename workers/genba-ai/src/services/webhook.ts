@@ -4,7 +4,7 @@ import {
   processPreparedMessageEvents,
   registerMessageEvents,
 } from "./event-processor";
-import type { Env, LineMessageEvent, LineWebhookBody } from "../types";
+import type { Env, LineMessageEvent, LineWebhookBody, WorkerExecutionContext } from "../types";
 
 function isLineWebhookBody(value: unknown): value is LineWebhookBody {
   if (!value || typeof value !== "object") return false;
@@ -15,7 +15,7 @@ function isLineWebhookBody(value: unknown): value is LineWebhookBody {
 export async function handleWebhook(
   request: Request,
   env: Env,
-  ctx: ExecutionContext,
+  ctx: WorkerExecutionContext,
 ): Promise<Response> {
   const rawBody = await request.text();
   const signature = request.headers.get("x-line-signature");
