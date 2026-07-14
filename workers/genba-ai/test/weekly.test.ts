@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { verifySiteToken } from "../src/security/site-token";
 import { renderWeeklyTemplateRecord } from "../src/services/templates";
-import { createWeeklyToken, summarizeWeeklyData, verifyWeeklyToken } from "../src/services/weekly";
+import {
+  createWeeklyToken,
+  renderWeeklyPage,
+  summarizeWeeklyData,
+  verifyWeeklyToken,
+} from "../src/services/weekly";
 import type { BotTemplate } from "../src/types";
 
 test("extracts moved, completion and seven-day stalled sites", () => {
@@ -53,4 +59,26 @@ test("weekly report token is signed and tamper evident", async () => {
   const token = await createWeeklyToken(start, "test-secret");
   assert.ok(await verifyWeeklyToken(token, "test-secret"));
   assert.equal(await verifyWeeklyToken(`${token}x`, "test-secret"), null);
+});
+
+test("weekly page links each listed site to its signed site page", async () => {
+  const site = {
+    id: "123e4567-e89b-42d3-a456-426614174000",
+    name: "サンプル現場",
+    status: "in_progress",
+  };
+  const html = await renderWeeklyPage({
+    start: new Date("2026-01-05T00:00:00+09:00"),
+    end: new Date("2026-01-12T00:00:00+09:00"),
+    moved: [{ site, count: 2, phases: ["during"] }],
+    completionCandidates: [site],
+    stalled: [site],
+    learning: [],
+  }, "https://worker.example", "test-secret");
+  const href = html.match(/href="(https:\/\/worker\.example\/sites\/[^"]+)"/u)?.[1];
+  assert.ok(href);
+  const token = decodeURIComponent(new URL(href).pathname.slice("/sites/".length));
+  assert.equal(await verifySiteToken(token, "test-secret"), site.id);
+  assert.equal((html.match(/>サンプル現場<\/a>/gu) ?? []).length, 3);
+  assert.match(html, /noindex,nofollow,noarchive/u);
 });

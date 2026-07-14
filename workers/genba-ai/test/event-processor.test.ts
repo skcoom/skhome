@@ -8,8 +8,12 @@ import {
   pendingSiteNameAnswer,
 } from "../src/services/answers";
 import { burstIdWithoutSender } from "../src/services/burst";
+import {
+  resolveSiteAnswer,
+  siteNameWithoutPendingError,
+} from "../src/services/site-answer";
 import { photoReplyFor } from "../src/services/templates";
-import type { MatcherResult, SiteRecord } from "../src/types";
+import type { AliasRecord, MatcherResult, SiteRecord } from "../src/types";
 
 const sites: SiteRecord[] = [
   { id: "site-a", name: "サンプル現場A" },
@@ -83,5 +87,71 @@ test("does not group images from an unknown sender", () => {
   assert.notEqual(
     burstIdWithoutSender("group-test", "message-a"),
     burstIdWithoutSender("group-test", "message-b"),
+  );
+});
+
+test("resolves one exact formal site name", () => {
+  const answer = resolveSiteAnswer("サンプル現場A", sites, []);
+  assert.equal(answer.kind, "resolved");
+  if (answer.kind === "resolved") assert.equal(answer.site.id, "site-a");
+});
+
+test("resolves an alias that belongs to one site", () => {
+  const aliases: AliasRecord[] = [
+    { site_id: "site-b", alias: "現場B略称", source: "manual" },
+  ];
+  const answer = resolveSiteAnswer("現場B略称", sites, aliases);
+  assert.equal(answer.kind, "resolved");
+  if (answer.kind === "resolved") assert.equal(answer.site.id, "site-b");
+});
+
+test("does not resolve an alias shared by multiple room sites", () => {
+  const roomSites: SiteRecord[] = [
+    { id: "room-101", name: "サンプル集合住宅 101号室" },
+    { id: "room-102", name: "サンプル集合住宅 102号室" },
+  ];
+  const aliases: AliasRecord[] = [
+    { site_id: "room-101", alias: "サンプル集合住宅", source: "seed" },
+    { site_id: "room-102", alias: "サンプル集合住宅", source: "seed" },
+  ];
+  const answer = resolveSiteAnswer("サンプル集合住宅", roomSites, aliases);
+  assert.equal(answer.kind, "ambiguous");
+  if (answer.kind === "ambiguous") {
+    assert.deepEqual(answer.candidates.map((site) => site.id), ["room-101", "room-102"]);
+  }
+});
+
+test("does not resolve duplicate normalized formal site names", () => {
+  const duplicateSites: SiteRecord[] = [
+    { id: "formal-a", name: "サンプル現場 3階" },
+    { id: "formal-b", name: "サンプル現場 3F" },
+  ];
+  const answer = resolveSiteAnswer("サンプル現場 3階", duplicateSites, []);
+  assert.equal(answer.kind, "ambiguous");
+  if (answer.kind === "ambiguous") {
+    assert.deepEqual(answer.candidates.map((site) => site.id), ["formal-a", "formal-b"]);
+  }
+});
+
+test("blocks a bare shared alias from becoming a progress record", () => {
+  const roomSites: SiteRecord[] = [
+    { id: "room-201", name: "サンプル共同住宅 201号室" },
+    { id: "room-202", name: "サンプル共同住宅 202号室" },
+  ];
+  const aliases: AliasRecord[] = [
+    { site_id: "room-201", alias: "サンプル共同住宅", source: "seed" },
+    { site_id: "room-202", alias: "サンプル共同住宅", source: "seed" },
+  ];
+  assert.equal(
+    siteNameWithoutPendingError("サンプル共同住宅", roomSites, aliases),
+    "site_answer_ambiguous",
+  );
+  assert.equal(
+    siteNameWithoutPendingError("サンプル共同住宅 201号室", roomSites, aliases),
+    "site_name_without_pending_question",
+  );
+  assert.equal(
+    siteNameWithoutPendingError("サンプル共同住宅 201号室 完了です", roomSites, aliases),
+    null,
   );
 });

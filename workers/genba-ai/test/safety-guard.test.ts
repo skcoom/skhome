@@ -86,6 +86,18 @@ test("does not trust a vision ignore when only part of a burst reached Claude", 
   assert.equal(result.action, "ask");
 });
 
+test("asks instead of discarding a new-site candidate on a low-confidence AI ignore", () => {
+  const result = applyConservativeGuard(context("サンプル邸102"), {
+    action: "ignore",
+    candidates: [],
+    phase: "unknown",
+    confidence: 0.4,
+    reasoning: "AI result",
+  }, true);
+  assert.equal(result.action, "ask");
+  assert.equal(result.new_site_name, "サンプル邸102");
+});
+
 test("carries the observed new name into an alias confirmation", () => {
   const dictionary: AliasDictionary = {
     clusters: [{

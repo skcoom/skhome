@@ -1,4 +1,5 @@
 import { SupabaseClient } from "../clients/supabase";
+import { createSitePageUrl } from "../security/site-token";
 import type { Env, MediaPhase, SiteRecord } from "../types";
 import { pushWeeklyWithTemplate } from "./templates";
 
@@ -192,16 +193,39 @@ function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 
+async function siteLink(
+  site: SiteRecord,
+  publicBaseUrl: string,
+  secret: string,
+): Promise<string> {
+  const url = await createSitePageUrl(site.id, publicBaseUrl, secret);
+  return `<a href="${escapeHtml(url)}">${escapeHtml(site.name)}</a>`;
+}
+
+export async function renderWeeklyPage(
+  summary: WeeklySummary,
+  publicBaseUrl: string,
+  secret: string,
+): Promise<string> {
+  const moved = (await Promise.all(summary.moved.map(async (item) =>
+    `<li><strong>${await siteLink(item.site, publicBaseUrl, secret)}</strong><span>+${item.count}枚・${escapeHtml(phaseSummary(item.phases))}</span></li>`,
+  ))).join("");
+  const completed = (await Promise.all(summary.completionCandidates.map(async (site) =>
+    `<li>${await siteLink(site, publicBaseUrl, secret)}</li>`,
+  ))).join("");
+  const stalled = (await Promise.all(summary.stalled.map(async (site) =>
+    `<li>${await siteLink(site, publicBaseUrl, secret)}</li>`,
+  ))).join("");
+  const learning = summary.learning.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>現場週報</title><style>body{max-width:760px;margin:auto;padding:24px 16px 48px;background:#f8fafc;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif}h1{font-size:1.35rem}section{margin:14px 0;padding:16px;border-radius:12px;background:#fff;box-shadow:0 1px 4px #0f172a12}h2{margin-top:0;font-size:1rem}ul{padding-left:20px}li{margin:8px 0}li span{display:block;color:#64748b;font-size:.8rem}a{color:inherit;text-underline-offset:3px}</style></head><body><h1>現場週報</h1><p>${dateShort(summary.start)}〜${dateShort(new Date(summary.end.getTime() - 1))}</p><section><h2>動いた現場</h2><ul>${moved || "<li>なし</li>"}</ul></section><section><h2>完工候補</h2><ul>${completed || "<li>なし</li>"}</ul></section><section><h2>7日以上動きなし</h2><ul>${stalled || "<li>なし</li>"}</ul></section><section><h2>今週の学習</h2><ul>${learning || "<li>なし</li>"}</ul></section></body></html>`;
+}
+
 export async function handleWeeklyPage(token: string, env: Env): Promise<Response> {
   const start = await verifyWeeklyToken(token, env.LINE_CHANNEL_SECRET);
   if (!start) return new Response("Not found", { status: 404 });
   const db = new SupabaseClient(env);
   const summary = await loadSummary(new Date(start.getTime() + 7 * 24 * 3_600_000), db);
-  const moved = summary.moved.map((item) => `<li><strong>${escapeHtml(item.site.name)}</strong><span>+${item.count}枚・${escapeHtml(phaseSummary(item.phases))}</span></li>`).join("");
-  const completed = summary.completionCandidates.map((site) => `<li>${escapeHtml(site.name)}</li>`).join("");
-  const stalled = summary.stalled.map((site) => `<li>${escapeHtml(site.name)}</li>`).join("");
-  const learning = summary.learning.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>現場週報</title><style>body{max-width:760px;margin:auto;padding:24px 16px 48px;background:#f8fafc;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif}h1{font-size:1.35rem}section{margin:14px 0;padding:16px;border-radius:12px;background:#fff;box-shadow:0 1px 4px #0f172a12}h2{margin-top:0;font-size:1rem}ul{padding-left:20px}li{margin:8px 0}li span{display:block;color:#64748b;font-size:.8rem}</style></head><body><h1>現場週報</h1><p>${dateShort(summary.start)}〜${dateShort(new Date(summary.end.getTime() - 1))}</p><section><h2>動いた現場</h2><ul>${moved || "<li>なし</li>"}</ul></section><section><h2>完工候補</h2><ul>${completed || "<li>なし</li>"}</ul></section><section><h2>7日以上動きなし</h2><ul>${stalled || "<li>なし</li>"}</ul></section><section><h2>今週の学習</h2><ul>${learning || "<li>なし</li>"}</ul></section></body></html>`;
+  const html = await renderWeeklyPage(summary, env.PUBLIC_BASE_URL, env.LINE_CHANNEL_SECRET);
   return new Response(html, { headers: {
     "Content-Type": "text/html; charset=utf-8",
     "Cache-Control": "private, no-store",

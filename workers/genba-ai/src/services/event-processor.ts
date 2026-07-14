@@ -16,14 +16,15 @@ import type {
   StoredLineEvent,
   VisionImage,
 } from "../types";
-import {
-  bareSiteNameAnswer,
-  explicitCorrectionTarget,
-  isAffirmativeAnswer,
-  isNegativeAnswer,
-  pendingSiteNameAnswer,
-} from "./answers";
+import { explicitCorrectionTarget } from "./answers";
 import { burstIdWithoutSender } from "./burst";
+import { createSitePageUrl } from "../security/site-token";
+import {
+  resolvePendingQuestion as resolvePendingSiteQuestion,
+  resolveRecordedCorrection as resolveRecordedSiteCorrection,
+  type SiteAnswerReply,
+} from "./site-answer-flow";
+import { siteNameWithoutPendingError } from "./site-answer";
 import {
   photoReplyFor,
   pushWithTemplate,
@@ -217,6 +218,7 @@ async function safeReply(
   sourceId: string,
   db: SupabaseClient,
   env: Env,
+  siteId?: string,
 ): Promise<void> {
   if (!token) return;
   try {
@@ -229,7 +231,10 @@ async function safeReply(
       }
       return;
     }
-    await replyWithTemplate(templateId, values, token, db, env);
+    const templateValues = siteId
+      ? { ...values, URL: await createSitePageUrl(siteId, env.PUBLIC_BASE_URL, env.LINE_CHANNEL_SECRET) }
+      : values;
+    await replyWithTemplate(templateId, templateValues, token, db, env);
     if (eventIds[0]) {
       await db.updateLineEvents([eventIds[0]], {
         reply_sent_at: new Date().toISOString(),
@@ -311,6 +316,7 @@ async function applyBurstResult(
       events[0]?.source_id ?? "",
       db,
       env,
+      site.id,
     );
     return;
   }
@@ -425,272 +431,13 @@ async function processImageBurst(
   }
 }
 
-function findSiteByAnswer(
-  text: string,
-  sites: SiteRecord[],
-  aliases: Awaited<ReturnType<SupabaseClient["getAliases"]>>,
-): SiteRecord | undefined {
-  const normalized = normalizeSiteText(text);
-  const direct = sites.find((candidate) => normalizeSiteText(candidate.name) === normalized);
-  if (direct) return direct;
-  const alias = aliases.find((candidate) => normalizeSiteText(candidate.alias) === normalized);
-  return alias ? sites.find((candidate) => candidate.id === alias.site_id) : undefined;
-}
-
-async function resolvePendingQuestion(
-  current: PreparedEvent,
-  db: SupabaseClient,
-  env: Env,
-): Promise<boolean> {
-  const text = (current.row.text_content ?? "").trim();
-  if (!text) return false;
-  const since = new Date(new Date(current.row.received_at).getTime() - 24 * 3_600_000).toISOString();
-  const pending = await db.findPendingQuestion(current.row.source_id, since, current.row.received_at);
-  if (!pending || !pending.burst_id) return false;
-  const burstEvents = await db.getBurstEvents(pending.burst_id);
-  const isRecordedCorrection = burstEvents.some(
-    (event) => Boolean(event.r2_key) && event.state === "recorded",
-  );
-  const expectedState = isRecordedCorrection ? "recorded" : "awaiting_confirmation";
-
-  if (isNegativeAnswer(text)) {
-    const awaitingIds = burstEvents
-      .filter((event) => event.state === "awaiting_confirmation")
-      .map((event) => event.id);
-    await db.updateLineEvents(awaitingIds, {
-      site_id: null,
-      action: "ignore",
-      state: "ignored",
-      error: "site_creation_cancelled",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-      burst_id: null,
-    });
-    await db.updateLineEvents([current.row.id], {
-      action: "ignore",
-      state: "ignored",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-    });
-    return true;
-  }
-
-  if (pending.action === "create" && pending.new_site_name && isAffirmativeAnswer(text)) {
-    const resolvedSiteId = await db.resolveBurstCorrection({
-      answerEventId: current.row.id,
-      burstId: pending.burst_id,
-      expectedState,
-      siteId: null,
-      newSiteName: pending.new_site_name,
-      observedAlias: pending.new_site_name,
-      originalSiteId: isRecordedCorrection ? pending.site_id : null,
-      learnAlias: false,
-      details: { answer: text, burst_id: pending.burst_id, source: "site_creation_confirmation" },
-    });
-    if (!resolvedSiteId) {
-      const awaitingIds = burstEvents
-        .filter((event) => event.state === "awaiting_confirmation")
-        .map((event) => event.id);
-      await db.updateLineEvents(awaitingIds, {
-        action: "ignore",
-        state: "ignored",
-        processed_at: new Date().toISOString(),
-        processing_started_at: null,
-        burst_id: null,
-      });
-      await db.updateLineEvents([current.row.id], {
-        action: "ignore",
-        state: "ignored",
-        processed_at: new Date().toISOString(),
-      });
-      return true;
-    }
-    const createdSite = await db.getSiteById(resolvedSiteId);
-    await safeReply(
-      "create_done",
-      { name: createdSite?.name ?? pending.new_site_name },
-      current.replyToken,
-      [current.row.id],
-      current.row.source_id,
-      db,
-      env,
-    );
-    return true;
-  }
-
-  const answerName = pendingSiteNameAnswer(text);
-  if (!answerName) return false;
-  const [sites, aliases] = await Promise.all([db.getAllSites(), db.getAliases()]);
-  const site = findSiteByAnswer(answerName, sites, aliases);
-  if (!site) {
-    const awaitingIds = burstEvents
-      .filter((event) => event.state === "awaiting_confirmation")
-      .map((event) => event.id);
-    await db.updateLineEvents(awaitingIds, {
-      site_id: isRecordedCorrection ? pending.site_id : null,
-      action: "create",
-      new_site_name: answerName,
-      state: "awaiting_confirmation",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-    });
-    await db.updateLineEvents([current.row.id], {
-      action: "ignore",
-      state: "ignored",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-    });
-    await safeReply(
-      "create_confirm",
-      { name: answerName },
-      current.replyToken,
-      [current.row.id],
-      current.row.source_id,
-      db,
-      env,
-    );
-    return true;
-  }
-
-  if (isRecordedCorrection && site.id === pending.site_id) {
-    const awaitingIds = burstEvents
-      .filter((event) => event.state === "awaiting_confirmation")
-      .map((event) => event.id);
-    await db.updateLineEvents(awaitingIds, {
-      site_id: null,
-      action: "ignore",
-      state: "ignored",
-      error: "correction_target_unchanged",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-      burst_id: null,
-    });
-    await db.updateLineEvents([current.row.id], {
-      action: "ignore",
-      state: "ignored",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-    });
-    return true;
-  }
-
-  const shouldLearn = normalizeSiteText(answerName) !== normalizeSiteText(site.name);
-  const resolvedSiteId = await db.resolveBurstCorrection({
-    answerEventId: current.row.id,
-    burstId: pending.burst_id,
-    expectedState,
-    siteId: site.id,
-    newSiteName: null,
-    observedAlias: answerName,
-    originalSiteId: isRecordedCorrection ? pending.site_id : null,
-    learnAlias: shouldLearn,
-    details: { answer: text, burst_id: pending.burst_id, source: "confirmation_reply" },
-  });
-  if (!resolvedSiteId) {
-    await db.updateLineEvents([current.row.id], {
-      action: "ignore",
-      state: "ignored",
-      processed_at: new Date().toISOString(),
-    });
-    return true;
-  }
-  await safeReply(
-    isRecordedCorrection ? "correction_done" : "answer_done",
-    { site: site.name },
-    current.replyToken,
-    [current.row.id],
-    current.row.source_id,
-    db,
-    env,
-  );
-  return true;
-}
-
-async function resolveRecordedCorrection(
-  current: PreparedEvent,
-  db: SupabaseClient,
-  env: Env,
-): Promise<boolean> {
-  const text = (current.row.text_content ?? "").trim();
-  const target = explicitCorrectionTarget(text);
-  if (!target) return false;
-  const since = new Date(new Date(current.row.received_at).getTime() - 30 * 60_000).toISOString();
-  const recent = await db.findRecentRecordedPhoto(current.row.source_id, since, current.row.received_at);
-  if (!recent?.burst_id || !recent.site_id) return false;
-  const [sites, aliases] = await Promise.all([db.getAllSites(), db.getAliases()]);
-  const oldSite = sites.find((candidate) => candidate.id === recent.site_id);
-  if (!oldSite) return false;
-  const newSite = findSiteByAnswer(target, sites, aliases);
-  if (newSite?.id === oldSite.id) {
-    await db.updateLineEvents([current.row.id], {
-      action: "ignore",
-      state: "ignored",
-      error: "correction_target_unchanged",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-    });
-    return true;
-  }
-  if (!newSite) {
-    await db.updateLineEvents([current.row.id], {
-      burst_id: recent.burst_id,
-      site_id: oldSite.id,
-      action: "create",
-      phase: recent.phase ?? "unknown",
-      confidence: 1,
-      candidates: [],
-      new_site_name: target,
-      state: "awaiting_confirmation",
-      processed_at: new Date().toISOString(),
-      processing_started_at: null,
-    });
-    await safeReply(
-      "create_confirm",
-      { name: target },
-      current.replyToken,
-      [current.row.id],
-      current.row.source_id,
-      db,
-      env,
-    );
-    return true;
-  }
-  const resolvedSiteId = await db.resolveBurstCorrection({
-    answerEventId: current.row.id,
-    burstId: recent.burst_id,
-    expectedState: "recorded",
-    siteId: newSite.id,
-    newSiteName: null,
-    observedAlias: target,
-    originalSiteId: oldSite.id,
-    learnAlias: normalizeSiteText(target) !== normalizeSiteText(newSite.name),
-    details: { answer: text, burst_id: recent.burst_id, source: "recorded_burst_reply" },
-  });
-  if (!resolvedSiteId) {
-    await db.updateLineEvents([current.row.id], {
-      action: "ignore",
-      state: "ignored",
-      processed_at: new Date().toISOString(),
-    });
-    return true;
-  }
-  await safeReply(
-    "correction_done",
-    { site: newSite.name },
-    current.replyToken,
-    [current.row.id],
-    current.row.source_id,
-    db,
-    env,
-  );
-  return true;
-}
-
 async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env: Env): Promise<void> {
+  const answerReply: SiteAnswerReply = (templateId, values, token, eventIds, sourceId, siteId) =>
+    safeReply(templateId, values, token, eventIds, sourceId, db, env, siteId);
   try {
     const text = (current.row.text_content ?? "").trim();
     if (explicitCorrectionTarget(text)) {
-      if (await resolveRecordedCorrection(current, db, env)) return;
+      if (await resolveRecordedSiteCorrection(current, db, answerReply)) return;
       await db.updateLineEvents([current.row.id], {
         action: "ignore",
         state: "ignored",
@@ -700,7 +447,7 @@ async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env:
       });
       return;
     }
-    if (await resolvePendingQuestion(current, db, env)) return;
+    if (await resolvePendingSiteQuestion(current, db, answerReply)) return;
     const context = await buildMatchContext([current.row], db);
     const result = await classifySite(context, [], env);
     await observeNormalizationHit(context.event.text, result, current.row.id, db);
@@ -715,15 +462,13 @@ async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env:
     }
     const site = result.site_id ? context.sites.find((candidate) => candidate.id === result.site_id) : undefined;
     if (result.action === "assign" && site) {
-      const exactSiteAnswer = bareSiteNameAnswer(text)
-        ? findSiteByAnswer(text, context.sites, context.aliases)
-        : undefined;
-      if (exactSiteAnswer?.id === site.id) {
+      const siteNameError = siteNameWithoutPendingError(text, context.sites, context.aliases);
+      if (siteNameError) {
         await db.updateLineEvents([current.row.id], {
           site_id: null,
           action: "ignore",
           state: "ignored",
-          error: "site_name_without_pending_question",
+          error: siteNameError,
           processed_at: new Date().toISOString(),
           processing_started_at: null,
         });
