@@ -1,0 +1,11 @@
+name = "skhome-genba-ai"
+main = "src/bootstrap.ts"
+compatibility_date = "2026-07-09"
+workers_dev = true
+
+[triggers]
+crons = []
+
+[observability]
+enabled = true
+head_sampling_rate = 1
