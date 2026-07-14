@@ -80,6 +80,14 @@ npm run typecheck
 npm test
 ```
 
+実DBマイグレーション契約テスト（Docker互換環境とPostgreSQL 15を使用）:
+
+```bash
+npm run test:migration
+```
+
+このテストはホスト側のポートや本番secretを使わず、使い捨てコンテナへ既存3テーブルの最小契約、実migration、状態遷移の検査を順に流します。履歴全体のSupabase初期化やPostgREST経由のRLS検査ではなく、フェーズ1migrationが追加する列・テーブルとDB関数の契約を再現するテストです。成功・失敗にかかわらずコンテナは削除されます。
+
 回帰20件（承認済みJSONLの絶対パスを渡す）:
 
 ```bash

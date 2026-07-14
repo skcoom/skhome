@@ -8,6 +8,7 @@
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
+    "test:migration": "bash scripts/verify-migration.sh",
     "test:regression": "tsx scripts/run-regression.ts",
     "seed:aliases": "tsx scripts/seed-aliases.ts",
     "smoke:mock-line": "node scripts/mock-line-server.mjs",
