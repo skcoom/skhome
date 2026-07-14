@@ -21,7 +21,7 @@ LINE Messaging APIのwebhookを受け、原本画像をR2へ先に保存して�
 supabase db push
 ```
 
-Workerディレクトリで依存関係を入れ、R2 bucketを作成します。
+Workerディレクトリで依存関係を入れ、今回専用のR2 bucketを作成します。
 
 ```bash
 cd workers/genba-ai
@@ -29,16 +29,26 @@ npm install
 npx wrangler r2 bucket create skhome-genba-ai-photos
 ```
 
-`wrangler.toml` の `SUPABASE_URL` と `PUBLIC_BASE_URL` はデプロイ先に合わせて更新します。秘密値はファイルへ書かず、次のコマンドで投入します。
+`wrangler.toml` の `SUPABASE_URL` と `PUBLIC_BASE_URL` は今回のSupabaseと新Worker名に設定済みです。新規Workerには先に秘密を登録できないため、Cron・R2・外部API接続を持たない待機用Workerを作成します。この段階ではLINEのWebhook URLを変更しません。
 
 ```bash
-npx wrangler secret put LINE_CHANNEL_SECRET
-npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-npx wrangler secret put ANTHROPIC_API_KEY
-npx wrangler secret put DISCORD_WEBHOOK_URL
-npx wrangler secret put LINE_SUMMARY_USER_ID
+npm run bootstrap:deployment
 ```
+
+秘密値はファイルへ書かず、待機用設定を指定して次のコマンドで投入します。値の入力は発注側が行います。
+
+```bash
+npx wrangler secret put LINE_CHANNEL_SECRET --config wrangler.bootstrap.toml
+npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN --config wrangler.bootstrap.toml
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.bootstrap.toml
+npx wrangler secret put ANTHROPIC_API_KEY --config wrangler.bootstrap.toml
+npx wrangler secret put DISCORD_WEBHOOK_URL --config wrangler.bootstrap.toml
+npx wrangler secret put LINE_SUMMARY_USER_ID --config wrangler.bootstrap.toml
+```
+
+6件の登録後、下記のテンプレート承認と初期alias seedを完了してから本実装をデプロイします。
+
+同じCloudflareアカウントには旧実装の`sk-genba-bot`と`sk-genba-media`があります。今回の対象は`skhome-genba-ai`と`skhome-genba-ai-photos`です。旧Worker・旧R2を上書きまたは再利用しません。
 
 Claudeは `claude-haiku-4-5` が既定です。実データの回帰結果が基準未達の場合だけ、`wrangler.toml` の `ANTHROPIC_MODEL` を `claude-sonnet-5` に変えて再検証します。
 
@@ -69,6 +79,18 @@ Migration適用後、Workerディレクトリから実行します。`.env.local
 SUPABASE_URL='https://<project-ref>.supabase.co' \
 SUPABASE_SERVICE_ROLE_KEY='<service-role-key>' \
 npm run seed:aliases -- --input data/site-aliases.json
+```
+
+DB準備後に本実装をデプロイします。この時点で初めてR2接続とCronが有効になります。
+
+```bash
+npx wrangler deploy
+```
+
+最後に実環境のWorker・R2・6シークレット・`/health`を値を表示せず確認します。これは読み取り専用で、設定変更やデプロイは行いません。
+
+```bash
+npm run preflight:deployment
 ```
 
 ## 検証

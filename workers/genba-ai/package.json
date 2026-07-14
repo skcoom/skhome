@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "bootstrap:deployment": "wrangler deploy --config wrangler.bootstrap.toml",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
     "test:migration": "bash scripts/verify-migration.sh",
     "test:regression": "tsx scripts/run-regression.ts",
     "seed:aliases": "tsx scripts/seed-aliases.ts",
+    "preflight:deployment": "tsx scripts/preflight-deployment.ts",
     "smoke:mock-line": "node scripts/mock-line-server.mjs",
     "smoke:webhook": "node scripts/smoke-webhook.mjs"
   },
