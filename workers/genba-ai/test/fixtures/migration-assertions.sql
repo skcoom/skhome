@@ -13,6 +13,93 @@ BEGIN
     RAISE EXCEPTION 'expected PostgreSQL 15, got %', version();
   END IF;
 
+  SELECT COUNT(*) INTO row_count
+  FROM (
+    VALUES
+      ('site_aliases', 'site_id', 'uuid', 'NO'),
+      ('site_aliases', 'alias', 'text', 'NO'),
+      ('site_aliases', 'source', 'text', 'NO'),
+      ('site_aliases', 'created_at', 'timestamptz', 'NO'),
+      ('bot_templates', 'template_id', 'text', 'NO'),
+      ('bot_templates', 'body', 'text', 'NO'),
+      ('bot_templates', 'variables', '_text', 'NO'),
+      ('bot_templates', 'approved_at', 'timestamptz', 'YES'),
+      ('bot_templates', 'approved_by', 'text', 'YES'),
+      ('line_events', 'message_id', 'text', 'NO'),
+      ('line_events', 'raw_payload', 'jsonb', 'NO'),
+      ('line_events', 'r2_key', 'text', 'YES'),
+      ('line_events', 'site_id', 'uuid', 'YES'),
+      ('line_events', 'state', 'text', 'NO'),
+      ('line_events', 'attempt_count', 'int4', 'NO'),
+      ('correction_logs', 'line_event_id', 'uuid', 'YES'),
+      ('correction_logs', 'original_site_id', 'uuid', 'YES'),
+      ('correction_logs', 'site_id', 'uuid', 'YES'),
+      ('correction_logs', 'log_type', 'text', 'NO'),
+      ('correction_logs', 'details', 'jsonb', 'NO'),
+      ('correction_logs', 'created_at', 'timestamptz', 'NO')
+  ) AS expected(table_name, column_name, udt_name, is_nullable)
+  LEFT JOIN information_schema.columns AS actual
+    ON actual.table_schema = 'public'
+    AND actual.table_name = expected.table_name
+    AND actual.column_name = expected.column_name
+  WHERE actual.column_name IS NULL
+    OR actual.udt_name IS DISTINCT FROM expected.udt_name
+    OR actual.is_nullable IS DISTINCT FROM expected.is_nullable;
+  IF row_count <> 0 THEN
+    RAISE EXCEPTION '% required genba AI columns have a missing or unexpected type/nullability', row_count;
+  END IF;
+
+  SELECT COUNT(*) INTO row_count
+  FROM (
+    VALUES
+      ('site_aliases', 'site_id', 'projects', 'id'),
+      ('line_events', 'site_id', 'projects', 'id'),
+      ('project_media', 'genba_line_event_id', 'line_events', 'id'),
+      ('correction_logs', 'line_event_id', 'line_events', 'id'),
+      ('correction_logs', 'original_site_id', 'projects', 'id'),
+      ('correction_logs', 'site_id', 'projects', 'id')
+  ) AS expected(table_name, column_name, referenced_table, referenced_column)
+  LEFT JOIN (
+    SELECT
+      source_table.relname AS table_name,
+      source_column.attname AS column_name,
+      target_table.relname AS referenced_table,
+      target_column.attname AS referenced_column
+    FROM pg_constraint AS constraint_row
+    JOIN pg_class AS source_table ON source_table.oid = constraint_row.conrelid
+    JOIN pg_namespace AS source_namespace ON source_namespace.oid = source_table.relnamespace
+    JOIN pg_attribute AS source_column
+      ON source_column.attrelid = source_table.oid
+      AND source_column.attnum = constraint_row.conkey[1]
+    JOIN pg_class AS target_table ON target_table.oid = constraint_row.confrelid
+    JOIN pg_attribute AS target_column
+      ON target_column.attrelid = target_table.oid
+      AND target_column.attnum = constraint_row.confkey[1]
+    WHERE constraint_row.contype = 'f'
+      AND source_namespace.nspname = 'public'
+  ) AS actual
+    ON actual.table_name = expected.table_name
+    AND actual.column_name = expected.column_name
+    AND actual.referenced_table = expected.referenced_table
+    AND actual.referenced_column = expected.referenced_column
+  WHERE actual.table_name IS NULL;
+  IF row_count <> 0 THEN
+    RAISE EXCEPTION '% required genba AI foreign keys are missing', row_count;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint AS constraint_row
+    JOIN pg_class AS table_row ON table_row.oid = constraint_row.conrelid
+    JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+    WHERE namespace_row.nspname = 'public'
+      AND table_row.relname = 'line_events'
+      AND constraint_row.contype = 'u'
+      AND pg_get_constraintdef(constraint_row.oid) = 'UNIQUE (message_id)'
+  ) THEN
+    RAISE EXCEPTION 'line_events.message_id must be unique for webhook idempotency';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM information_schema.columns

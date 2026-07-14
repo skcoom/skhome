@@ -7,20 +7,45 @@ REPO_ROOT="$(cd "${WORKER_DIR}/../.." && pwd)"
 CONTAINER_NAME="skhome-genba-ai-pgtest-$$"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:15-alpine}"
 DATABASE_NAME="genba_ai_test"
+RUNTIME_AVAILABLE=false
+
+run_with_timeout() {
+  local seconds="$1"
+  shift
+  "$@" <&0 &
+  local command_pid=$!
+  perl -e '
+    $seconds = shift @ARGV;
+    $pid = shift @ARGV;
+    sleep $seconds;
+    kill "TERM", $pid;
+    sleep 1;
+    kill "KILL", $pid;
+  ' "${seconds}" "${command_pid}" &
+  local watchdog_pid=$!
+  local status=0
+  wait "${command_pid}" || status=$?
+  kill "${watchdog_pid}" >/dev/null 2>&1 || true
+  wait "${watchdog_pid}" >/dev/null 2>&1 || true
+  return "${status}"
+}
 
 cleanup() {
-  docker rm --force "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+  if [[ "${RUNTIME_AVAILABLE}" == "true" ]]; then
+    run_with_timeout 10 docker rm --force "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-if ! docker info >/dev/null 2>&1; then
+if ! run_with_timeout 15 docker info >/dev/null 2>&1; then
   echo "Docker-compatible runtime is not available." >&2
   exit 1
 fi
+RUNTIME_AVAILABLE=true
 
-docker run --detach --rm \
+run_with_timeout 60 docker run --detach --rm \
   --name "${CONTAINER_NAME}" \
   --env POSTGRES_PASSWORD=local-test-only \
   --env POSTGRES_DB="${DATABASE_NAME}" \
@@ -28,7 +53,7 @@ docker run --detach --rm \
 
 ready=false
 for _ in $(seq 1 30); do
-  if docker exec "${CONTAINER_NAME}" \
+  if run_with_timeout 5 docker exec "${CONTAINER_NAME}" \
     pg_isready --username postgres --dbname "${DATABASE_NAME}" >/dev/null 2>&1; then
     ready=true
     break
@@ -37,14 +62,14 @@ for _ in $(seq 1 30); do
 done
 
 if [[ "${ready}" != "true" ]]; then
-  docker logs "${CONTAINER_NAME}" >&2
+  run_with_timeout 10 docker logs "${CONTAINER_NAME}" >&2 || true
   echo "PostgreSQL did not become ready within 30 seconds." >&2
   exit 1
 fi
 
 run_sql() {
   local file="$1"
-  docker exec --interactive "${CONTAINER_NAME}" \
+  run_with_timeout 60 docker exec --interactive "${CONTAINER_NAME}" \
     psql --username postgres \
       --dbname "${DATABASE_NAME}" \
       --no-psqlrc \
