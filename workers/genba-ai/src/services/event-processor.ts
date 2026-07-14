@@ -24,6 +24,7 @@ import {
   pendingSiteNameAnswer,
 } from "./answers";
 import { burstIdWithoutSender } from "./burst";
+import { resolveSiteAnswer } from "./site-answer";
 import {
   photoReplyFor,
   pushWithTemplate,
@@ -425,18 +426,6 @@ async function processImageBurst(
   }
 }
 
-function findSiteByAnswer(
-  text: string,
-  sites: SiteRecord[],
-  aliases: Awaited<ReturnType<SupabaseClient["getAliases"]>>,
-): SiteRecord | undefined {
-  const normalized = normalizeSiteText(text);
-  const direct = sites.find((candidate) => normalizeSiteText(candidate.name) === normalized);
-  if (direct) return direct;
-  const alias = aliases.find((candidate) => normalizeSiteText(candidate.alias) === normalized);
-  return alias ? sites.find((candidate) => candidate.id === alias.site_id) : undefined;
-}
-
 async function resolvePendingQuestion(
   current: PreparedEvent,
   db: SupabaseClient,
@@ -521,7 +510,27 @@ async function resolvePendingQuestion(
   const answerName = pendingSiteNameAnswer(text);
   if (!answerName) return false;
   const [sites, aliases] = await Promise.all([db.getAllSites(), db.getAliases()]);
-  const site = findSiteByAnswer(answerName, sites, aliases);
+  const siteAnswer = resolveSiteAnswer(answerName, sites, aliases);
+  if (siteAnswer.kind === "ambiguous") {
+    await db.updateLineEvents([current.row.id], {
+      action: "ignore",
+      state: "ignored",
+      error: "site_answer_ambiguous",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    await safeReply(
+      "photo_ask",
+      { count: burstEvents.filter((event) => Boolean(event.r2_key)).length },
+      current.replyToken,
+      [current.row.id],
+      current.row.source_id,
+      db,
+      env,
+    );
+    return true;
+  }
+  const site = siteAnswer.kind === "resolved" ? siteAnswer.site : undefined;
   if (!site) {
     const awaitingIds = burstEvents
       .filter((event) => event.state === "awaiting_confirmation")
@@ -620,7 +629,40 @@ async function resolveRecordedCorrection(
   const [sites, aliases] = await Promise.all([db.getAllSites(), db.getAliases()]);
   const oldSite = sites.find((candidate) => candidate.id === recent.site_id);
   if (!oldSite) return false;
-  const newSite = findSiteByAnswer(target, sites, aliases);
+  const siteAnswer = resolveSiteAnswer(target, sites, aliases);
+  if (siteAnswer.kind === "ambiguous") {
+    const burstEvents = await db.getBurstEvents(recent.burst_id);
+    const recordedImageIds = burstEvents
+      .filter((event) => Boolean(event.r2_key) && event.state === "recorded")
+      .map((event) => event.id);
+    await db.updateLineEvents(recordedImageIds, {
+      correction_open_until: new Date(Date.now() + 30 * 60_000).toISOString(),
+    });
+    await db.updateLineEvents([current.row.id], {
+      burst_id: recent.burst_id,
+      site_id: oldSite.id,
+      action: "ask",
+      phase: recent.phase ?? "unknown",
+      confidence: 1,
+      candidates: siteAnswer.candidates.map((candidate) => candidate.id),
+      new_site_name: null,
+      state: "awaiting_confirmation",
+      error: "correction_target_ambiguous",
+      processed_at: new Date().toISOString(),
+      processing_started_at: null,
+    });
+    await safeReply(
+      "photo_ask",
+      { count: burstEvents.filter((event) => Boolean(event.r2_key)).length },
+      current.replyToken,
+      [current.row.id],
+      current.row.source_id,
+      db,
+      env,
+    );
+    return true;
+  }
+  const newSite = siteAnswer.kind === "resolved" ? siteAnswer.site : undefined;
   if (newSite?.id === oldSite.id) {
     await db.updateLineEvents([current.row.id], {
       action: "ignore",
@@ -716,14 +758,19 @@ async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env:
     const site = result.site_id ? context.sites.find((candidate) => candidate.id === result.site_id) : undefined;
     if (result.action === "assign" && site) {
       const exactSiteAnswer = bareSiteNameAnswer(text)
-        ? findSiteByAnswer(text, context.sites, context.aliases)
+        ? resolveSiteAnswer(text, context.sites, context.aliases)
         : undefined;
-      if (exactSiteAnswer?.id === site.id) {
+      if (
+        exactSiteAnswer?.kind === "ambiguous"
+        || (exactSiteAnswer?.kind === "resolved" && exactSiteAnswer.site.id === site.id)
+      ) {
         await db.updateLineEvents([current.row.id], {
           site_id: null,
           action: "ignore",
           state: "ignored",
-          error: "site_name_without_pending_question",
+          error: exactSiteAnswer.kind === "ambiguous"
+            ? "site_answer_ambiguous"
+            : "site_name_without_pending_question",
           processed_at: new Date().toISOString(),
           processing_started_at: null,
         });
