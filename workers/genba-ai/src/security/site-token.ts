@@ -34,6 +34,18 @@ export async function createSiteToken(siteId: string, secret: string): Promise<s
   return `${siteId}.${await signature(siteId, secret)}`;
 }
 
+export async function createSitePageUrl(
+  siteId: string,
+  publicBaseUrl: string,
+  secret: string,
+): Promise<string> {
+  const url = new URL(publicBaseUrl);
+  url.pathname = `/sites/${encodeURIComponent(await createSiteToken(siteId, secret))}`;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
 export async function verifySiteToken(token: string, secret: string): Promise<string | null> {
   const separator = token.lastIndexOf(".");
   if (separator < 0) return null;

@@ -32,6 +32,7 @@ export type SiteAnswerReply = (
   token: string | null,
   eventIds: string[],
   sourceId: string,
+  siteId?: string,
 ) => Promise<void>;
 
 function timestamp(now: () => number): string {
@@ -128,6 +129,7 @@ export async function resolvePendingQuestion(
       current.replyToken,
       [current.row.id],
       current.row.source_id,
+      resolvedSiteId,
     );
     return true;
   }
@@ -231,6 +233,7 @@ export async function resolvePendingQuestion(
     current.replyToken,
     [current.row.id],
     current.row.source_id,
+    resolvedSiteId,
   );
   return true;
 }
@@ -337,6 +340,7 @@ export async function resolveRecordedCorrection(
     current.replyToken,
     [current.row.id],
     current.row.source_id,
+    resolvedSiteId,
   );
   return true;
 }

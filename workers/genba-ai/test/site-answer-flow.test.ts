@@ -38,6 +38,7 @@ function storedEvent(overrides: Partial<StoredLineEvent>): StoredLineEvent {
     phase: overrides.phase ?? null,
     confidence: overrides.confidence ?? null,
     candidates: overrides.candidates ?? null,
+    new_site_name: overrides.new_site_name ?? null,
     state: overrides.state ?? "received",
     error: overrides.error ?? null,
     received_at: receivedAt,
@@ -53,6 +54,7 @@ class MemoryDb {
   readonly updates: Array<{ ids: string[]; patch: Record<string, unknown> }> = [];
   readonly resolutions: ResolutionArgs[] = [];
   recentPhotoId: string | null = null;
+  createdSiteId: string | null = null;
 
   constructor(
     readonly rows: StoredLineEvent[],
@@ -93,7 +95,7 @@ class MemoryDb {
 
   async resolveBurstCorrection(args: ResolutionArgs): Promise<string | null> {
     this.resolutions.push(args);
-    return args.siteId;
+    return args.siteId ?? this.createdSiteId;
   }
 }
 
@@ -103,11 +105,12 @@ interface ReplyCall {
   token: string | null;
   eventIds: string[];
   sourceId: string;
+  siteId?: string;
 }
 
 function replyRecorder(calls: ReplyCall[]): SiteAnswerReply {
-  return async (templateId, values, token, eventIds, sourceId) => {
-    calls.push({ templateId, values, token, eventIds, sourceId });
+  return async (templateId, values, token, eventIds, sourceId, siteId) => {
+    calls.push({ templateId, values, token, eventIds, sourceId, ...(siteId ? { siteId } : {}) });
   };
 }
 
@@ -234,4 +237,44 @@ test("keeps an ambiguous correction pending, then applies a full formal-name ans
   });
   assert.equal(replies[1]?.templateId, "correction_done");
   assert.deepEqual(replies[1]?.values, { site: "サンプル集合住宅 102号室" });
+  assert.equal(replies[1]?.siteId, "room-102");
+});
+
+test("passes a newly created site id to the completion reply", async () => {
+  const photo = storedEvent({
+    id: "photo-create",
+    burst_id: "burst-create",
+    r2_key: "raw/group-test/photo-create",
+    content_type: "image/jpeg",
+    action: "create",
+    new_site_name: "サンプル新現場",
+    state: "awaiting_confirmation",
+  });
+  const answer = storedEvent({
+    id: "answer-create",
+    text_content: "はい",
+    received_at: "2026-07-14T00:01:00.000Z",
+  });
+  const createdSite = { id: "site-created", name: "サンプル新現場" };
+  const db = new MemoryDb([photo, answer], [...roomSites, createdSite], sharedAliases);
+  db.createdSiteId = createdSite.id;
+  const replies: ReplyCall[] = [];
+
+  const handled = await resolvePendingQuestion(
+    { row: answer, replyToken: "reply-create" },
+    db as SiteAnswerDb,
+    replyRecorder(replies),
+    () => Date.parse("2026-07-14T00:01:01.000Z"),
+  );
+
+  assert.equal(handled, true);
+  assert.equal(db.resolutions.length, 1);
+  assert.deepEqual(replies, [{
+    templateId: "create_done",
+    values: { name: "サンプル新現場" },
+    token: "reply-create",
+    eventIds: ["answer-create"],
+    sourceId: "group-test",
+    siteId: "site-created",
+  }]);
 });

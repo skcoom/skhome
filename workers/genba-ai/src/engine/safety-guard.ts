@@ -86,8 +86,8 @@ export function applyConservativeGuard(
   if (ai.action === "assign" && deterministic.action === "create") {
     return askForConflict(ai, deterministic, "部屋番号違いまたは新規現場候補のため確認する");
   }
-  if (deterministic.action === "assign" && ai.action === "ignore") {
-    return askForConflict(ai, deterministic, "現場名照合とignore判定が競合したため確認する");
+  if (ai.action === "ignore") {
+    return askForConflict(ai, deterministic, "現場名照合または新規現場候補とignore判定が競合したため確認する");
   }
   if (ai.action === "create" && deterministic.action === "assign") {
     const guarded: MatcherResult = {

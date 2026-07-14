@@ -18,6 +18,7 @@ import type {
 } from "../types";
 import { explicitCorrectionTarget } from "./answers";
 import { burstIdWithoutSender } from "./burst";
+import { createSitePageUrl } from "../security/site-token";
 import {
   resolvePendingQuestion as resolvePendingSiteQuestion,
   resolveRecordedCorrection as resolveRecordedSiteCorrection,
@@ -217,6 +218,7 @@ async function safeReply(
   sourceId: string,
   db: SupabaseClient,
   env: Env,
+  siteId?: string,
 ): Promise<void> {
   if (!token) return;
   try {
@@ -229,7 +231,10 @@ async function safeReply(
       }
       return;
     }
-    await replyWithTemplate(templateId, values, token, db, env);
+    const templateValues = siteId
+      ? { ...values, URL: await createSitePageUrl(siteId, env.PUBLIC_BASE_URL, env.LINE_CHANNEL_SECRET) }
+      : values;
+    await replyWithTemplate(templateId, templateValues, token, db, env);
     if (eventIds[0]) {
       await db.updateLineEvents([eventIds[0]], {
         reply_sent_at: new Date().toISOString(),
@@ -311,6 +316,7 @@ async function applyBurstResult(
       events[0]?.source_id ?? "",
       db,
       env,
+      site.id,
     );
     return;
   }
@@ -426,8 +432,8 @@ async function processImageBurst(
 }
 
 async function processTextEvent(current: PreparedEvent, db: SupabaseClient, env: Env): Promise<void> {
-  const answerReply: SiteAnswerReply = (templateId, values, token, eventIds, sourceId) =>
-    safeReply(templateId, values, token, eventIds, sourceId, db, env);
+  const answerReply: SiteAnswerReply = (templateId, values, token, eventIds, sourceId, siteId) =>
+    safeReply(templateId, values, token, eventIds, sourceId, db, env, siteId);
   try {
     const text = (current.row.text_content ?? "").trim();
     if (explicitCorrectionTarget(text)) {
