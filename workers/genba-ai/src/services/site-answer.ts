@@ -1,5 +1,6 @@
 import { normalizeSiteText } from "../engine/normalization";
 import type { AliasRecord, SiteRecord } from "../types";
+import { bareSiteNameAnswer } from "./answers";
 
 export type SiteAnswerResolution =
   | { kind: "resolved"; site: SiteRecord }
@@ -25,4 +26,17 @@ export function resolveSiteAnswer(
   if (aliasSites.length === 1 && aliasSites[0]) return { kind: "resolved", site: aliasSites[0] };
   if (aliasSites.length > 1) return { kind: "ambiguous", candidates: aliasSites };
   return { kind: "not_found" };
+}
+
+export function siteNameWithoutPendingError(
+  text: string,
+  sites: SiteRecord[],
+  aliases: AliasRecord[],
+): "site_answer_ambiguous" | "site_name_without_pending_question" | null {
+  const answer = bareSiteNameAnswer(text);
+  if (!answer) return null;
+  const resolution = resolveSiteAnswer(answer, sites, aliases);
+  if (resolution.kind === "ambiguous") return "site_answer_ambiguous";
+  if (resolution.kind === "resolved") return "site_name_without_pending_question";
+  return null;
 }

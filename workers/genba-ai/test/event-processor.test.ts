@@ -8,7 +8,10 @@ import {
   pendingSiteNameAnswer,
 } from "../src/services/answers";
 import { burstIdWithoutSender } from "../src/services/burst";
-import { resolveSiteAnswer } from "../src/services/site-answer";
+import {
+  resolveSiteAnswer,
+  siteNameWithoutPendingError,
+} from "../src/services/site-answer";
 import { photoReplyFor } from "../src/services/templates";
 import type { AliasRecord, MatcherResult, SiteRecord } from "../src/types";
 
@@ -128,4 +131,27 @@ test("does not resolve duplicate normalized formal site names", () => {
   if (answer.kind === "ambiguous") {
     assert.deepEqual(answer.candidates.map((site) => site.id), ["formal-a", "formal-b"]);
   }
+});
+
+test("blocks a bare shared alias from becoming a progress record", () => {
+  const roomSites: SiteRecord[] = [
+    { id: "room-201", name: "サンプル共同住宅 201号室" },
+    { id: "room-202", name: "サンプル共同住宅 202号室" },
+  ];
+  const aliases: AliasRecord[] = [
+    { site_id: "room-201", alias: "サンプル共同住宅", source: "seed" },
+    { site_id: "room-202", alias: "サンプル共同住宅", source: "seed" },
+  ];
+  assert.equal(
+    siteNameWithoutPendingError("サンプル共同住宅", roomSites, aliases),
+    "site_answer_ambiguous",
+  );
+  assert.equal(
+    siteNameWithoutPendingError("サンプル共同住宅 201号室", roomSites, aliases),
+    "site_name_without_pending_question",
+  );
+  assert.equal(
+    siteNameWithoutPendingError("サンプル共同住宅 201号室 完了です", roomSites, aliases),
+    null,
+  );
 });
