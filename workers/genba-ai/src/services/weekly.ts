@@ -75,10 +75,11 @@ export function summarizeWeeklyData(
     return site ? [site] : [];
   });
   const stalledCutoff = end.getTime() - 7 * 24 * 3_600_000;
-  const stalled = sites.filter((site) =>
-    (site.status === "planning" || site.status === "in_progress")
-    && (!site.last_line_activity_at || new Date(site.last_line_activity_at).getTime() <= stalledCutoff),
-  );
+  const stalled = sites.filter((site) => {
+    if (site.status !== "planning" && site.status !== "in_progress") return false;
+    const baseline = site.last_line_activity_at ?? site.created_at;
+    return Boolean(baseline) && new Date(baseline ?? "").getTime() <= stalledCutoff;
+  });
   const learning = corrections.flatMap((correction) => {
     const site = correction.site_id ? siteById.get(correction.site_id) : undefined;
     if (correction.observed_alias && site) return [`${correction.observed_alias}→${site.name}`];
