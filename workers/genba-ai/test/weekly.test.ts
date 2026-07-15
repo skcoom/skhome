@@ -38,6 +38,20 @@ test("includes a text-only after report as a completion candidate", () => {
   assert.equal(summary.completionCandidates[0]?.id, "text-complete");
 });
 
+test("does not call a new site stalled before seven days without LINE activity", () => {
+  const summary = summarizeWeeklyData(
+    new Date("2026-01-12T08:00:00+09:00"),
+    [
+      { id: "new", name: "サンプルD", status: "in_progress", created_at: "2026-01-10T00:00:00Z" },
+      { id: "old", name: "サンプルE", status: "planning", created_at: "2026-01-04T14:59:59Z" },
+    ],
+    [],
+    [],
+    [],
+  );
+  assert.deepEqual(summary.stalled.map((site) => site.id), ["old"]);
+});
+
 test("expands only the approved T-06 repeat line", () => {
   const template: BotTemplate = {
     template_id: "T-06",

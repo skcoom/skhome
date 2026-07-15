@@ -10,6 +10,16 @@ ANTHROPIC_MODEL = "claude-haiku-4-5"
 LINE_API_BASE_URL = "https://api.line.me"
 LINE_DATA_API_BASE_URL = "https://api-data.line.me"
 
+[secrets]
+required = [
+  "LINE_CHANNEL_SECRET",
+  "LINE_CHANNEL_ACCESS_TOKEN",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "ANTHROPIC_API_KEY",
+  "DISCORD_WEBHOOK_URL",
+  "LINE_SUMMARY_USER_ID",
+]
+
 [triggers]
 crons = ["* * * * *", "0 23 * * SUN"]
 

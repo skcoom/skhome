@@ -44,6 +44,11 @@ function tomlString(source: string, key: string): string | null {
   return match?.[1] ?? null;
 }
 
+function tomlStringArray(source: string, key: string): string[] {
+  const match = source.match(new RegExp(`^${key}\\s*=\\s*\\[([^\\]]*)\\]\\s*$`, "mu"));
+  return [...(match?.[1] ?? "").matchAll(/"([^"]+)"/gu)].flatMap((item) => item[1] ? [item[1]] : []);
+}
+
 function line(ok: boolean, label: string, detail: string): void {
   process.stdout.write(`${ok ? "PASS" : "FAIL"} ${label}: ${detail}\n`);
 }
@@ -80,6 +85,7 @@ const supabaseUrl = tomlString(config, "SUPABASE_URL");
 const publicBaseUrl = tomlString(config, "PUBLIC_BASE_URL");
 const model = tomlString(config, "ANTHROPIC_MODEL");
 const bucketName = tomlString(config, "bucket_name");
+const declaredSecrets = tomlStringArray(config, "required");
 const checks: Check[] = [
   {
     id: "worker_name",
@@ -118,6 +124,13 @@ const checks: Check[] = [
     id: "r2_binding",
     ok: bucketName === "skhome-genba-ai-photos",
     detail: bucketName ?? "missing from wrangler.toml",
+  },
+  {
+    id: "required_secrets",
+    ok: config.includes("[secrets]")
+      && declaredSecrets.length === requiredSecrets.length
+      && requiredSecrets.every((secret) => declaredSecrets.includes(secret)),
+    detail: "production deploy requires all six secret names; bootstrap stays exempt",
   },
   {
     id: "cron",

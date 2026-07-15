@@ -265,7 +265,7 @@ export class SupabaseClient {
 
   async getAllSites(): Promise<SiteRecord[]> {
     return this.request<SiteRecord[]>(
-      "projects?select=id,name,status,last_line_activity_at&order=updated_at.desc",
+      "projects?select=id,name,status,last_line_activity_at,created_at&order=updated_at.desc",
     );
   }
 

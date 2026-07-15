@@ -106,6 +106,7 @@ export interface SiteRecord {
   name: string;
   status?: string;
   last_line_activity_at?: string;
+  created_at?: string;
 }
 
 export interface AliasRecord {
