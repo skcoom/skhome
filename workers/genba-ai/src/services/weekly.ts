@@ -168,16 +168,6 @@ function weeklyValues(summary: WeeklySummary, reportUrl: string): {
   };
 }
 
-async function postDiscord(text: string, env: Env): Promise<void> {
-  const response = await fetch(env.DISCORD_WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: text }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new Error(`Discord webhook failed: ${response.status}`);
-}
-
 export async function runWeeklySummary(env: Env, scheduledTime: number): Promise<void> {
   if (env.TEST_MODE === "true") return;
   const db = new SupabaseClient(env);
@@ -186,8 +176,7 @@ export async function runWeeklySummary(env: Env, scheduledTime: number): Promise
   const reportUrl = `${env.PUBLIC_BASE_URL}/weekly/${token}`;
   const { rows, values } = weeklyValues(summary, reportUrl);
   const retryKey = await weeklyRetryKey(summary.start, env.LINE_CHANNEL_SECRET);
-  const text = await pushWeeklyWithTemplate(rows, values, env.LINE_SUMMARY_USER_ID, retryKey, db, env);
-  await postDiscord(text, env);
+  await pushWeeklyWithTemplate(rows, values, env.LINE_SUMMARY_USER_ID, retryKey, db, env);
 }
 
 function escapeHtml(value: string): string {

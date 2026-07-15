@@ -147,7 +147,7 @@ export async function pushWeeklyWithTemplate(
   const template = await db.getApprovedTemplate("T-06");
   if (!template) throw new TemplateNotApprovedError("Template T-06 is not approved");
   const text = renderWeeklyTemplateRecord(template, rows, values);
-  if (text.length > 2000) throw new Error("T-06 exceeds the Discord 2000-character limit");
+  if (text.length > 5000) throw new Error("T-06 exceeds the LINE 5000-character limit");
   await sendLineText("/v2/bot/message/push", {
     to: recipientId,
     messages: [{ type: "text", text }],

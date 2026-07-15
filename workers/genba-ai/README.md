@@ -42,11 +42,10 @@ npx wrangler secret put LINE_CHANNEL_SECRET --config wrangler.bootstrap.toml
 npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN --config wrangler.bootstrap.toml
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.bootstrap.toml
 npx wrangler secret put ANTHROPIC_API_KEY --config wrangler.bootstrap.toml
-npx wrangler secret put DISCORD_WEBHOOK_URL --config wrangler.bootstrap.toml
 npx wrangler secret put LINE_SUMMARY_USER_ID --config wrangler.bootstrap.toml
 ```
 
-6件の登録後、下記のテンプレート承認と初期alias seedを完了してから本実装をデプロイします。本実装の`wrangler.toml`はこの6つの秘密名を必須宣言しているため、1件でも未登録ならWranglerがデプロイを拒否します。待機用設定には必須宣言を置かず、発注側が6件を順番に入力できるようにしています。
+5件の登録後、下記のテンプレート承認と初期alias seedを完了してから本実装をデプロイします。本実装の`wrangler.toml`はこの5つの秘密名を必須宣言しているため、1件でも未登録ならWranglerがデプロイを拒否します。待機用設定には必須宣言を置かず、発注側が5件を順番に入力できるようにしています。週次サマリはLINE個人宛てだけに送信し、Discord連携は行いません。
 
 同じCloudflareアカウントには旧実装の`sk-genba-bot`と`sk-genba-media`があります。今回の対象は`skhome-genba-ai`と`skhome-genba-ai-photos`です。旧Worker・旧R2を上書きまたは再利用しません。
 

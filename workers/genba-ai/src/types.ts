@@ -49,7 +49,6 @@ export interface Env {
   LINE_API_BASE_URL: string;
   LINE_DATA_API_BASE_URL: string;
   LINE_SUMMARY_USER_ID: string;
-  DISCORD_WEBHOOK_URL: string;
   TEST_MODE?: "true";
 }
 

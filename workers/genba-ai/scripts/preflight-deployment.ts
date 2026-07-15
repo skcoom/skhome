@@ -21,7 +21,6 @@ const requiredSecrets = [
   "LINE_CHANNEL_ACCESS_TOKEN",
   "SUPABASE_SERVICE_ROLE_KEY",
   "ANTHROPIC_API_KEY",
-  "DISCORD_WEBHOOK_URL",
   "LINE_SUMMARY_USER_ID",
 ] as const;
 
@@ -130,7 +129,7 @@ const checks: Check[] = [
     ok: config.includes("[secrets]")
       && declaredSecrets.length === requiredSecrets.length
       && requiredSecrets.every((secret) => declaredSecrets.includes(secret)),
-    detail: "production deploy requires all six secret names; bootstrap stays exempt",
+    detail: "production deploy requires all five secret names; bootstrap stays exempt",
   },
   {
     id: "cron",

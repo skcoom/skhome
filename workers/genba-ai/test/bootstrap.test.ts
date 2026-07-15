@@ -8,7 +8,6 @@ const requiredSecrets = [
   "LINE_CHANNEL_ACCESS_TOKEN",
   "SUPABASE_SERVICE_ROLE_KEY",
   "ANTHROPIC_API_KEY",
-  "DISCORD_WEBHOOK_URL",
   "LINE_SUMMARY_USER_ID",
 ] as const;
 
