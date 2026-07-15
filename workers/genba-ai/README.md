@@ -86,7 +86,7 @@ DB準備後に本実装をデプロイします。この時点で初めてR2接�
 npx wrangler deploy
 ```
 
-最後に実環境のWorker・R2・6シークレット・`/health`を値を表示せず確認します。これは読み取り専用で、設定変更やデプロイは行いません。
+最後に実環境のWorker・R2・5シークレット・`/health`を値を表示せず確認します。これは読み取り専用で、設定変更やデプロイは行いません。
 
 ```bash
 npm run preflight:deployment
