@@ -38,12 +38,6 @@ test("does not let an AI assignment override a deterministic non-work message", 
 test("keeps a high-confidence vision ignore for an image-only non-work post", () => {
   const matchContext = context("", 1);
   matchContext.event.text = null;
-  matchContext.sender_context = [{
-    site_id: "site-101",
-    site: "サンプル邸101",
-    when: "2026-01-01T00:00:00Z",
-    text: null,
-  }];
   const result = applyConservativeGuard(matchContext, {
     action: "ignore",
     candidates: [],
@@ -52,6 +46,27 @@ test("keeps a high-confidence vision ignore for an image-only non-work post", ()
     reasoning: "画像は工事と無関係",
   }, true);
   assert.equal(result.action, "ignore");
+});
+
+test("asks when a vision ignore conflicts with the sender's recent confirmed site", () => {
+  const matchContext = context("", 1);
+  matchContext.event.text = null;
+  matchContext.sender_context = [{
+    site_id: "site-101",
+    site: "サンプル邸101",
+    when: "1時間前",
+    text: null,
+  }];
+  const result = applyConservativeGuard(matchContext, {
+    action: "ignore",
+    candidates: [],
+    phase: "unknown",
+    confidence: 0.95,
+    reasoning: "画像は工事と無関係",
+  }, true);
+  assert.equal(result.action, "ask");
+  assert.deepEqual(result.candidates, ["site-101"]);
+  assert.equal(result.confidence, 0.84);
 });
 
 test("does not trust a vision ignore when no image reached Claude", () => {

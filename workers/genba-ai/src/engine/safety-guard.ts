@@ -76,6 +76,7 @@ export function applyConservativeGuard(
     && context.event.images > 0
     && !context.event.text
     && visionEvidenceComplete
+    && context.sender_context.length === 0
   ) {
     return ai;
   }

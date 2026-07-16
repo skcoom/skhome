@@ -85,4 +85,10 @@ run_sql "${REPO_ROOT}/supabase/migrations/20260710000000_genba_ai_phase1.sql"
 echo "Verifying migration state transitions..."
 run_sql "${WORKER_DIR}/test/fixtures/migration-assertions.sql"
 
+echo "Applying approved site-page URL template migration..."
+run_sql "${REPO_ROOT}/supabase/migrations/20260716000000_genba_ai_template_page_urls.sql"
+
+echo "Verifying approved site-page URL templates..."
+run_sql "${WORKER_DIR}/test/fixtures/migration-template-url-assertions.sql"
+
 echo "PostgreSQL 15 migration contract test passed."
