@@ -30,8 +30,8 @@ function formatRelativeTime(dateString: string): string {
 }
 
 const stateLabels: Record<string, string> = {
-  received: '受信済み', archived: '原本保存済み', processing: 'AI確認中', resolving: '現場確認中',
-  awaiting_confirmation: 'LINEで確認待ち', recorded: '台帳登録済み', ignored: '記録対象外', failed: '処理エラー',
+  received: '受信済み', archived: '原本保存済み', processing: 'AI判定中', resolving: '現場確認中',
+  awaiting_confirmation: 'LINEの回答待ち', recorded: '写真を登録済み', ignored: '記録対象外', failed: '処理エラー',
 };
 
 export default async function DashboardPage() {
@@ -97,7 +97,7 @@ export default async function DashboardPage() {
 
   const stats = canReviewLine ? [
     { name: '今日届いたLINE写真', value: lineToday, icon: Camera, tone: 'teal', href: '/admin/genba' },
-    { name: '要確認', value: needsAttention, icon: AlertTriangle, tone: 'amber', href: '/admin/genba' },
+    { name: '確認が必要', value: needsAttention, icon: AlertTriangle, tone: 'amber', href: '/admin/genba' },
     { name: '公開候補', value: selectedForPublic, icon: ShieldCheck, tone: 'vermillion', href: '/admin/genba' },
     { name: '進行中の現場', value: projectCount || 0, icon: FolderKanban, tone: 'ink', href: '/admin/projects?status=in_progress' },
   ] : [
@@ -143,9 +143,9 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between border-b border-[#eee8dd] px-5 py-4 sm:px-6">
             <div>
               <h2 className="font-semibold text-[#302e28]">最新のLINE写真</h2>
-              <p className="mt-0.5 text-xs text-[#827b6f]">今日受信した写真のAI処理状況</p>
+              <p className="mt-0.5 text-xs text-[#827b6f]">今日届いた写真のAI処理状況</p>
             </div>
-            <Link href="/admin/genba" className="inline-flex items-center text-sm font-semibold text-[#176f64]">すべて確認<ArrowRight className="ml-1 h-4 w-4" /></Link>
+            <Link href="/admin/genba" className="inline-flex items-center text-sm font-semibold text-[#176f64]">すべて見る<ArrowRight className="ml-1 h-4 w-4" /></Link>
           </div>
           {recentLineEvents.length > 0 ? (
             <div className="divide-y divide-[#eee8dd]">
@@ -157,8 +157,8 @@ export default async function DashboardPage() {
                       {attention ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-[#37342e]">{event.site_id ? projectNames.get(event.site_id) || '登録現場' : '現場未判定'}</span>
-                      <span className="mt-0.5 block truncate text-xs text-[#817a6e]">{stateLabels[event.state] || event.state}{event.confidence !== null ? ` ・ AI ${Math.round(event.confidence * 100)}%` : ''}</span>
+                      <span className="block truncate text-sm font-medium text-[#37342e]">{event.site_id ? projectNames.get(event.site_id) || '現場名を確認できません' : '現場を確認中'}</span>
+                      <span className="mt-0.5 block truncate text-xs text-[#817a6e]">{stateLabels[event.state] || event.state}{event.confidence !== null ? ` ・ AI判定 ${Math.round(event.confidence * 100)}%` : ''}</span>
                     </span>
                     <span className="shrink-0 text-xs text-[#9a9387]">{formatRelativeTime(event.received_at)}</span>
                   </Link>
@@ -175,7 +175,7 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="font-semibold text-[#302e28]">進行中の現場</h2>
-            <p className="mt-0.5 text-xs text-[#827b6f]">LINEで最近動きがあった順</p>
+            <p className="mt-0.5 text-xs text-[#827b6f]">LINE写真の更新が新しい順</p>
           </div>
           <Link href="/admin/projects?status=in_progress" className="text-sm font-semibold text-[#176f64]">{totalInProgress || 0}件を表示</Link>
         </div>
@@ -188,11 +188,11 @@ export default async function DashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium text-[#35322c] group-hover:text-[#176f64]">{project.name}</p>
-                      <p className="mt-2 inline-flex items-center text-xs text-[#817a6e]"><Images className="mr-1.5 h-3.5 w-3.5" />台帳写真 {mediaCount}枚</p>
+                      <p className="mt-2 inline-flex items-center text-xs text-[#817a6e]"><Images className="mr-1.5 h-3.5 w-3.5" />登録写真 {mediaCount}枚</p>
                     </div>
                     <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-[#aaa396] group-hover:text-[#176f64]" />
                   </div>
-                  {project.last_line_activity_at && <p className="mt-3 text-xs text-[#9a9387]">LINE更新 {formatRelativeTime(project.last_line_activity_at)}</p>}
+                  {project.last_line_activity_at && <p className="mt-3 text-xs text-[#9a9387]">LINEの最終更新：{formatRelativeTime(project.last_line_activity_at)}</p>}
                 </Link>
               );
             })}

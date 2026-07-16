@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   const { eventId } = await params;
   const parsed = reviewSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: '訂正内容を確認してください' }, { status: 400 });
+    return NextResponse.json({ error: '変更内容を確認してください。' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
 
   if (error) {
     console.error('Genba media review failed:', error.message);
-    return NextResponse.json({ error: '訂正を保存できませんでした' }, { status: 500 });
+    return NextResponse.json({ error: '変更内容を保存できませんでした。' }, { status: 500 });
   }
 
   return NextResponse.json({ media: data });

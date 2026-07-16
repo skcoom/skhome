@@ -89,7 +89,7 @@ export function Header() {
     <header className="hidden h-20 items-center justify-between border-b border-[#ddd7c8] bg-[#f8f5ee]/90 px-8 backdrop-blur lg:flex">
       <div>
         <p className="text-[11px] font-medium tracking-[0.18em] text-[#16766b]">SK COOM / FIELD OPERATIONS</p>
-        <p className="mt-1 text-sm text-[#756f64]">写真・工程・公開判断をここで確認できます</p>
+        <p className="mt-1 text-sm text-[#756f64]">写真・工程・掲載の判断をここで確認できます</p>
       </div>
 
       <div className="flex items-center space-x-4">

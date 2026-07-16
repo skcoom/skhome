@@ -59,10 +59,10 @@ const phaseLabels: Record<MediaPhase, string> = {
 const stateLabels: Record<string, string> = {
   received: '受信済み',
   archived: '原本保存済み',
-  processing: 'AI確認中',
+  processing: 'AI判定中',
   resolving: '現場確認中',
-  awaiting_confirmation: 'LINEで確認待ち',
-  recorded: '台帳登録済み',
+  awaiting_confirmation: 'LINEの回答待ち',
+  recorded: '写真を登録済み',
   ignored: '記録対象外',
   failed: '処理エラー',
 };
@@ -81,8 +81,8 @@ function formatDate(dateString: string): string {
 }
 
 function confidenceText(confidence: number | null): string {
-  if (confidence === null) return 'AI判定なし';
-  return `AI確信度 ${Math.round(confidence * 100)}%`;
+  if (confidence === null) return 'AIによる判定なし';
+  return `AI判定の確信度 ${Math.round(confidence * 100)}%`;
 }
 
 export function GenbaReviewBoard({
@@ -163,7 +163,7 @@ export function GenbaReviewBoard({
         confidence: 1,
         publicationStatus,
       } : candidate));
-      setNotice(publicationStatus === 'selected' ? '公開候補に追加しました。まだ公開はされていません。' : '訂正内容を保存しました。');
+      setNotice(publicationStatus === 'selected' ? '公開候補に追加しました。この時点では公開されません。' : '変更内容を保存しました。');
       return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '保存できませんでした');
@@ -191,9 +191,9 @@ export function GenbaReviewBoard({
         : item));
       setConfirmOpen(false);
       if (payload.failed?.length) {
-        setNotice(`${publishedIds.size}枚を公開しました。${payload.failed.length}枚は公開できなかったため、候補のままです。`);
+        setNotice(`${publishedIds.size}枚を公開しました。${payload.failed.length}枚は公開できなかったため、公開候補のまま残っています。`);
       } else {
-        setNotice(`${publishedIds.size}枚を公開サイトへ反映しました。`);
+        setNotice(`${publishedIds.size}枚を公開サイトに掲載しました。`);
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '公開できませんでした');
@@ -217,7 +217,7 @@ export function GenbaReviewBoard({
       setItems((current) => current.map((candidate) => candidate.id === item.id
         ? { ...candidate, publicationStatus: 'internal', publishedAt: null }
         : candidate));
-      setNotice('公開サイトへの掲載を停止し、社内のみへ戻しました。');
+      setNotice('公開サイトへの掲載を停止し、「社内のみ」に戻しました。');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '掲載を停止できませんでした');
     } finally {
@@ -231,11 +231,11 @@ export function GenbaReviewBoard({
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.12em] text-[#176f64]">
             <Sparkles className="h-4 w-4" />
-            LINE写真・AI確認
+            LINE写真・AI判定
           </div>
-          <h1 className="text-2xl font-semibold text-[#292720] sm:text-3xl">届いた写真を確認する</h1>
+          <h1 className="text-2xl font-semibold text-[#292720] sm:text-3xl">LINEで届いた写真を確認する</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6f695d]">
-            AIが選んだ現場と工程を直し、公開してよい写真だけを候補に入れます。候補に入れただけでは公開されません。
+            AIが判定した現場と工程を確認・訂正し、公開してよい写真だけを候補に追加します。候補に追加しただけでは公開されません。
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -368,15 +368,15 @@ export function GenbaReviewBoard({
                   {item.state !== 'recorded' && (
                     <div className="rounded-xl bg-[#f5f1e8] px-3 py-2.5 text-xs leading-5 text-[#6f695e]">
                       <span className="font-semibold">{stateLabels[item.state] || item.state}</span>
-                      {item.error ? `：${item.error}` : '。LINE側の確認または再処理を待っています。'}
+                      {item.error ? `：${item.error}` : '。LINEからの回答、または再処理の完了を待っています。'}
                     </div>
                   )}
 
                   {item.publicationStatus === 'published' ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#eaf4f1] px-3 py-3 text-sm text-[#176f64]">
-                      <span className="inline-flex items-center font-medium"><ShieldCheck className="mr-2 h-4 w-4" />公開用コピーを掲載中</span>
+                      <span className="inline-flex items-center font-medium"><ShieldCheck className="mr-2 h-4 w-4" />公開サイトに掲載中</span>
                       <span className="flex items-center gap-3">
-                        {item.projectId && <Link href={`/works/${item.projectId}`} target="_blank" className="underline underline-offset-2">確認</Link>}
+                        {item.projectId && <Link href={`/works/${item.projectId}`} target="_blank" className="underline underline-offset-2">公開ページを確認</Link>}
                         <button type="button" onClick={() => stopPublishing(item)} disabled={unpublishingId === item.id} className="font-semibold text-[#9d3f2a] underline underline-offset-2 disabled:opacity-50">
                           {unpublishingId === item.id ? '停止中…' : '掲載を停止'}
                         </button>
@@ -391,7 +391,7 @@ export function GenbaReviewBoard({
                         className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#176f64] bg-white px-3 text-sm font-semibold text-[#176f64] hover:bg-[#edf7f4] disabled:opacity-50"
                       >
                         {savingId === item.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                        訂正を保存
+                        変更を保存
                       </button>
                       <button
                         type="button"
@@ -405,7 +405,7 @@ export function GenbaReviewBoard({
                     </div>
                   ) : (
                     <div className="flex items-center rounded-xl bg-[#f5f1e8] px-3 py-3 text-sm text-[#7b7468]">
-                      <Clock3 className="mr-2 h-4 w-4" />状態が確定すると訂正・選定できます
+                      <Clock3 className="mr-2 h-4 w-4" />処理が完了すると、内容の訂正と公開候補への追加ができます
                     </div>
                   )}
                 </div>
@@ -427,13 +427,13 @@ export function GenbaReviewBoard({
             </div>
             <div className="mt-5 rounded-2xl border border-[#ead5ce] bg-[#fff7f3] p-4 text-sm leading-6 text-[#714333]">
               <p className="font-semibold">この操作後、写真は公開サイトで誰でも見られる状態になります。</p>
-              <p className="mt-1">非公開R2の原本は移動せず、公開専用のコピーだけを作成します。</p>
+              <p className="mt-1">非公開の原本はそのまま保管し、公開専用のコピーだけを作成します。</p>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setConfirmOpen(false)} disabled={publishing} className="h-12 rounded-xl border border-[#d5cec0] px-5 text-sm font-semibold text-[#5f594e]">戻って確認</button>
               <button type="button" onClick={publishSelected} disabled={publishing || selectedItems.length === 0} className="inline-flex h-12 items-center justify-center rounded-xl bg-[#bb4f35] px-6 text-sm font-semibold text-white disabled:opacity-50">
                 {publishing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                公開用コピーを作り、掲載する
+                確認した写真を公開する
               </button>
             </div>
           </div>

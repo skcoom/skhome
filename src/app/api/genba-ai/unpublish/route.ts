@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   const parsed = unpublishSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: '掲載を停止する写真を確認してください' }, { status: 400 });
+    return NextResponse.json({ error: '掲載を停止する写真を選び直してください。' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   });
   if (unpublishError) {
     console.error('Genba media unpublish failed:', unpublishError.message);
-    return NextResponse.json({ error: '写真は削除しましたが、台帳更新に失敗しました。管理者へ連絡してください' }, { status: 500 });
+    return NextResponse.json({ error: '公開用の写真は削除しましたが、管理データの更新に失敗しました。管理者に連絡してください。' }, { status: 500 });
   }
 
   return NextResponse.json({ unpublished: parsed.data.eventId });

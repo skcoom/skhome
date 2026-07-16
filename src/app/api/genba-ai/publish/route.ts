@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   const parsed = publishSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: '公開する写真を1〜12枚で選んでください' }, { status: 400 });
+    return NextResponse.json({ error: '公開する写真を1〜12枚選んでください。' }, { status: 400 });
   }
 
   const accessToken = await currentAccessToken();
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   for (const eventId of parsed.data.eventIds) {
     const media = ledgerByEvent.get(eventId);
     if (!media || media.publication_status !== 'selected') {
-      failed.push({ eventId, reason: '公開候補に選ばれていません' });
+      failed.push({ eventId, reason: '公開候補に追加されていません。' });
       continue;
     }
 
@@ -53,13 +53,13 @@ export async function POST(request: Request) {
     const contentType = source.headers.get('Content-Type')?.split(';')[0] || '';
     const extension = imageExtensions[contentType];
     if (!source.ok || !extension) {
-      failed.push({ eventId, reason: '原本を安全に読み出せませんでした' });
+      failed.push({ eventId, reason: '非公開の原本を読み込めませんでした。' });
       continue;
     }
 
     const bytes = await source.arrayBuffer();
     if (bytes.byteLength > 20 * 1024 * 1024) {
-      failed.push({ eventId, reason: '公開用写真の上限20MBを超えています' });
+      failed.push({ eventId, reason: '写真のファイルサイズが上限の20MBを超えています。' });
       continue;
     }
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
-      failed.push({ eventId, reason: '公開用コピーを作成できませんでした' });
+      failed.push({ eventId, reason: '公開用の写真を作成できませんでした。' });
       continue;
     }
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
     if (publishError) {
       await admin.storage.from('project-media').remove([storagePath]);
-      failed.push({ eventId, reason: '公開台帳を更新できませんでした' });
+      failed.push({ eventId, reason: '写真の公開状態を更新できませんでした。' });
       continue;
     }
 
