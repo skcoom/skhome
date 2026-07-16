@@ -16,6 +16,8 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
       .from('project_media')
       .select('*')
       .eq('project_id', id)
+      // LINE原本の台帳行は専用画面で扱い、公開用コピーだけを既存ギャラリーへ渡す。
+      .or('genba_line_event_id.is.null,publication_status.eq.published')
       .order('created_at', { ascending: false });
 
     if (phase) {
@@ -70,6 +72,8 @@ export async function POST(request: NextRequest, { params }: { params: Params })
         caption: caption || null,
         uploaded_by: user.id,
         is_featured: is_featured || false,
+        source_origin: 'manual',
+        publication_status: is_featured ? 'internal' : 'published',
       })
       .select()
       .single();
@@ -110,8 +114,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
     const { data, error } = await supabase
       .from('project_media')
-      .update({ is_featured: is_featured ?? true })
+      .update({
+        is_featured: is_featured ?? true,
+        publication_status: (is_featured ?? true) ? 'internal' : 'published',
+      })
       .in('id', mediaIds)
+      .is('genba_line_event_id', null)
       .select();
 
     if (error) {

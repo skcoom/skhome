@@ -24,6 +24,14 @@ function isSpamUrl(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // 合意済みデザインの原本はサーバー側の描画専用。重複ページとして公開しない。
+  if (pathname === '/_approved-home-source.html') {
+    return new NextResponse(null, {
+      status: 404,
+      headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive' },
+    });
+  }
+
   // スパムURLには410 Goneを返す
   if (isSpamUrl(pathname)) {
     return new NextResponse(null, {

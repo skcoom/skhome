@@ -86,9 +86,10 @@ export function Header() {
   }, [isOpen]);
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-white px-6">
+    <header className="hidden h-20 items-center justify-between border-b border-[#ddd7c8] bg-[#f8f5ee]/90 px-8 backdrop-blur lg:flex">
       <div>
-        {/* Breadcrumb or page title can go here */}
+        <p className="text-[11px] font-medium tracking-[0.18em] text-[#16766b]">SK COOM / FIELD OPERATIONS</p>
+        <p className="mt-1 text-sm text-[#756f64]">写真・工程・公開判断をここで確認できます</p>
       </div>
 
       <div className="flex items-center space-x-4">
@@ -96,7 +97,7 @@ export function Header() {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="relative rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="relative rounded-xl border border-[#ddd7c8] bg-white p-2.5 text-[#756f64] hover:border-[#16766b] hover:text-[#16766b]"
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
@@ -108,7 +109,7 @@ export function Header() {
 
           {/* Dropdown */}
           {isOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-lg border bg-white shadow-lg">
+            <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-[#ddd7c8] bg-white shadow-xl">
               <div className="border-b px-4 py-3">
                 <h3 className="font-medium text-gray-900">通知</h3>
               </div>
@@ -162,11 +163,11 @@ export function Header() {
 
         {/* User info */}
         <div className="flex items-center space-x-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#176f64] text-white">
             <UserIcon className="h-4 w-4" />
           </div>
           <div className="text-sm">
-            <p className="font-medium text-gray-700">{user?.email || 'Loading...'}</p>
+            <p className="max-w-56 truncate font-medium text-[#3a372f]">{user?.email || '確認中...'}</p>
           </div>
         </div>
       </div>

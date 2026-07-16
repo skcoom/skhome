@@ -34,3 +34,34 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## SKコーム固有の構成
+
+- `/`: `public/_approved-home-source.html` の合意済みデザインをNext.js上で表示
+- `/admin/dashboard`: 現場優先のダッシュボード
+- `/admin/genba`: LINE写真・AI判定の確認、現場/工程の訂正、公開選定
+- `workers/genba-ai`: LINE原本を非公開R2から権限付きで配信するWorker
+
+管理画面では、LINE写真を「社内のみ」から「公開候補」へ選んだ後、別の最終確認で公開用コピーを作成します。掲載停止時は公開用コピーを削除して社内のみに戻します。R2原本を公開バケットへ移動したり、内部写真を自動公開したりしません。
+
+既存のSupabase環境変数に加えて、必要な場合だけWorker URLを上書きできます。値を設定しない場合は本番Worker URLを使います。
+
+```bash
+GENBA_AI_BASE_URL='https://<genba-ai-worker-domain>'
+```
+
+ローカル検証:
+
+```bash
+npm ci
+npm test
+npm run lint
+npm run build
+
+cd workers/genba-ai
+npm ci
+npm run typecheck
+npm test
+npm run test:migration
+npx wrangler deploy --dry-run
+```

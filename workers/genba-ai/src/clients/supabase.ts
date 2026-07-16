@@ -54,6 +54,32 @@ export class SupabaseClient {
     );
   }
 
+  async isAdminOrStaffAccessToken(accessToken: string): Promise<boolean> {
+    const authResponse = await fetch(`${this.env.SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        apikey: this.env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!authResponse.ok) return false;
+
+    const authUser = await authResponse.json() as { id?: string };
+    if (!authUser.id) return false;
+
+    const rows = await this.request<Array<{ role: string }>>(
+      `users?select=role&id=eq.${encodeURIComponent(authUser.id)}&limit=1`,
+    );
+    return rows[0]?.role === "admin" || rows[0]?.role === "staff";
+  }
+
+  async getAdminMediaEvent(eventId: string): Promise<Pick<StoredLineEvent, "id" | "r2_key" | "content_type" | "site_id" | "state"> | null> {
+    const rows = await this.request<Array<Pick<StoredLineEvent, "id" | "r2_key" | "content_type" | "site_id" | "state">>>(
+      `line_events?select=id,r2_key,content_type,site_id,state&id=eq.${encodeURIComponent(eventId)}&r2_key=not.is.null&limit=1`,
+    );
+    return rows[0] ?? null;
+  }
+
   async getBurstEvents(burstId: string): Promise<StoredLineEvent[]> {
     return this.request<StoredLineEvent[]>(
       `line_events?select=*&burst_id=eq.${encodeURIComponent(burstId)}&order=received_at.asc`,

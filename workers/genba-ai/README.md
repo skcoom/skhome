@@ -9,6 +9,7 @@ LINE Messaging APIのwebhookを受け、原本画像をR2へ先に保存して�
 - `src/engine/`: 48h/24h文脈、正規化・安全判定、Claude判定
 - `prompts/site-matcher.md`: 判定プロンプトv0.1
 - `src/services/site-page.ts`: HMAC署名付き現場トークンによる現場ページ・画像配信
+- `src/services/admin-media.ts`: Supabaseログインとadmin/staff役割を確認する管理画面向けR2配信
 - `src/services/weekly.ts`: 完工候補・7日停滞・学習ログを含む週報
 - `scripts/seed-aliases.ts`: 初期辞書から既存projectsへaliasを投入
 - `scripts/run-regression.ts`: JSONL回帰テストCLI
@@ -107,7 +108,7 @@ npm test
 npm run test:migration
 ```
 
-このテストはホスト側のポートや本番secretを使わず、使い捨てコンテナへ既存3テーブルの最小契約、実migration、状態遷移の検査を順に流します。履歴全体のSupabase初期化やPostgREST経由のRLS検査ではなく、フェーズ1migrationが追加する列・テーブルとDB関数の契約を再現するテストです。成功・失敗にかかわらずコンテナは削除されます。
+このテストはホスト側のポートや本番secretを使わず、使い捨てコンテナへ既存テーブルの最小契約、実migration、状態遷移、管理画面の選定→公開、匿名閲覧時の非公開写真遮断を順に流します。履歴全体のSupabase初期化ではなく、現場AIと管理画面接続が追加するDB契約を再現するテストです。成功・失敗にかかわらずコンテナは削除されます。
 Docker互換環境が停止している場合は15秒以内に明示エラーで終了します。Colimaを使う環境では`colima start`後に再実行してください。
 
 回帰20件（承認済みJSONLの絶対パスを渡す）:
@@ -171,5 +172,7 @@ LINE公式仕様ではreply tokenは1回だけ、受信後1分以内の利用が
 ## 社内写真の分離
 
 R2キー・LINE message ID・生payloadはRLSを有効にした`line_events`だけに保存します。既存`project_media`には現場台帳との関連を示す非掲載行だけを作り、公開projectのanon queryへR2キーや現場ページtokenを出しません。現場ページtokenはDBへ保存せず、現場IDを`LINE_CHANNEL_SECRET`でHMAC署名して生成します。
+
+管理画面の`/admin/media/:eventId`は、ブラウザのSupabase access tokenを検証し、`users.role`が`admin`または`staff`の場合だけR2原本を`private, no-store`で返します。Next.js側が同一オリジンのAPIとして中継するため、R2キーやWorkerの署名情報はブラウザへ渡しません。公開時は`selected`状態を必須とし、公開Storageへ別コピーを作ってから`published`へ更新します。
 
 Claude Visionへ渡す画像は1枚7MB以下・最大10枚に加え、base64化後のAPIリクエストが32MB制限を超えないよう原本合計18MiBまでに制限しています。対象外になった原本もR2には残ります。
