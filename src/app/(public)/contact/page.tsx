@@ -82,8 +82,8 @@ export default function ContactPage() {
               お問い合わせありがとうございます
             </h1>
             <p className="text-[#666666] leading-relaxed mb-12">
-              内容を確認の上、担当者より折り返しご連絡いたします。<br />
-              通常2〜3営業日以内にご返信いたします。
+              内容を確認の上、担当者より順次ご連絡いたします。<br />
+              お急ぎの場合は、お電話でもお問い合わせいただけます。
             </p>
             <Link
               href="/"
@@ -111,9 +111,9 @@ export default function ContactPage() {
               お問い合わせ
             </h1>
             <p className="text-[#666666] leading-relaxed">
-              リフォームのご相談、お見積りのご依頼など、<br />
-              お気軽にお問い合わせください。<br />
-              現地調査・お見積りは無料です。
+              工事内容が決まっていなくても大丈夫です。<br />
+              今困っていることや、これからどのように使いたいかをお聞かせください。<br />
+              ご相談・現地確認・お見積もりは無料です。
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function ContactPage() {
               </div>
               <h3 className="text-sm font-medium text-[#999999] mb-2">メール</h3>
               <p className="text-lg font-medium text-[#333333] mb-1">info@skcoom.co.jp</p>
-              <p className="text-xs text-[#999999]">24時間受付</p>
+              <p className="text-xs text-[#999999]">いつでも送信いただけます</p>
             </div>
 
             <div className="bg-[#FAF9F6] rounded-xl p-6 lg:p-8">
@@ -254,9 +254,9 @@ export default function ContactPage() {
                         className="w-full px-4 py-3 border border-[#E5E4E0] rounded-lg focus:outline-none focus:border-[#26A69A] focus:ring-1 focus:ring-[#26A69A] transition-colors text-sm bg-white"
                       >
                         <option value="">選択してください</option>
-                        <option value="estimate">お見積り依頼</option>
+                        <option value="estimate">見積もりの依頼</option>
                         <option value="consultation">リフォーム相談</option>
-                        <option value="inspection">現地調査の依頼</option>
+                        <option value="inspection">現地確認の依頼</option>
                         <option value="other">その他</option>
                       </select>
                     </div>
@@ -272,7 +272,7 @@ export default function ContactPage() {
                       value={formData.message}
                       onChange={handleChange}
                       rows={6}
-                      placeholder="リフォームの内容、ご希望の時期、ご予算など、お気軽にお書きください。"
+                      placeholder="現在お困りのこと、ご希望の時期、ご予算など、分かる範囲でお書きください。"
                       required
                       className="w-full px-4 py-3 border border-[#E5E4E0] rounded-lg focus:outline-none focus:border-[#26A69A] focus:ring-1 focus:ring-[#26A69A] transition-colors text-sm resize-none"
                     />
@@ -359,7 +359,7 @@ export default function ContactPage() {
                   友だち追加
                 </a>
                 <p className="text-xs text-[#999999] text-center mt-3">
-                  24時間受付・お気軽にどうぞ
+                  いつでも送信いただけます
                 </p>
               </div>
 
@@ -385,7 +385,7 @@ export default function ContactPage() {
               <div className="bg-[#F0EFE9] rounded-xl p-6">
                 <h3 className="text-sm font-medium text-[#333333] mb-4">対応エリア</h3>
                 <p className="text-sm text-[#666666] leading-relaxed">
-                  埼玉県さいたま市を中心に、東京都・埼玉県・千葉県の広いエリアに対応しております。
+                  さいたま市を中心に、埼玉県内・東京都内へ現地確認に伺います。場所と工事内容によって調整しますので、まずは所在地をお知らせください。
                 </p>
               </div>
             </div>
@@ -406,20 +406,20 @@ export default function ContactPage() {
           <div className="max-w-3xl mx-auto space-y-4">
             {[
               {
-                q: '見積りは無料ですか？',
-                a: 'はい、現地調査・お見積りは無料で承っております。お気軽にご依頼ください。',
+                q: '現地確認や見積もりに費用はかかりますか？',
+                a: 'ご相談・現地確認・お見積もりは無料です。場所やご相談内容によって確認が必要な場合は、訪問前にお伝えします。',
               },
               {
                 q: 'どのくらいの期間で工事が完了しますか？',
-                a: '工事内容により異なりますが、キッチンリフォームで約1週間、フルリノベーションで1〜2ヶ月程度が目安です。',
+                a: '現地確認後、工事範囲と資材の納期を確認して工程をご案内します。建物の状態や工事内容によって期間は異なります。',
               },
               {
                 q: '住みながらの工事は可能ですか？',
-                a: 'はい、多くの場合は住みながらの工事が可能です。工事内容に応じて、ご不便を最小限に抑える工程をご提案いたします。',
+                a: '工事する場所や内容によって異なります。水回りが使えない期間や、音・ほこりの影響も含めて、現地確認後に進め方をご相談します。',
               },
               {
                 q: '小さな修繕でも対応してもらえますか？',
-                a: 'はい、小さな修繕から大規模なリノベーションまで、幅広く対応しております。',
+                a: 'はい。建具の調整や内装の補修など、小さな工事もご相談ください。内容と場所を確認してご案内します。',
               },
             ].map((faq, index) => (
               <div key={index} className="bg-[#FAF9F6] rounded-xl p-6">

@@ -6,7 +6,7 @@ import Script from 'next/script';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: '株式会社SKコーム｜さいたま市東浦和の内装リフォーム・賃貸リノベーション',
-  description: '図面の上ではなく、現場で決める工務店。内装リフォーム・賃貸アパートの間取り変更リノベーション・店舗内装。設計料ゼロ・自社施工・他社見積のセカンドオピニオン歓迎。',
+  description: 'さいたま市を中心に、住宅・賃貸物件・店舗などの内装リフォームをご相談いただけます。現地を確認し、必要な工事・費用・制約を分かりやすくご説明します。',
 };
 
 function approvedHomeSource() {

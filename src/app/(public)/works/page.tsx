@@ -72,9 +72,8 @@ export default async function WorksPage() {
               施工実績
             </h1>
             <p className="text-[#666666] leading-relaxed">
-              これまでに手がけた施工事例をご紹介します。<br />
-              リフォーム、マンション工事、新築工事など、<br />
-              お客様のご要望に合わせた確かな施工をお届けしています。
+              公開のご了承をいただいた施工事例をご紹介します。<br />
+              写真や工事内容を、ご相談前の参考としてご覧ください。
             </p>
           </div>
         </div>
@@ -102,10 +101,10 @@ export default async function WorksPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { step: '01', title: 'お問い合わせ', description: 'お電話またはフォームからお気軽にご連絡ください。' },
-              { step: '02', title: '現地調査', description: '無料で現地にお伺いし、ご要望をお伺いします。' },
-              { step: '03', title: 'お見積り', description: '詳細な見積書を作成し、ご説明いたします。' },
-              { step: '04', title: '施工', description: '職人が丁寧に施工。完成後もサポートします。' },
+              { step: '01', title: 'ご相談', description: '今困っていることや、ご希望を分かる範囲でお聞かせください。' },
+              { step: '02', title: '現地確認', description: '建物の状態と寸法を確認し、できる工事と制約を整理します。' },
+              { step: '03', title: 'ご提案・お見積もり', description: '工事内容、費用、工程をご説明し、ご判断いただきます。' },
+              { step: '04', title: '施工・ご確認', description: '内容にご納得いただいてから施工し、完成後に仕上がりをご確認いただきます。' },
             ].map((item, index) => (
               <div key={index} className="relative">
                 <div className="bg-[#F0EFE9] rounded-xl p-6 lg:p-8 h-full">
@@ -131,11 +130,11 @@ export default async function WorksPage() {
         <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
           <p className="text-sm tracking-widest text-[#26A69A] mb-4">CONTACT</p>
           <h2 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-6">
-            お気軽にご相談ください
+            写真にない工事も、ご相談ください
           </h2>
           <p className="text-[#666666] mb-12 leading-relaxed">
-            リフォームのことなら何でもお気軽にご相談ください。<br />
-            現地調査・お見積りは無料です。
+            建物ごとに状態や工事内容は異なります。<br />
+            ご相談・現地確認・お見積もりは無料です。
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a

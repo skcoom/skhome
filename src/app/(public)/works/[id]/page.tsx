@@ -359,8 +359,8 @@ export default async function WorkDetailPage({ params }: PageProps) {
             同様の工事をご検討ですか？
           </h2>
           <p className="text-[#666666] mb-12 leading-relaxed">
-            お気軽にご相談ください。<br />
-            現地調査・お見積りは無料です。
+            建物の状態やご希望に合わせて、工事内容を整理します。<br />
+            ご相談・現地確認・お見積もりは無料です。
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a

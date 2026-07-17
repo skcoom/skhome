@@ -19,8 +19,8 @@ export function Footer() {
               />
             </div>
             <p className="text-[#999999] text-sm leading-relaxed mb-6">
-              お客様の夢のお家づくりを、私たちと一緒に。<br />
-              つくり手が直接ご要望を伺う、信頼のリフォーム会社です。
+              住宅・賃貸物件・店舗などの内装リフォーム。<br />
+              現地を確認し、必要な工事と費用を分かりやすくご説明します。
             </p>
             <div className="space-y-3 text-[#999999] text-sm">
               <p className="flex items-center">
@@ -47,14 +47,14 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               {[
                 { href: '/', label: 'ホーム' },
-                { href: '/company', label: '会社概要' },
-                { href: '/members', label: 'メンバー' },
+                { href: '/company', label: '会社案内' },
+                { href: '/members', label: 'スタッフ紹介' },
                 { href: '/works', label: '施工実績' },
                 { href: '/blog', label: 'ブログ' },
                 { href: '/faq', label: 'よくある質問' },
                 { href: '/contact', label: 'お問い合わせ' },
               ].map((item) => (
-                <li key={item.href}>
+                <li key={item.label}>
                   <Link
                     href={item.href}
                     className="text-[#999999] hover:text-white transition-colors"
@@ -71,12 +71,12 @@ export function Footer() {
             <h4 className="text-sm font-medium tracking-wider mb-6 text-[#4DB6AC]">サービス</h4>
             <ul className="space-y-3 text-sm">
               {[
-                { href: '/works?category=remodeling', label: 'リフォーム' },
-                { href: '/works?category=apartment', label: 'マンション工事' },
-                { href: '/works?category=new_construction', label: '新築工事' },
-                { href: '/works?category=house', label: '住宅工事' },
+                { href: '/rental-renovation', label: '賃貸リノベーション' },
+                { href: '/works', label: '住宅リフォーム' },
+                { href: '/works', label: '店舗・事務所内装' },
+                { href: '/works', label: '小さな修繕' },
               ].map((item) => (
-                <li key={item.href}>
+                <li key={item.label}>
                   <Link
                     href={item.href}
                     className="text-[#999999] hover:text-white transition-colors"
