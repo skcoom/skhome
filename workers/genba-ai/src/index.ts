@@ -1,4 +1,5 @@
 import { handleWebhook } from "./services/webhook";
+import { handleAdminMedia } from "./services/admin-media";
 import { handleMedia, handleSitePage } from "./services/site-page";
 import { handleWeeklyPage, runWeeklySummary } from "./services/weekly";
 import { recoverPendingEvents } from "./services/event-processor";
@@ -21,6 +22,10 @@ export default {
     const token = url.searchParams.get("token");
     if (request.method === "GET" && mediaMatch?.[1] && token) {
       return handleMedia(token, mediaMatch[1], env);
+    }
+    const adminMediaMatch = url.pathname.match(/^\/admin\/media\/([0-9a-f-]{36})$/iu);
+    if (request.method === "GET" && adminMediaMatch?.[1]) {
+      return handleAdminMedia(request, adminMediaMatch[1], env);
     }
     const weeklyMatch = url.pathname.match(/^\/weekly\/([^/]+)$/u);
     if (request.method === "GET" && weeklyMatch?.[1]) {

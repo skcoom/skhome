@@ -17,6 +17,8 @@ export type ProjectTag =
   | '店舗';
 export type MediaType = 'image' | 'video';
 export type MediaPhase = 'before' | 'during' | 'after';
+export type MediaSourceOrigin = 'manual' | 'line';
+export type MediaPublicationStatus = 'internal' | 'selected' | 'published';
 export type DocumentType = 'estimate' | 'invoice' | 'contract' | 'other';
 export type BlogCategory = 'news' | 'column' | 'case_study';
 export type BlogStatus = 'draft' | 'published';
@@ -51,6 +53,7 @@ export interface Project {
   created_by: string;
   created_at: string;
   updated_at: string;
+  last_line_activity_at?: string | null;
 }
 
 export interface ProjectMedia {
@@ -63,6 +66,12 @@ export interface ProjectMedia {
   caption?: string;
   uploaded_by?: string;
   is_featured: boolean;
+  genba_line_event_id?: string | null;
+  source_origin?: MediaSourceOrigin | null;
+  publication_status?: MediaPublicationStatus | null;
+  public_storage_path?: string | null;
+  published_at?: string | null;
+  published_by?: string | null;
   hero_position?: 1 | 2 | 3 | null;
   created_at: string;
 }

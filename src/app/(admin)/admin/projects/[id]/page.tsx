@@ -27,6 +27,7 @@ import {
   Trash2,
   Play,
   Sparkles,
+  Images,
 } from 'lucide-react';
 import type { Project, ProjectMedia, MediaType, MediaPhase, PendingClassificationFile } from '@/types/database';
 import { PickupSuggestions } from '@/components/admin/pickup-suggestions';
@@ -688,16 +689,16 @@ export default function ProjectDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-start space-x-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start space-x-3 sm:space-x-4">
           <Link
             href="/admin/projects"
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+          <div className="min-w-0">
+            <h1 className="break-words text-2xl font-bold text-gray-900">{project.name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800">
                 {categoryLabels[project.category]}
@@ -708,7 +709,13 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Link href={`/admin/genba?project=${project.id}`}>
+            <Button variant="outline">
+              <Images className="mr-2 h-4 w-4" />
+              LINE写真を確認
+            </Button>
+          </Link>
           <Button variant="outline" onClick={togglePublic}>
             {project.is_public ? (
               <>

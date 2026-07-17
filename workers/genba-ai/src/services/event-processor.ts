@@ -7,11 +7,9 @@ import { extractSiteName, normalizeSiteText } from "../engine/normalization";
 import type {
   Env,
   GroupTemplateId,
-  LineImageMessage,
   LineMessageEvent,
   LineTextMessage,
   MatcherResult,
-  MediaPhase,
   SiteRecord,
   StoredLineEvent,
   VisionImage,

@@ -91,4 +91,10 @@ run_sql "${REPO_ROOT}/supabase/migrations/20260716000000_genba_ai_template_page_
 echo "Verifying approved site-page URL templates..."
 run_sql "${WORKER_DIR}/test/fixtures/migration-template-url-assertions.sql"
 
+echo "Applying genba admin review migration..."
+run_sql "${REPO_ROOT}/supabase/migrations/20260717000000_genba_admin_review.sql"
+
+echo "Verifying private-to-public media workflow..."
+run_sql "${WORKER_DIR}/test/fixtures/migration-admin-review-assertions.sql"
+
 echo "PostgreSQL 15 migration contract test passed."
