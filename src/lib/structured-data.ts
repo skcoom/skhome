@@ -6,7 +6,7 @@ export const organizationData = {
   '@id': `${siteUrl}/#organization`,
   name: 'SKコーム',
   alternateName: 'SK-KOMU',
-  description: 'お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。',
+  description: 'さいたま市を拠点に、住宅・賃貸物件・店舗などの内装リフォームを手がける会社です。',
   url: siteUrl,
   logo: `${siteUrl}/logo.png`,
   telephone: '090-3357-4379',
@@ -110,16 +110,11 @@ export function generateServiceData(service: {
     url: service.url.startsWith('http') ? service.url : `${siteUrl}${service.url}`,
     image: service.image || `${siteUrl}/og-image.png`,
     provider: organizationData,
-    areaServed: {
-      '@type': 'GeoCircle',
-      geoMidpoint: {
-        '@type': 'GeoCoordinates',
-        latitude: 35.8617,
-        longitude: 139.6455,
-      },
-      geoRadius: '50000',
-    },
-    serviceType: service.category || 'リフォーム',
+    areaServed: [
+      { '@type': 'AdministrativeArea', name: '埼玉県' },
+      { '@type': 'AdministrativeArea', name: '東京都' },
+    ],
+    serviceType: service.category || '内装リフォーム',
   };
 }
 
@@ -130,17 +125,9 @@ export const websiteData = {
   '@id': `${siteUrl}/#website`,
   name: 'SKコーム',
   url: siteUrl,
-  description: 'お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。',
+  description: '住宅・賃貸物件・店舗などの内装リフォームについて、工事内容が決まっていない段階からご相談いただけます。',
   publisher: {
     '@id': `${siteUrl}/#organization`,
-  },
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: {
-      '@type': 'EntryPoint',
-      urlTemplate: `${siteUrl}/search?q={search_term_string}`,
-    },
-    'query-input': 'required name=search_term_string',
   },
   inLanguage: 'ja-JP',
 };

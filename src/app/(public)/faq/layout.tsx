@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'よくあるご質問 | SKコーム',
+  title: 'よくあるご質問',
   description:
-    'SKコームへよくいただくご質問をまとめました。お見積り・費用、工事期間、対応範囲など、リフォームに関する疑問にお答えします。',
+    'SKコームへのご相談、現地確認、お見積もり、工事の進め方、対応範囲など、よくあるご質問をまとめました。',
 };
 
 export default function FAQLayout({ children }: { children: React.ReactNode }) {

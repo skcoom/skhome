@@ -236,11 +236,11 @@ export default function BlogPage() {
         <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
           <p className="text-sm tracking-widest text-[#26A69A] mb-4">CONTACT</p>
           <h2 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-6">
-            お気軽にご相談ください
+            記事を読んでも判断しにくいことは、ご相談ください
           </h2>
           <p className="text-[#666666] mb-12 leading-relaxed">
-            リフォームのことなら何でもお気軽にご相談ください。<br />
-            現地調査・お見積りは無料です。
+            建物の状態によって、必要な工事は変わります。<br />
+            ご相談・現地確認・お見積もりは無料です。
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a

@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
-export const alt = 'SKコーム - リフォーム・建築';
+export const alt = '株式会社SKコーム｜内装リフォーム';
 export const size = {
   width: 1200,
   height: 630,
@@ -67,7 +67,7 @@ export default async function Image() {
               lineHeight: 1.5,
             }}
           >
-            暮らしの「つづき」をつくる、信頼のリフォーム会社
+            住宅・賃貸物件・店舗などの内装リフォーム
           </div>
           <div
             style={{

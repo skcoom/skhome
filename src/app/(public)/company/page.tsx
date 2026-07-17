@@ -13,17 +13,16 @@ export default function CompanyPage() {
                 ABOUT US
               </p>
               <h1 className="text-3xl lg:text-4xl font-medium leading-relaxed text-[#333333] mb-8">
-                つくり手が直接届ける、<br />
-                信頼のリフォーム。
+                分からないことから、<br />
+                一緒に整理する工務店です。
               </h1>
               <p className="text-[#666666] leading-relaxed mb-6">
                 私たちSKコームは、埼玉県さいたま市を拠点に、
-                リフォーム・内装工事を手がける会社です。
+                住宅・賃貸物件・店舗などの内装リフォームを手がけています。
               </p>
               <p className="text-[#666666] leading-relaxed">
-                「つくり手が直接お客様と向き合う」をモットーに、
-                中間マージンのない適正価格と、
-                細部までこだわった丁寧な施工をお届けしています。
+                ご希望を伺い、現地を確認した上で、必要な工事と見送れる工事を整理します。
+                施工する人の顔が見え、途中の状況も分かる進め方を大切にしています。
               </p>
             </div>
             <div className="relative">
@@ -51,7 +50,7 @@ export default function CompanyPage() {
         {/* Vertical text */}
         <div className="hidden lg:block absolute right-8 top-1/2 -translate-y-1/2">
           <p className="vertical-text text-2xl tracking-widest text-[#E5E4E0] font-medium">
-            会社概要
+            会社案内
           </p>
         </div>
       </section>
@@ -69,18 +68,18 @@ export default function CompanyPage() {
           <div className="max-w-3xl mx-auto">
             <div className="bg-[#FAF9F6] rounded-xl p-8 lg:p-12">
               <p className="text-[#666666] leading-loose text-center mb-8">
-                住まいは、人生の大切な時間を過ごす場所。<br />
-                だからこそ、私たちは一つひとつの現場に<br />
-                真摯に向き合います。
+                リフォームは、完成するまで分かりにくいことの多い仕事です。<br />
+                何を直すのか、なぜ必要なのか、費用はどこにかかるのか。<br />
+                まずは、その疑問を整理することから始めます。
               </p>
               <p className="text-[#666666] leading-loose text-center mb-8">
-                大手にはできない小回りの良さと、<br />
-                職人が直接対応するからこその細やかな気配り。<br />
-                お客様の「こうしたい」を、カタチにします。
+                ご希望をそのまま工事にするのではなく、現場の状態を確認し、<br />
+                できることと難しいことをお伝えします。<br />
+                内容にご納得いただいてから、施工へ進みます。
               </p>
               <p className="text-[#666666] leading-loose text-center">
-                暮らしの「つづき」をつくる。<br />
-                それが、私たちSKコームの仕事です。
+                工事の大小にかかわらず、相談しやすく、途中経過が分かり、<br />
+                完成後も連絡できる関係を目指しています。
               </p>
             </div>
           </div>
@@ -108,19 +107,16 @@ export default function CompanyPage() {
               </h2>
               <div className="space-y-6 text-[#666666] leading-relaxed">
                 <p>
-                  私はパソコンとインターネットが好きで、オタクのように触り続けてきた人間です。
+                  リフォームは、お客様にとって分からないことが多くて当然です。工事の名前や相場を知っていなければ、相談できないわけではありません。
                 </p>
                 <p>
-                  一方、父は現場が好きで、長年内装の仕事をしてきました。その背中を見て「自分も大工になりたい」と働き始めた若者もいます。
+                  SKコームには、現場で施工するメンバーと、情報を整理してお伝えするメンバーがいます。それぞれの役割をつなぎ、お客様のご希望が現場まで正しく伝わるようにすることが、私の仕事です。
                 </p>
                 <p>
-                  私たちの会社は、正反対の人間が一緒にやっています。だからこそ、インターネットを使って情報をきちんと届けることも、現場で手を動かして仕上げることも、どちらも本気でやれます。
+                  現地を確認すると、当初のご希望とは別の方法が見つかることもあります。反対に、構造や法令のために、ご希望どおりにはできないこともあります。その場合も、理由と代わりの方法をできるだけ分かりやすくご説明します。
                 </p>
                 <p>
-                  リフォームは何度も経験するものではありません。だから、何が妥当な金額なのか、判断しづらいのは当然です。
-                </p>
-                <p>
-                  他の業者さんで見積もりを取った後でも構いません。「この金額、高いのか安いのかわからない」「本当にこの工事は必要なのか」——そう思ったら、一度話を聞かせてください。うちに頼むかどうかは、その後で決めてもらえれば大丈夫です。
+                  他社のお見積もりがある場合も、そのままお持ちください。「この工事は必要か」「何が違うのか」といった段階からご相談いただけます。話を聞いた上で、依頼するかどうかを決めていただければ大丈夫です。
                 </p>
               </div>
               <div className="mt-8 pt-8 border-t border-[#E5E4E0]">
@@ -151,7 +147,7 @@ export default function CompanyPage() {
                     ['代表者', '末武 修平'],
                     ['設立', '2021年3月'],
                     ['資本金', '100万円'],
-                    ['事業内容', '内装リフォーム'],
+                    ['事業内容', '住宅・賃貸物件・店舗などの内装リフォーム'],
                     ['所在地', '〒336-0926 埼玉県さいたま市緑区東浦和8-2-12'],
                     ['電話番号', '090-3357-4379'],
                     ['メール', 'info@skcoom.co.jp'],
@@ -253,11 +249,11 @@ export default function CompanyPage() {
         <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
           <p className="text-sm tracking-widest text-[#26A69A] mb-4">CONTACT</p>
           <h2 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-6">
-            お気軽にご相談ください
+            工事内容が決まっていなくても、ご相談ください
           </h2>
           <p className="text-[#666666] mb-12 leading-relaxed">
-            リフォームのことなら何でもお気軽にご相談ください。<br />
-            現地調査・お見積りは無料です。
+            今困っていることと、これからどのように使いたいかを伺います。<br />
+            ご相談・現地確認・お見積もりは無料です。
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a

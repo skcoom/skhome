@@ -7,12 +7,17 @@ import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: 'ホーム' },
-  { href: '/company', label: '会社概要' },
-  { href: '/members', label: 'メンバー' },
+  { href: '/rental-renovation', label: '賃貸リノベーション' },
   { href: '/works', label: '施工実績' },
+  { href: '/company', label: '会社案内' },
+  { href: '/members', label: 'スタッフ紹介' },
   { href: '/blog', label: 'ブログ' },
   { href: '/faq', label: 'よくある質問' },
+];
+
+const mobileNavItems = [
+  { href: '/', label: 'ホーム' },
+  ...navItems,
   { href: '/contact', label: 'お問い合わせ' },
 ];
 
@@ -36,7 +41,7 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-10" aria-label="メインナビゲーション">
+          <nav className="hidden xl:flex items-center space-x-7" aria-label="メインナビゲーション">
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -50,7 +55,7 @@ export function Header() {
           </nav>
 
           {/* CTA */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden xl:flex items-center space-x-6">
             <a
               href="tel:090-3357-4379"
               className="text-sm text-[#666666] hover:text-[#26A69A] transition-colors"
@@ -68,7 +73,7 @@ export function Header() {
           {/* Mobile menu button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 text-[#333333]"
+            className="xl:hidden p-2 text-[#333333]"
             aria-label={isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
             aria-expanded={isMenuOpen}
             aria-controls="mobile-navigation"
@@ -80,9 +85,9 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div id="mobile-navigation" className="md:hidden bg-[#FAF9F6] border-t border-[#E5E4E0]">
+        <div id="mobile-navigation" className="xl:hidden bg-[#FAF9F6] border-t border-[#E5E4E0]">
           <nav className="px-6 py-4 space-y-4" aria-label="モバイルナビゲーション">
-            {navItems.map((item) => (
+            {mobileNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

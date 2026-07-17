@@ -6,11 +6,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
 
 export const metadata: Metadata = {
   title: {
-    default: "SKコーム | リフォーム・建築",
+    default: "SKコーム | さいたま市の内装リフォーム",
     template: "%s | SKコーム",
   },
-  description: "お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。埼玉県さいたま市を中心に、住宅リフォーム・リノベーション・新築工事を手掛けています。",
-  keywords: ["リフォーム", "建築", "リノベーション", "埼玉", "さいたま市", "住宅改修", "SKコーム"],
+  description: "さいたま市を中心に、住宅・賃貸物件・店舗などの内装リフォームをご相談いただけます。現地を確認し、必要な工事・費用・制約を分かりやすくご説明します。",
+  keywords: ["内装リフォーム", "賃貸リノベーション", "間取り変更", "店舗内装", "埼玉", "さいたま市", "SKコーム"],
   authors: [{ name: "SKコーム" }],
   creator: "SKコーム",
   publisher: "SKコーム",
@@ -23,21 +23,21 @@ export const metadata: Metadata = {
     locale: 'ja_JP',
     url: siteUrl,
     siteName: 'SKコーム',
-    title: 'SKコーム | リフォーム・建築',
-    description: 'お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。埼玉県さいたま市を中心に、住宅リフォーム・リノベーション・新築工事を手掛けています。',
+    title: 'SKコーム | さいたま市の内装リフォーム',
+    description: '住宅・賃貸物件・店舗などの内装リフォームについて、工事内容が決まっていない段階からご相談いただけます。',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'SKコーム - リフォーム・建築',
+        alt: '株式会社SKコーム',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'SKコーム | リフォーム・建築',
-    description: 'お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。',
+    title: 'SKコーム | さいたま市の内装リフォーム',
+    description: '住宅・賃貸物件・店舗などの内装リフォームについて、工事内容が決まっていない段階からご相談いただけます。',
     images: ['/og-image.png'],
   },
   robots: {
@@ -69,7 +69,7 @@ const jsonLd = {
   '@id': `${siteUrl}/#organization`,
   name: 'SKコーム',
   alternateName: 'SK-KOMU',
-  description: 'お客様の暮らしの「つづき」をつくる、信頼のリフォーム会社です。',
+  description: 'さいたま市を拠点に、住宅・賃貸物件・店舗などの内装リフォームを手がける会社です。',
   url: siteUrl,
   logo: `${siteUrl}/logo.png`,
   image: `${siteUrl}/og-image.png`,
@@ -83,28 +83,17 @@ const jsonLd = {
     postalCode: '336-0926',
     addressCountry: 'JP',
   },
-  geo: {
-    '@type': 'GeoCoordinates',
-    latitude: 35.8614,
-    longitude: 139.7167,
-  },
   openingHoursSpecification: {
     '@type': 'OpeningHoursSpecification',
     dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
     opens: '08:00',
-    closes: '18:00',
+    closes: '19:00',
   },
-  priceRange: '$$',
-  areaServed: {
-    '@type': 'GeoCircle',
-    geoMidpoint: {
-      '@type': 'GeoCoordinates',
-      latitude: 35.9138,
-      longitude: 139.6547,
-    },
-    geoRadius: '50000',
-  },
-  serviceType: ['リフォーム', '建築', 'リノベーション', '住宅改修'],
+  areaServed: [
+    { '@type': 'AdministrativeArea', name: '埼玉県' },
+    { '@type': 'AdministrativeArea', name: '東京都' },
+  ],
+  serviceType: ['内装リフォーム', '賃貸リノベーション', '間取り変更', '店舗内装'],
   founder: {
     '@type': 'Person',
     name: '末武修平',

@@ -1,6 +1,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, Users, Wrench, Heart } from 'lucide-react';
+import type { Metadata } from 'next';
+import { MessageCircle, Phone, Users, Wrench } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'スタッフ紹介',
+  description:
+    'SKコームのメンバーと担当をご紹介します。ご相談内容を社内で共有し、工事内容に応じた担当者と協力業者で現場を進めます。',
+};
 
 interface Member {
   id: string;
@@ -19,7 +26,7 @@ const members: Member[] = [
     id: '1',
     name: '末武 修平',
     role: 'CEO',
-    roleJa: '代表取締役',
+    roleJa: '代表取締役・ご相談窓口',
     image: null,
     initials: '修',
     motto: '',
@@ -27,8 +34,8 @@ const members: Member[] = [
   {
     id: '2',
     name: '末武 剛',
-    role: 'Master Craftsman',
-    roleJa: '親方',
+    role: 'Construction Planning',
+    roleJa: '工事相談・施工計画',
     image: null,
     initials: '剛',
     motto: '',
@@ -44,27 +51,36 @@ const members: Member[] = [
   },
   {
     id: '4',
+    name: '末武 來',
+    role: 'Interior Work',
+    roleJa: '内装工事',
+    image: null,
+    initials: '來',
+    motto: '',
+  },
+  {
+    id: '5',
     name: '木村 翔',
-    role: 'Electrician / Carpenter',
+    role: 'Electrical / Carpentry',
     roleJa: '電気・大工工事',
     image: null,
     initials: '翔',
     motto: '',
   },
   {
-    id: '5',
+    id: '6',
     name: '本橋 拓真',
-    role: 'Interior Craftsman',
-    roleJa: '内装工事全般（修行中）',
+    role: 'Interior Work',
+    roleJa: '内装工事',
     image: null,
     initials: '拓',
     motto: '',
   },
   {
-    id: '6',
+    id: '7',
     name: '片山 雄太',
-    role: 'Interior Craftsman',
-    roleJa: '内装工事全般（修行中）',
+    role: 'Interior Work',
+    roleJa: '内装工事',
     image: null,
     initials: '雄',
     motto: '',
@@ -98,18 +114,21 @@ function MemberCard({ member }: { member: Member }) {
 const values = [
   {
     icon: Users,
-    title: 'チームワーク',
-    description: '一人ひとりの強みを活かし、チームで最高の結果を追求します。',
+    title: 'ご相談内容を共有する',
+    description:
+      '最初に伺ったご希望や気になる点を、見積もりと施工に関わるメンバーへ引き継ぎます。',
   },
   {
     icon: Wrench,
-    title: '確かな技術',
-    description: '長年の経験と継続的な学びで、高品質な施工をお届けします。',
+    title: '現場に合わせて考える',
+    description:
+      '建物の状態を確認し、大工・内装・電気など、工事内容に合う担当者で進めます。',
   },
   {
-    icon: Heart,
-    title: 'お客様第一',
-    description: 'お客様の想いに寄り添い、期待を超える仕上がりを目指します。',
+    icon: MessageCircle,
+    title: '分からないまま進めない',
+    description:
+      '工事の理由や変更点をできるだけ分かりやすくお伝えし、ご納得いただいてから進めます。',
   },
 ];
 
@@ -124,11 +143,11 @@ export default function MembersPage() {
               OUR TEAM
             </p>
             <h1 className="text-3xl lg:text-4xl font-medium leading-relaxed text-[#333333] mb-8">
-              つくる人たち
+              相談する人と、つくる人。
             </h1>
             <p className="text-[#666666] leading-relaxed">
-              SKコームは、経験豊富な職人たちが集まるチームです。
-              お客様の想いを形にするため、一人ひとりが誇りを持って仕事に取り組んでいます。
+              SKコームでは、ご相談から施工まで、顔の見えるチームで進めます。
+              工事内容に応じて担当者と協力業者が連携し、必要な仕事を一つずつ形にします。
             </p>
           </div>
         </div>
@@ -147,7 +166,7 @@ export default function MembersPage() {
           <div className="text-center mb-16">
             <p className="text-sm tracking-widest text-[#26A69A] mb-4">MEMBERS</p>
             <h2 className="text-2xl lg:text-3xl font-medium text-[#333333]">
-              メンバー紹介
+              スタッフ紹介
             </h2>
           </div>
 
@@ -213,12 +232,13 @@ export default function MembersPage() {
         <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
           <p className="text-sm tracking-widest text-[#26A69A] mb-4">CONTACT</p>
           <h2 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-6">
-            私たちと一緒に、<br className="sm:hidden" />
-            理想の住まいをつくりませんか？
+            どこに相談すればよいか分からない工事も、
+            <br className="hidden sm:block" />
+            まずはお聞かせください
           </h2>
           <p className="text-[#666666] mb-12 leading-relaxed">
-            リフォームのことなら何でもお気軽にご相談ください。<br />
-            現地調査・お見積りは無料です。
+            工事内容が決まっていない段階でも大丈夫です。<br />
+            ご相談・現地確認・お見積もりは無料です。
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a

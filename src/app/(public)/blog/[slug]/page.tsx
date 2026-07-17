@@ -292,11 +292,11 @@ export default async function BlogPostPage({
           <div className="bg-[#E0F2F1] rounded-2xl p-8 lg:p-12">
             <div className="text-center">
               <h3 className="text-xl lg:text-2xl font-medium text-[#333333] mb-4">
-                リフォームのご相談はお気軽に
+                記事を読んでも判断しにくいことは、ご相談ください
               </h3>
               <p className="text-[#666666] mb-8 leading-relaxed">
-                SKコームでは、お客様のご要望に合わせたリフォームをご提案いたします。<br />
-                現地調査・お見積りは無料です。
+                建物の状態やご予算を確認し、必要な工事を整理します。<br />
+                ご相談・現地確認・お見積もりは無料です。
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
                 <a
@@ -310,7 +310,7 @@ export default async function BlogPostPage({
                   href="/contact"
                   className="inline-flex items-center justify-center bg-[#26A69A] text-white px-6 py-3 text-sm font-medium tracking-wide hover:bg-[#009688] transition-colors rounded-lg"
                 >
-                  無料相談・お見積り
+                  相談・見積もりを依頼する
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
