@@ -1008,8 +1008,8 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Phase tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+        <div className="mb-6 overflow-x-auto border-b border-gray-200">
+          <nav className="-mb-px flex w-max min-w-full space-x-8">
             {(['before', 'during', 'after'] as const).map((phase) => {
               const count = media.filter((m) => m.phase === phase).length;
               return (
