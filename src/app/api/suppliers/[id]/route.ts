@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Supplier } from '@/types/database';
+import { requireStaff } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -13,24 +14,14 @@ export async function PUT(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await requireStaff();
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（admin/staffのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser || !['admin', 'staff'].includes(currentUser.role)) {
-      return NextResponse.json({ error: '権限がありません' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     const body = await request.json();
     const { name, contact_person, phone, email, address, notes, is_active } = body as Partial<Supplier>;
@@ -73,24 +64,14 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await requireStaff();
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（admin/staffのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser || !['admin', 'staff'].includes(currentUser.role)) {
-      return NextResponse.json({ error: '権限がありません' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     // 論理削除（is_active を false に）
     const { error } = await supabase

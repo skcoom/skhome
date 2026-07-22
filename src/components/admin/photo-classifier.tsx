@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronDown, Star, Loader2, X } from 'lucide-react';
 import type { MediaPhase, PhotoClassificationResult, PendingClassificationFile } from '@/types/database';
@@ -12,7 +12,7 @@ interface ClassifiedPhoto extends PendingClassificationFile {
 interface PhotoClassifierProps {
   projectId: string;
   files: PendingClassificationFile[];
-  onConfirm: (results: { tempId: string; phase: MediaPhase; is_featured: boolean }[]) => void;
+  onConfirm: (results: { tempId: string; phase: MediaPhase }[]) => void;
   onCancel: () => void;
 }
 
@@ -33,9 +33,10 @@ export function PhotoClassifier({ projectId, files, onConfirm, onCancel }: Photo
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [classifiedPhotos, setClassifiedPhotos] = useState<ClassifiedPhoto[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const hasStarted = useRef(false);
 
   // 分析を開始
-  const startAnalysis = async () => {
+  const startAnalysis = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -81,12 +82,14 @@ export function PhotoClassifier({ projectId, files, onConfirm, onCancel }: Photo
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [files, projectId]);
 
   // 初回マウント時に分析開始
-  useState(() => {
-    startAnalysis();
-  });
+  useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+    void startAnalysis();
+  }, [startAnalysis]);
 
   // 分類を変更
   const updatePhase = (tempId: string, newPhase: MediaPhase) => {
@@ -105,51 +108,11 @@ export function PhotoClassifier({ projectId, files, onConfirm, onCancel }: Photo
     );
   };
 
-  // 確定（各施工段階で必ず1枚以上をHP掲載にする）
+  // 工程分類だけを確定する。掲載可否は保存後に人が写真一覧から選ぶ。
   const handleConfirm = () => {
-    // 施工段階ごとにグループ化
-    const phaseGroups: Record<MediaPhase, ClassifiedPhoto[]> = {
-      before: [],
-      during: [],
-      after: [],
-    };
-
-    classifiedPhotos.forEach((photo) => {
-      phaseGroups[photo.classification.suggestedPhase].push(photo);
-    });
-
-    // 各施工段階で掲載対象を決定
-    const featuredTempIds = new Set<string>();
-
-    (['before', 'during', 'after'] as MediaPhase[]).forEach((phase) => {
-      const photos = phaseGroups[phase];
-      if (photos.length === 0) return;
-
-      // HP適性スコアが7以上のものを掲載
-      const highScorePhotos = photos.filter(
-        (p) => p.classification.hpSuitability >= 7
-      );
-
-      if (highScorePhotos.length > 0) {
-        // スコア7以上があれば、それらを掲載
-        highScorePhotos.forEach((p) => featuredTempIds.add(p.tempId));
-      } else {
-        // なければ、最もスコアが高い1枚を掲載
-        const bestPhoto = photos.reduce((best, current) =>
-          current.classification.hpSuitability > best.classification.hpSuitability
-            ? current
-            : best
-        );
-        featuredTempIds.add(bestPhoto.tempId);
-      }
-    });
-
-    // 結果を生成
     const results = classifiedPhotos.map((photo) => ({
       tempId: photo.tempId,
       phase: photo.classification.suggestedPhase,
-      // is_featured が true = 非掲載、false = 掲載（DBの仕様に合わせる）
-      is_featured: !featuredTempIds.has(photo.tempId),
     }));
 
     onConfirm(results);
@@ -208,7 +171,7 @@ export function PhotoClassifier({ projectId, files, onConfirm, onCancel }: Photo
               AI分類結果
             </h3>
             <p className="text-sm text-gray-500">
-              分類を確認・修正して「確定」を押してください
+              施工前・施工中・施工後の分類を確認し、必要に応じて修正してください
             </p>
           </div>
           <button
@@ -303,10 +266,10 @@ export function PhotoClassifier({ projectId, files, onConfirm, onCancel }: Photo
         {/* フッター */}
         <div className="flex items-center justify-between p-4 border-t bg-gray-50">
           <div className="text-sm text-gray-500">
-            <span className="font-medium text-green-600">
+            掲載向きの提案：<span className="font-medium text-green-600">
               {classifiedPhotos.filter(p => p.classification.hpSuitability >= 7).length}枚
             </span>
-            がHP掲載におすすめ
+            <span className="ml-2 text-xs text-amber-700">保存時点ではすべて非掲載です</span>
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" onClick={onCancel}>
@@ -314,7 +277,7 @@ export function PhotoClassifier({ projectId, files, onConfirm, onCancel }: Photo
             </Button>
             <Button onClick={handleConfirm}>
               <Check className="mr-2 h-4 w-4" />
-              確定して保存
+              工程を確定して保存
             </Button>
           </div>
         </div>

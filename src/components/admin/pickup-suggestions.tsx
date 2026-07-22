@@ -42,13 +42,18 @@ export function PickupSuggestions({ projectId, onApproved }: PickupSuggestionsPr
       setMessage(data.message);
     } catch (err) {
       console.error('Fetch suggestions error:', err);
-      setMessage('エラーが発生しました');
+      setMessage('写真の提案を取得できませんでした');
     } finally {
       setIsLoading(false);
     }
   };
 
   const approvePair = async (pair: SuggestedPair, index: number) => {
+    const confirmed = window.confirm(
+      'この施工前・施工後の2枚をホームページ掲載対象にします。施工実績が公開中の場合は、保存後に表示されます。掲載してよい写真ですか？',
+    );
+    if (!confirmed) return;
+
     setApprovingIndex(index);
 
     try {
@@ -59,7 +64,7 @@ export function PickupSuggestions({ projectId, onApproved }: PickupSuggestionsPr
         },
         body: JSON.stringify({
           mediaIds: [pair.beforeImage.id, pair.afterImage.id],
-          is_featured: true,
+          is_featured: false,
         }),
       });
 
@@ -69,7 +74,7 @@ export function PickupSuggestions({ projectId, onApproved }: PickupSuggestionsPr
 
       // 承認したペアをリストから削除
       setSuggestions((prev) => prev.filter((_, i) => i !== index));
-      setMessage('HP掲載に設定しました');
+      setMessage('2枚をホームページ掲載に設定しました');
 
       if (onApproved) {
         onApproved();
@@ -113,7 +118,7 @@ export function PickupSuggestions({ projectId, onApproved }: PickupSuggestionsPr
       </div>
 
       <p className="text-sm text-gray-500 mb-4">
-        施工前・施工後の写真をAIが分析し、HP掲載に最適なペアを提案します。
+        施工前・施工後の写真をAIが分析し、ホームページに掲載しやすい組み合わせを提案します。
       </p>
 
       {message && suggestions.length === 0 && (
@@ -147,7 +152,7 @@ export function PickupSuggestions({ projectId, onApproved }: PickupSuggestionsPr
                     ) : (
                       <>
                         <Check className="mr-1 h-4 w-4" />
-                        承認
+                        2枚を掲載
                       </>
                     )}
                   </Button>

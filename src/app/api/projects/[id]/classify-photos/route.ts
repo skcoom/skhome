@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClaudeClient } from '@/lib/claude/client';
 import { requirePermission } from '@/lib/auth';
 import type { MediaPhase, PhotoClassificationResult, PendingClassificationFile } from '@/types/database';
+import { fetchApprovedImage, type SupportedImageType } from '@/lib/safe-media-fetch';
 
 interface ClassifyPhotosRequest {
   files: PendingClassificationFile[];
@@ -13,22 +14,6 @@ interface AIClassificationResult {
   confidence: number;
   hpSuitability: number;
   reason: string;
-}
-
-// 画像URLからBase64を取得
-async function fetchImageAsBase64(url: string): Promise<string> {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString('base64');
-  return base64;
-}
-
-// メディアタイプを判定
-function getMediaType(url: string): 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' {
-  if (url.includes('.webp')) return 'image/webp';
-  if (url.includes('.png')) return 'image/png';
-  if (url.includes('.gif')) return 'image/gif';
-  return 'image/jpeg';
 }
 
 // バッチで画像を分析
@@ -47,8 +32,8 @@ async function analyzeImageBatch(
   const imagePromises = imageFiles.map(async (file) => {
     const url = file.thumbnail_url || file.file_url;
     try {
-      const base64 = await fetchImageAsBase64(url);
-      return { file, base64, url };
+      const image = await fetchApprovedImage(url, { maxBytes: 5 * 1024 * 1024 });
+      return { file, ...image };
     } catch (error) {
       console.error(`Failed to fetch image: ${url}`, error);
       return null;
@@ -56,7 +41,7 @@ async function analyzeImageBatch(
   });
 
   const imageResults = (await Promise.all(imagePromises)).filter(
-    (r): r is { file: PendingClassificationFile; base64: string; url: string } => r !== null
+    (r): r is { file: PendingClassificationFile; base64: string; mediaType: SupportedImageType } => r !== null
   );
 
   if (imageResults.length === 0) {
@@ -64,11 +49,11 @@ async function analyzeImageBatch(
   }
 
   // Claude Vision APIで分析
-  const imageContents = imageResults.map(({ base64, url }) => ({
+  const imageContents = imageResults.map(({ base64, mediaType }) => ({
     type: 'image' as const,
     source: {
       type: 'base64' as const,
-      media_type: getMediaType(url),
+      media_type: mediaType,
       data: base64,
     },
   }));
@@ -174,9 +159,9 @@ export async function POST(
     const { id: projectId } = await params;
     const body: ClassifyPhotosRequest = await request.json();
 
-    if (!body.files || body.files.length === 0) {
+    if (!Array.isArray(body.files) || body.files.length === 0 || body.files.length > 20) {
       return NextResponse.json(
-        { error: '分類する画像がありません' },
+        { error: '分類する画像を1〜20枚で選んでください' },
         { status: 400 }
       );
     }

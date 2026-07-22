@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidatePath } from 'next/cache';
 
 const unpublishSchema = z.object({ eventId: z.string().uuid() });
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: media, error: mediaError } = await admin
     .from('project_media')
-    .select('public_storage_path, publication_status')
+    .select('project_id, public_storage_path, publication_status')
     .eq('genba_line_event_id', parsed.data.eventId)
     .single();
 
@@ -45,5 +46,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '公開用の写真は削除しましたが、管理データの更新に失敗しました。管理者に連絡してください。' }, { status: 500 });
   }
 
+  revalidatePath('/works');
+  revalidatePath(`/works/${media.project_id}`);
   return NextResponse.json({ unpublished: parsed.data.eventId });
 }

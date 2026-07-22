@@ -31,6 +31,8 @@ export default function EditProjectPage() {
     start_date: '',
     end_date: '',
     description: '',
+    public_title: '',
+    public_location: '',
     public_description: '',
     is_public: false,
   });
@@ -52,6 +54,8 @@ export default function EditProjectPage() {
           start_date: data.start_date || '',
           end_date: data.end_date || '',
           description: data.description || '',
+          public_title: data.public_title || '',
+          public_location: data.public_location || '',
           public_description: data.public_description || '',
           is_public: data.is_public || false,
         });
@@ -104,6 +108,14 @@ export default function EditProjectPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (formData.is_public) {
+      const confirmed = window.confirm(
+        `次の内容をホームページに公開します。\n\n案件名：${formData.public_title || '未入力'}\n地域：${formData.public_location || '未入力'}\n概要：${formData.public_description || '未入力'}\n\n施主名・番地を含む住所・管理用メモは公開されません。内容を確認して公開しますか？`,
+      );
+      if (!confirmed) return;
+    }
+
     setIsLoading(true);
     setError('');
 
@@ -122,8 +134,11 @@ export default function EditProjectPage() {
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
           description: formData.description || null,
+          public_title: formData.public_title.trim() || null,
+          public_location: formData.public_location.trim() || null,
           public_description: formData.public_description || null,
           is_public: formData.is_public,
+          confirm_publication: formData.is_public,
         }),
       });
 
@@ -323,6 +338,33 @@ export default function EditProjectPage() {
             </div>
 
             <div className="md:col-span-2 space-y-1">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-900">ホームページに表示する情報</p>
+                <p className="mt-1 text-xs text-green-800">
+                  下の3項目だけが施工実績に表示されます。施主名や番地は入力しないでください。
+                </p>
+              </div>
+            </div>
+
+            <Input
+              id="public_title"
+              name="public_title"
+              label="公開用の施工事例名"
+              value={formData.public_title}
+              onChange={handleChange}
+              placeholder="例: 戸建て住宅の水まわりリフォーム"
+            />
+
+            <Input
+              id="public_location"
+              name="public_location"
+              label="公開用の地域"
+              value={formData.public_location}
+              onChange={handleChange}
+              placeholder="例: 福岡市（番地は入力しない）"
+            />
+
+            <div className="md:col-span-2 space-y-1">
               <label htmlFor="public_description" className="block text-sm font-medium text-gray-700">
                 公開用概要（ホームページ掲載）
               </label>
@@ -352,7 +394,7 @@ export default function EditProjectPage() {
                 </span>
               </label>
               <p className="mt-1 text-xs text-gray-500">
-                チェックを入れると、施工実績ページに表示されます
+                保存時に公開内容の確認画面が表示されます
               </p>
             </div>
           </div>

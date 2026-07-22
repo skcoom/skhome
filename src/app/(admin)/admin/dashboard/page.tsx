@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Camera,
   CheckCircle2,
-  Clock3,
   FolderKanban,
   Images,
   Plus,
@@ -39,7 +38,7 @@ export default async function DashboardPage() {
   const { user } = await getAuthUser();
   const canReviewLine = user?.role === 'admin' || user?.role === 'staff';
 
-  const [{ count: projectCount }, { data: inProgressProjects, count: totalInProgress }, { count: contactCount }] = await Promise.all([
+  const [{ count: projectCount }, { data: inProgressProjects, count: totalInProgress }] = await Promise.all([
     supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
     supabase
       .from('projects')
@@ -47,7 +46,6 @@ export default async function DashboardPage() {
       .eq('status', 'in_progress')
       .order('last_line_activity_at', { ascending: false, nullsFirst: false })
       .limit(6),
-    supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
   ]);
 
   let lineToday = 0;
@@ -102,7 +100,6 @@ export default async function DashboardPage() {
     { name: '進行中の現場', value: projectCount || 0, icon: FolderKanban, tone: 'ink', href: '/admin/projects?status=in_progress' },
   ] : [
     { name: '進行中の現場', value: projectCount || 0, icon: FolderKanban, tone: 'ink', href: '/admin/projects?status=in_progress' },
-    { name: '未対応の問い合わせ', value: contactCount || 0, icon: Clock3, tone: 'amber', href: '/admin/contacts' },
   ];
 
   const toneClasses: Record<string, string> = {
@@ -120,9 +117,11 @@ export default async function DashboardPage() {
           <h1 className="mt-1 text-2xl font-semibold text-[#292720] sm:text-3xl">今日の現場</h1>
           <p className="mt-2 text-sm text-[#756f63]">届いた写真と、確認が必要な項目を先に表示しています。</p>
         </div>
-        <Link href="/admin/projects/new" className="inline-flex h-11 items-center justify-center rounded-xl bg-[#302e28] px-5 text-sm font-semibold text-white hover:bg-[#176f64]">
-          <Plus className="mr-2 h-4 w-4" />現場を登録
-        </Link>
+        {canReviewLine && (
+          <Link href="/admin/projects/new" className="inline-flex h-11 items-center justify-center rounded-xl bg-[#302e28] px-5 text-sm font-semibold text-white hover:bg-[#176f64]">
+            <Plus className="mr-2 h-4 w-4" />現場を登録
+          </Link>
+        )}
       </div>
 
       <div className={`grid gap-3 sm:grid-cols-2 ${canReviewLine ? 'xl:grid-cols-4' : ''}`}>

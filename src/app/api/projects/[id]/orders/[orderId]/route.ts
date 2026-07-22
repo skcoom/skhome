@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Order, OrderItem } from '@/types/database';
+import { requireStaff } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string; orderId: string }>;
@@ -12,25 +13,15 @@ export async function PUT(
   { params }: RouteParams
 ): Promise<NextResponse> {
   try {
-    const { orderId } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { id: projectId, orderId } = await params;
+    const { user, error: authError } = await requireStaff();
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（admin/staffのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser || !['admin', 'staff'].includes(currentUser.role)) {
-      return NextResponse.json({ error: '権限がありません' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     const body = await request.json();
     const {
@@ -59,6 +50,7 @@ export async function PUT(
         notes,
       })
       .eq('id', orderId)
+      .eq('project_id', projectId)
       .select()
       .single();
 
@@ -107,31 +99,22 @@ export async function DELETE(
   { params }: RouteParams
 ): Promise<NextResponse> {
   try {
-    const { orderId } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { id: projectId, orderId } = await params;
+    const { user, error: authError } = await requireStaff();
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（admin/staffのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser || !['admin', 'staff'].includes(currentUser.role)) {
-      return NextResponse.json({ error: '権限がありません' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     // 発注を削除（CASCADE で明細も削除される）
     const { error } = await supabase
       .from('orders')
       .delete()
-      .eq('id', orderId);
+      .eq('id', orderId)
+      .eq('project_id', projectId);
 
     if (error) {
       console.error('Order delete error:', error);

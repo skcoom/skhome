@@ -163,14 +163,14 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">ユーザー管理</h1>
           <p className="mt-1 text-sm text-gray-500">
-            システムを利用するユーザーを管理します
+            管理画面を利用する人と、その権限を管理します。
           </p>
         </div>
-        <Button onClick={openCreateModal}>
+        <Button onClick={openCreateModal} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           ユーザーを追加
         </Button>
@@ -217,7 +217,7 @@ export default function UsersPage() {
       </div>
 
       {/* Users table */}
-      <div className="overflow-hidden bg-white shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+      <div className="overflow-x-auto bg-white shadow ring-1 ring-black ring-opacity-5 rounded-lg">
         <table className="min-w-full divide-y divide-gray-300">
           <thead className="bg-gray-50">
             <tr>
@@ -306,13 +306,18 @@ export default function UsersPage() {
 
       {/* Create/Edit modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-6">
               {editingUser ? 'ユーザーを編集' : 'ユーザーを追加'}
             </h3>
 
             <div className="space-y-4">
+              {!editingUser && (
+                <p className="rounded-md bg-blue-50 p-3 text-sm text-blue-800">
+                  すでにログインできるメールアドレスを追加した場合は、招待メールを送らず、管理画面の利用権限だけを設定します。
+                </p>
+              )}
               {!editingUser && (
                 <Input
                   id="email"

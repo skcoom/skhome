@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requirePermission } from '@/lib/auth';
+import { getAuthUser, requirePermission } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 type Params = Promise<{ id: string }>;
 
@@ -11,14 +12,37 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const phase = searchParams.get('phase');
+    const { user } = await getAuthUser();
+
+    if (!user) {
+      const { data: publicProject } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('id', id)
+        .eq('is_public', true)
+        .not('public_reviewed_at', 'is', null)
+        .single();
+      if (!publicProject) {
+        return NextResponse.json({ error: '現場が見つかりません' }, { status: 404 });
+      }
+    }
+
+    const mediaColumns = user
+      ? '*'
+      : 'id, project_id, type, phase, file_url, thumbnail_url, caption, is_featured, publication_status, created_at';
 
     let query = supabase
       .from('project_media')
-      .select('*')
+      .select(mediaColumns)
       .eq('project_id', id)
-      // LINE原本の台帳行は専用画面で扱い、公開用コピーだけを既存ギャラリーへ渡す。
-      .or('genba_line_event_id.is.null,publication_status.eq.published')
       .order('created_at', { ascending: false });
+
+    if (!user) {
+      query = query.eq('publication_status', 'published').eq('is_featured', false);
+    } else {
+      // LINE原本の台帳行は専用画面で扱い、公開用コピーだけを既存ギャラリーへ渡す。
+      query = query.or('genba_line_event_id.is.null,publication_status.eq.published');
+    }
 
     if (phase) {
       query = query.eq('phase', phase);
@@ -54,7 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 
     const supabase = await createClient();
     const body = await request.json();
-    const { type, phase, file_url, thumbnail_url, caption, is_featured } = body;
+    const { type, phase, file_url, thumbnail_url, caption } = body;
 
     // バリデーション
     if (!file_url) {
@@ -71,9 +95,10 @@ export async function POST(request: NextRequest, { params }: { params: Params })
         thumbnail_url: thumbnail_url || null,
         caption: caption || null,
         uploaded_by: user.id,
-        is_featured: is_featured || false,
+        // 登録直後は必ず社内限定。公開はPATCHの明示操作だけで行う。
+        is_featured: true,
         source_origin: 'manual',
-        publication_status: is_featured ? 'internal' : 'published',
+        publication_status: 'internal',
       })
       .select()
       .single();
@@ -93,7 +118,7 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 // メディアのis_featuredを更新（スタッフ以上）
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   try {
-    await params;
+    const { id } = await params;
 
     // 権限チェック
     const { user, error: authError } = await requirePermission('media:write');
@@ -108,17 +133,47 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     const body = await request.json();
     const { mediaIds, is_featured } = body;
 
-    if (!mediaIds || !Array.isArray(mediaIds)) {
-      return NextResponse.json({ error: 'mediaIdsは配列で指定してください' }, { status: 400 });
+    if (!mediaIds || !Array.isArray(mediaIds) || typeof is_featured !== 'boolean') {
+      return NextResponse.json({ error: '写真と掲載状態を正しく指定してください' }, { status: 400 });
+    }
+
+    const uniqueMediaIds = [...new Set(mediaIds.filter(
+      (mediaId): mediaId is string => typeof mediaId === 'string' && mediaId.length > 0,
+    ))];
+
+    if (uniqueMediaIds.length === 0) {
+      return NextResponse.json({ error: '変更する写真を指定してください' }, { status: 400 });
+    }
+
+    const { data: targetMedia, error: targetError } = await supabase
+      .from('project_media')
+      .select('id, genba_line_event_id')
+      .eq('project_id', id)
+      .in('id', uniqueMediaIds);
+
+    if (targetError) {
+      console.error('Media target fetch error:', targetError);
+      return NextResponse.json({ error: '写真情報の確認に失敗しました' }, { status: 500 });
+    }
+
+    if (
+      targetMedia.length !== uniqueMediaIds.length
+      || targetMedia.some((media) => media.genba_line_event_id !== null)
+    ) {
+      return NextResponse.json(
+        { error: 'この画面で変更できない写真が含まれています。LINE写真は専用画面から管理してください' },
+        { status: 409 }
+      );
     }
 
     const { data, error } = await supabase
       .from('project_media')
       .update({
-        is_featured: is_featured ?? true,
-        publication_status: (is_featured ?? true) ? 'internal' : 'published',
+        is_featured,
+        publication_status: is_featured ? 'internal' : 'published',
       })
-      .in('id', mediaIds)
+      .in('id', uniqueMediaIds)
+      .eq('project_id', id)
       .is('genba_line_event_id', null)
       .select();
 
@@ -127,6 +182,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       return NextResponse.json({ error: 'メディアの更新に失敗しました' }, { status: 500 });
     }
 
+    if (data.length !== uniqueMediaIds.length) {
+      return NextResponse.json(
+        { error: '写真の状態が変わったため更新できませんでした。画面を再読み込みしてください' },
+        { status: 409 }
+      );
+    }
+
+    revalidatePath('/works');
+    revalidatePath(`/works/${id}`);
     return NextResponse.json({
       success: true,
       updated: data,
@@ -172,6 +236,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       return NextResponse.json({ error: 'メディアが見つかりません' }, { status: 404 });
     }
 
+    if (mediaData.genba_line_event_id) {
+      return NextResponse.json(
+        { error: 'LINE写真は「LINE写真・AI判定」画面から管理してください' },
+        { status: 409 }
+      );
+    }
+
     // ストレージからファイルを削除
     const fileUrl = mediaData.file_url;
     if (fileUrl) {
@@ -204,6 +275,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       return NextResponse.json({ error: 'メディアの削除に失敗しました' }, { status: 500 });
     }
 
+    revalidatePath('/works');
+    revalidatePath(`/works/${id}`);
     return NextResponse.json({ success: true, message: 'メディアを削除しました' });
   } catch (error) {
     console.error('Media DELETE error:', error);

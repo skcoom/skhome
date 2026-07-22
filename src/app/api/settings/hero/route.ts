@@ -5,9 +5,17 @@ import { requirePermission } from '@/lib/auth';
 // ビルド時の静的生成を無効化（cookiesを使用するため）
 export const dynamic = 'force-dynamic';
 
-// ヒーロー設定取得（公開ページでも使用）
+// 旧ヒーロー設定取得（現在の公開ページでは未使用。管理者向け互換API）
 export async function GET() {
   try {
+    const { user, error: authError } = await requirePermission('settings:read');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
+    }
+
     const supabase = await createClient();
 
     const { data: heroMedia, error } = await supabase
@@ -29,7 +37,7 @@ export async function GET() {
     return NextResponse.json({ heroMedia: heroMedia || [] });
   } catch (error) {
     console.error('Error fetching hero settings:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'メイン画像の設定を取得できませんでした' }, { status: 500 });
   }
 }
 
@@ -50,7 +58,7 @@ export async function PUT(request: Request) {
     const { selections } = body as { selections: { mediaId: string; position: 1 | 2 | 3 }[] };
 
     if (!selections || !Array.isArray(selections)) {
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+      return NextResponse.json({ error: '画像の選択内容が正しくありません' }, { status: 400 });
     }
 
     // まず全てのhero_positionをリセット
@@ -78,6 +86,6 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating hero settings:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'メイン画像の設定を更新できませんでした' }, { status: 500 });
   }
 }

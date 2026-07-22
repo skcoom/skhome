@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 import { contactFormSchema, formatZodErrors, sanitizeInput } from '@/lib/validations';
-import { sendContactNotification, sendDiscordNotification } from '@/lib/email';
+import { sendContactNotification } from '@/lib/email';
 import { requirePermission } from '@/lib/auth';
+import { randomUUID } from 'crypto';
 
 // お問い合わせ一覧取得（スタッフ以上）
 export async function GET() {
@@ -104,11 +105,10 @@ export async function POST(request: NextRequest) {
       status: 'pending' as const,
     };
 
-    const { data, error } = await supabase
+    const contactId = randomUUID();
+    const { error } = await supabase
       .from('contacts')
-      .insert(sanitizedData)
-      .select()
-      .single();
+      .insert({ id: contactId, ...sanitizedData });
 
     if (error) {
       console.error('Contact insert error:', error);
@@ -117,25 +117,22 @@ export async function POST(request: NextRequest) {
 
     // 通知を送信（失敗してもお問い合わせは成功扱い）
     const notificationData = {
-      id: data.id,
+      id: contactId,
       name: sanitizedData.name,
       email: sanitizedData.email,
       phone: sanitizedData.phone,
       message: sanitizedData.message,
     };
 
-    // メール通知
-    sendContactNotification(notificationData).catch((err) => {
+    // サーバーレス環境でも処理が途中で終了しないよう、通知送信の完了を待つ。
+    try {
+      await sendContactNotification(notificationData);
+    } catch (err) {
       console.error('Failed to send email notification:', err);
-    });
-
-    // Discord通知
-    sendDiscordNotification(notificationData).catch((err) => {
-      console.error('Failed to send Discord notification:', err);
-    });
+    }
 
     return NextResponse.json(
-      { success: true, data },
+      { success: true },
       {
         status: 201,
         headers: {

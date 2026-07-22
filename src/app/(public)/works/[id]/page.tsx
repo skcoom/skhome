@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, MapPin, Calendar, Phone } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
-import type { Project, ProjectMedia, ProjectTag, BeforeAfterPair } from '@/types/database';
+import { createPublicClient } from '@/lib/supabase/server';
+import type { ProjectMedia, ProjectTag, BeforeAfterPair } from '@/types/database';
 import { WorkDetailGallery } from './gallery';
 import { DescriptionSection } from './description-section';
 import type { Metadata } from 'next';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
+export const revalidate = 300;
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -15,21 +16,24 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: project } = await supabase
     .from('projects')
     .select(`
-      name,
-      description,
+      public_title,
+      public_location,
       public_description,
-      category,
-      address,
+      tags,
       main_media_id,
-      project_media!project_media_project_id_fkey (id, file_url, is_featured, phase, type)
+      public_reviewed_at,
+      project_media!project_media_project_id_fkey (
+        id, file_url, thumbnail_url, is_featured, phase, type, publication_status
+      )
     `)
     .eq('id', id)
     .eq('is_public', true)
+    .not('public_reviewed_at', 'is', null)
     .single();
 
   if (!project) {
@@ -38,32 +42,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const typedProject = project as Project & { project_media: ProjectMedia[] };
-  const tagsLabel = typedProject.tags?.join('・') || 'リフォーム';
-  // 公開用概要を優先、なければ管理用メモ、どちらもなければデフォルト文
-  const description = typedProject.public_description || typedProject.description ||
-    `${typedProject.name}の施工実績です。${tagsLabel}工事の詳細をご覧いただけます。`;
+  const title = project.public_title || '施工事例';
+  const tagsLabel = project.tags?.join('・') || 'リフォーム';
+  const description = project.public_description ||
+    `${title}の施工実績です。${tagsLabel}工事の詳細をご覧いただけます。`;
 
   // OG画像を取得
   // 1. main_media_idが設定されていればその画像を優先
   // 2. なければ掲載対象のみ、施工後 > 最初の画像
-  const media = typedProject.project_media || [];
-  const publishedMedia = media.filter((m) => !m.is_featured);
-  const designatedMainMedia = typedProject.main_media_id
-    ? publishedMedia.find((m) => m.id === typedProject.main_media_id)
+  const media = (project.project_media || []) as ProjectMedia[];
+  const publishedMedia = media.filter(
+    (item) => !item.is_featured && item.publication_status === 'published',
+  );
+  const designatedMainMedia = project.main_media_id
+    ? publishedMedia.find((item) => item.id === project.main_media_id)
     : null;
   const afterMedia = publishedMedia.find((m) => m.phase === 'after' && m.type === 'image');
   const firstImage = publishedMedia.find((m) => m.type === 'image');
   const ogImage = designatedMainMedia?.file_url || afterMedia?.file_url || firstImage?.file_url || '/og-image.png';
 
   return {
-    title: `${typedProject.name} | 施工実績`,
+    title: `${title} | 施工実績`,
     description,
     alternates: {
       canonical: `/works/${id}`,
     },
     openGraph: {
-      title: `${typedProject.name} | 施工実績`,
+      title: `${title} | 施工実績`,
       description,
       type: 'article',
       url: `${siteUrl}/works/${id}`,
@@ -72,13 +77,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           url: ogImage,
           width: 1200,
           height: 630,
-          alt: typedProject.name,
+          alt: title,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${typedProject.name} | 施工実績`,
+      title: `${title} | 施工実績`,
       description,
       images: [ogImage],
     },
@@ -87,27 +92,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function WorkDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // プロジェクト詳細を取得
   const { data: project, error } = await supabase
     .from('projects')
     .select(`
-      *,
-      project_media!project_media_project_id_fkey (*)
+      id,
+      public_title,
+      public_location,
+      public_description,
+      tags,
+      start_date,
+      end_date,
+      main_media_id,
+      created_at,
+      public_reviewed_at,
+      project_media!project_media_project_id_fkey (
+        id, project_id, type, phase, file_url, thumbnail_url, caption,
+        is_featured, publication_status, created_at
+      )
     `)
     .eq('id', id)
     .eq('is_public', true)
+    .not('public_reviewed_at', 'is', null)
     .single();
 
   if (error || !project) {
     notFound();
   }
 
-  const typedProject = project as Project & { project_media: ProjectMedia[] };
+  const displayTitle = project.public_title || '施工事例';
 
-  // 掲載対象のメディアのみ（is_featured: trueは非掲載）
-  const publishedMedia = typedProject.project_media?.filter((m) => !m.is_featured) || [];
+  // 管理者がログインしたまま公開ページを開いても、公開確定済みの写真だけを表示する。
+  const publishedMedia = (project.project_media as ProjectMedia[] | null)?.filter(
+    (media) => !media.is_featured && media.publication_status === 'published',
+  ) || [];
 
   // メディアをフェーズごとに分類（画像と動画を含む）
   const mediaByPhase = {
@@ -120,20 +140,39 @@ export default async function WorkDetailPage({ params }: PageProps) {
   const { data: beforeAfterPairs } = await supabase
     .from('before_after_pairs')
     .select(`
-      *,
-      before_media:project_media!before_media_id(*),
-      after_media:project_media!after_media_id(*)
+      id,
+      project_id,
+      before_media_id,
+      after_media_id,
+      display_order,
+      label,
+      alignment_settings,
+      created_at,
+      before_media:project_media!before_media_id(
+        id, project_id, type, phase, file_url, thumbnail_url, caption,
+        is_featured, publication_status, created_at
+      ),
+      after_media:project_media!after_media_id(
+        id, project_id, type, phase, file_url, thumbnail_url, caption,
+        is_featured, publication_status, created_at
+      )
     `)
     .eq('project_id', id)
     .order('display_order', { ascending: true });
 
-  const typedPairs = (beforeAfterPairs || []) as BeforeAfterPair[];
+  const typedPairs = ((beforeAfterPairs || []) as unknown as BeforeAfterPair[]).filter(
+    (pair) =>
+      pair.before_media?.publication_status === 'published' &&
+      pair.after_media?.publication_status === 'published' &&
+      !pair.before_media?.is_featured &&
+      !pair.after_media?.is_featured,
+  );
 
   // メイン画像を取得
   // 1. main_media_idが設定されていればその画像を使用
   // 2. なければフォールバック: 施工後 > 施工中 > 施工前 > 最初の画像
-  const designatedMainImage = typedProject.main_media_id
-    ? publishedMedia.find((m) => m.id === typedProject.main_media_id)
+  const designatedMainImage = project.main_media_id
+    ? publishedMedia.find((m) => m.id === project.main_media_id)
     : null;
   const afterMedia = mediaByPhase.after[0];
   const duringMedia = mediaByPhase.during[0];
@@ -143,15 +182,15 @@ export default async function WorkDetailPage({ params }: PageProps) {
   // 関連プロジェクト用の型（表示に必要なフィールドのみ）
   type RelatedProject = {
     id: string;
-    name: string;
+    public_title: string | null;
     tags: ProjectTag[];
-    address: string | null;
+    public_location: string | null;
     created_at: string;
     project_media: ProjectMedia[];
   };
 
   // 関連プロジェクトを取得（タグの共通数が多い順）
-  const currentTags = typedProject.tags || [];
+  const currentTags = (project.tags || []) as ProjectTag[];
   let relatedProjects: RelatedProject[] = [];
 
   if (currentTags.length > 0) {
@@ -160,13 +199,18 @@ export default async function WorkDetailPage({ params }: PageProps) {
       .from('projects')
       .select(`
         id,
-        name,
+        public_title,
         tags,
-        address,
+        public_location,
         created_at,
-        project_media!project_media_project_id_fkey (*)
+        public_reviewed_at,
+        project_media!project_media_project_id_fkey (
+          id, project_id, type, phase, file_url, thumbnail_url, caption,
+          is_featured, publication_status, created_at
+        )
       `)
       .eq('is_public', true)
+      .not('public_reviewed_at', 'is', null)
       .overlaps('tags', currentTags)
       .neq('id', id);
 
@@ -195,13 +239,18 @@ export default async function WorkDetailPage({ params }: PageProps) {
       .from('projects')
       .select(`
         id,
-        name,
+        public_title,
         tags,
-        address,
+        public_location,
         created_at,
-        project_media!project_media_project_id_fkey (*)
+        public_reviewed_at,
+        project_media!project_media_project_id_fkey (
+          id, project_id, type, phase, file_url, thumbnail_url, caption,
+          is_featured, publication_status, created_at
+        )
       `)
       .eq('is_public', true)
+      .not('public_reviewed_at', 'is', null)
       .not('id', 'in', `(${existingIds.join(',')})`)
       .order('created_at', { ascending: false })
       .limit(3 - relatedProjects.length);
@@ -231,7 +280,7 @@ export default async function WorkDetailPage({ params }: PageProps) {
               {mainImage ? (
                 <img
                   src={mainImage.file_url}
-                  alt={typedProject.name}
+                  alt={displayTitle}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -244,7 +293,7 @@ export default async function WorkDetailPage({ params }: PageProps) {
             {/* Project info */}
             <div className="flex flex-col justify-center">
               <div className="flex flex-wrap gap-2 mb-4">
-                {typedProject.tags?.map((tag) => (
+                {project.tags?.map((tag: ProjectTag) => (
                   <span
                     key={tag}
                     className="inline-block bg-[#26A69A] text-white text-xs font-medium px-3 py-1 rounded-full"
@@ -255,22 +304,22 @@ export default async function WorkDetailPage({ params }: PageProps) {
               </div>
 
               <h1 className="text-2xl lg:text-3xl font-medium text-[#333333] mb-6">
-                {typedProject.name}
+                {displayTitle}
               </h1>
 
               <div className="space-y-4">
-                {typedProject.address && (
+                {project.public_location && (
                   <div className="flex items-center text-[#666666]">
                     <MapPin className="mr-3 h-5 w-5 text-[#26A69A]" />
-                    <span>{typedProject.address}</span>
+                    <span>{project.public_location}</span>
                   </div>
                 )}
-                {typedProject.start_date && (
+                {project.start_date && (
                   <div className="flex items-center text-[#666666]">
                     <Calendar className="mr-3 h-5 w-5 text-[#26A69A]" />
                     <span>
-                      {typedProject.start_date}
-                      {typedProject.end_date && ` 〜 ${typedProject.end_date}`}
+                      {project.start_date}
+                      {project.end_date && ` 〜 ${project.end_date}`}
                     </span>
                   </div>
                 )}
@@ -281,10 +330,8 @@ export default async function WorkDetailPage({ params }: PageProps) {
       </section>
 
       {/* Description section */}
-      {(typedProject.public_description || typedProject.description) && (
-        <DescriptionSection
-          content={typedProject.public_description || typedProject.description || ''}
-        />
+      {project.public_description && (
+        <DescriptionSection content={project.public_description} />
       )}
 
       {/* Gallery section */}
@@ -316,9 +363,11 @@ export default async function WorkDetailPage({ params }: PageProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {relatedProjects.map((related) => {
-                // 掲載対象のメディアのみ（is_featured: trueは非掲載）
-                const relatedPublishedMedia = (related.project_media as ProjectMedia[])?.filter((m) => !m.is_featured) || [];
+                const relatedPublishedMedia = (related.project_media as ProjectMedia[])?.filter(
+                  (media) => !media.is_featured && media.publication_status === 'published',
+                ) || [];
                 const relatedMedia = relatedPublishedMedia.find((m) => m.phase === 'after') || relatedPublishedMedia[0];
+                const relatedTitle = related.public_title || '施工事例';
 
                 return (
                   <Link
@@ -330,7 +379,7 @@ export default async function WorkDetailPage({ params }: PageProps) {
                       {relatedMedia?.file_url ? (
                         <img
                           src={relatedMedia.file_url}
-                          alt={related.name}
+                          alt={relatedTitle}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
@@ -339,9 +388,9 @@ export default async function WorkDetailPage({ params }: PageProps) {
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-[#999999] mb-1">{related.address}</p>
+                    <p className="text-xs text-[#999999] mb-1">{related.public_location}</p>
                     <h3 className="text-lg font-medium text-[#333333] group-hover:text-[#26A69A] transition-colors">
-                      {related.name}
+                      {relatedTitle}
                     </h3>
                   </Link>
                 );

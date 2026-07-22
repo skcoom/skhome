@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
 
-// 現場一覧取得（公開ページからも使用されるため認証不要）
+// 管理画面用の現場一覧取得。公開ページは公開専用クライアントを使う。
 export async function GET(request: NextRequest) {
   try {
+    const { user, error: authError } = await requirePermission('projects:read');
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
+    }
+
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 

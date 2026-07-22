@@ -93,13 +93,22 @@ export async function POST(request: NextRequest, { params }: { params: Params })
       return NextResponse.json({ error: 'ドキュメントが見つかりません' }, { status: 404 });
     }
 
-    // PDFをダウンロード
-    const pdfResponse = await fetch(docData.file_url);
-    if (!pdfResponse.ok) {
+    if (!docData.storage_path) {
+      return NextResponse.json(
+        { error: 'この書類は安全な保管場所への移行が必要です。移行後に解析できます' },
+        { status: 409 },
+      );
+    }
+
+    // 非公開ストレージから、認証済みの処理だけがPDFを読み込む。
+    const { data: pdfFile, error: downloadError } = await supabase.storage
+      .from(docData.storage_bucket || 'project-documents')
+      .download(docData.storage_path);
+    if (downloadError || !pdfFile) {
       return NextResponse.json({ error: 'PDFのダウンロードに失敗しました' }, { status: 500 });
     }
 
-    const pdfBuffer = await pdfResponse.arrayBuffer();
+    const pdfBuffer = await pdfFile.arrayBuffer();
     const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
 
     // Claude APIで解析

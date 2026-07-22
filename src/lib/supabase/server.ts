@@ -27,6 +27,20 @@ export async function createClient() {
   );
 }
 
+// 公開ページ専用。ログインCookieを読まず、常に匿名RLSで取得する。
+export function createPublicClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    },
+  );
+}
+
 // サービスロールを使用するAdmin用クライアント（RLSをバイパス）
 export function createAdminClient() {
   return createSupabaseClient(

@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth';
 
 // コスト設定を取得
 export async function GET(): Promise<NextResponse> {
   try {
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await requireAdmin();
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
+    const supabase = await createClient();
 
     // システム設定を取得
     const { data: settings, error } = await supabase
@@ -39,24 +41,14 @@ export async function GET(): Promise<NextResponse> {
 // コスト設定を更新
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await requireAdmin();
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（adminのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (currentUser?.role !== 'admin') {
-      return NextResponse.json({ error: '管理者権限が必要です' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     const body = await request.json();
     const { laborUnitPrice, targetProfitRate } = body as {

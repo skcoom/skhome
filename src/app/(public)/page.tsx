@@ -3,7 +3,6 @@ import path from 'node:path';
 import type { Metadata } from 'next';
 import Script from 'next/script';
 
-export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: '株式会社SKコーム｜さいたま市東浦和の内装リフォーム・賃貸リノベーション',
   description: 'さいたま市を中心に、住宅・賃貸物件・店舗などの内装リフォームをご相談いただけます。現地を確認し、必要な工事・費用・制約を分かりやすくご説明します。',
@@ -24,7 +23,13 @@ function approvedHomeSource() {
     style: style
       .replaceAll('body::before', '.approved-home::before')
       .replaceAll('body::after', '.approved-home::after')
-      .replace('body{', '.approved-home{'),
+      .replace('body{', '.approved-home{')
+      // 初回表示で主要な文章が長時間空白にならないよう、承認済み演出の待ち時間だけ短縮する。
+      .replace('calc(var(--i)*80ms + 1.5s)', 'calc(var(--i)*45ms + .15s)')
+      .replaceAll('var(--ease) 2.9s', 'var(--ease) .55s')
+      .replaceAll('var(--ease) 2.6s', 'var(--ease) .4s')
+      .replaceAll('var(--ease) 3.4s', 'var(--ease) .75s')
+      .replace('animation-delay:3.1s', 'animation-delay:.7s'),
     body: body.replace(/<script>[\s\S]*?<\/script>/u, ''),
     script: script
       .replaceAll('document.body', 'document.getElementById("approvedHome")')
@@ -43,7 +48,7 @@ export default function HomePage() {
       <style dangerouslySetInnerHTML={{ __html: approved.style }} />
       <div
         id="approvedHome"
-        className="approved-home st-2k"
+        className="approved-home st-2k booted"
         dangerouslySetInnerHTML={{ __html: approved.body }}
       />
       <Script

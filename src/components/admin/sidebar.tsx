@@ -21,24 +21,26 @@ import {
   X,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import type { UserRole } from '@/types/database';
 
 const navigation = [
-  { name: '今日の現場', href: '/admin/dashboard', icon: LayoutDashboard, primary: true },
-  { name: 'LINE写真・AI', href: '/admin/genba', icon: Images, primary: true },
-  { name: 'すべての現場', href: '/admin/projects', icon: FolderKanban, primary: true },
-  { name: '利益管理', href: '/admin/profit', icon: Calculator },
-  { name: '発注先管理', href: '/admin/suppliers', icon: Truck },
-  { name: '追加工事マスタ', href: '/admin/additional-works', icon: Wrench },
-  { name: 'ブログ管理', href: '/admin/blog', icon: FileText },
-  { name: 'ユーザー管理', href: '/admin/users', icon: Users },
-  { name: 'お問い合わせ', href: '/admin/contacts', icon: MessageSquare },
-  { name: 'サイト設定', href: '/admin/settings', icon: Settings },
+  { name: '今日の現場', href: '/admin/dashboard', icon: LayoutDashboard, primary: true, roles: ['admin', 'staff', 'partner'] },
+  { name: 'LINE写真・AI', href: '/admin/genba', icon: Images, primary: true, roles: ['admin', 'staff'] },
+  { name: 'すべての現場', href: '/admin/projects', icon: FolderKanban, primary: true, roles: ['admin', 'staff', 'partner'] },
+  { name: '利益管理', href: '/admin/profit', icon: Calculator, roles: ['admin'] },
+  { name: '発注先管理', href: '/admin/suppliers', icon: Truck, roles: ['admin', 'staff'] },
+  { name: '追加工事マスタ', href: '/admin/additional-works', icon: Wrench, roles: ['admin', 'staff'] },
+  { name: 'ブログ管理', href: '/admin/blog', icon: FileText, roles: ['admin', 'staff'] },
+  { name: 'ユーザー管理', href: '/admin/users', icon: Users, roles: ['admin'] },
+  { name: 'お問い合わせ', href: '/admin/contacts', icon: MessageSquare, roles: ['admin', 'staff'] },
+  { name: 'サイト設定', href: '/admin/settings', icon: Settings, roles: ['admin'] },
 ];
 
-function SidebarPanel({ close }: { close?: () => void }) {
+function SidebarPanel({ role, close }: { role: UserRole; close?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const visibleNavigation = navigation.filter((item) => item.roles.includes(role));
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -62,9 +64,9 @@ function SidebarPanel({ close }: { close?: () => void }) {
       <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="管理メニュー">
         <p className="px-3 pb-2 text-[10px] font-medium tracking-[0.18em] text-white/35">現場</p>
         <div className="space-y-1">
-          {navigation.map((item, index) => {
+          {visibleNavigation.map((item, index) => {
             const isActive = pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(`${item.href}/`));
-            const startsSecondary = index === navigation.findIndex((nav) => !nav.primary);
+            const startsSecondary = index === visibleNavigation.findIndex((nav) => !nav.primary);
             return (
               <div key={item.href}>
                 {startsSecondary && (
@@ -111,13 +113,13 @@ function SidebarPanel({ close }: { close?: () => void }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ role }: { role: UserRole }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 lg:block">
-        <SidebarPanel />
+        <SidebarPanel role={role} />
       </aside>
 
       <div className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-[#ddd7c8] bg-[#f8f5ee]/95 px-4 backdrop-blur lg:hidden">
@@ -149,7 +151,7 @@ export function Sidebar() {
             >
               <X className="h-5 w-5" />
             </button>
-            <SidebarPanel close={() => setOpen(false)} />
+            <SidebarPanel role={role} close={() => setOpen(false)} />
           </aside>
         </div>
       )}

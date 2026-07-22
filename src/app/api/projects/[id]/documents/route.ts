@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requirePermission } from '@/lib/auth';
+import { requirePermission, requireStaff } from '@/lib/auth';
+import { randomUUID } from 'crypto';
 
 type Params = Promise<{ id: string }>;
 
@@ -8,6 +9,14 @@ type Params = Promise<{ id: string }>;
 export async function GET(request: NextRequest, { params }: { params: Params }) {
   try {
     const { id } = await params;
+    const { user, error: authError } = await requireStaff();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
+    }
+
     const supabase = await createClient();
 
     const { data, error } = await supabase
@@ -21,7 +30,28 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
       return NextResponse.json({ error: 'ドキュメントの取得に失敗しました' }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    const documents = await Promise.all(
+      (data || []).map(async (document) => {
+        if (!document.storage_path) {
+          // 旧形式の書類は移行が完了するまで、画面から直接開かせない。
+          return { ...document, file_url: null, migration_required: true };
+        }
+
+        const bucket = document.storage_bucket || 'project-documents';
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(document.storage_path, 15 * 60);
+
+        if (signedError) {
+          console.error('Document signed URL error:', signedError);
+          return { ...document, file_url: null, preview_unavailable: true };
+        }
+
+        return { ...document, file_url: signedData.signedUrl };
+      }),
+    );
+
+    return NextResponse.json(documents);
   } catch (error) {
     console.error('Documents API error:', error);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
@@ -68,15 +98,19 @@ export async function POST(request: NextRequest, { params }: { params: Params })
       return NextResponse.json({ error: 'ファイルサイズは20MB以下にしてください' }, { status: 400 });
     }
 
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    const pdfSignature = new TextDecoder().decode(fileBytes.slice(0, 5));
+    if (pdfSignature !== '%PDF-') {
+      return NextResponse.json({ error: 'PDFファイルの内容を確認できませんでした' }, { status: 415 });
+    }
+
     // ファイルをStorageにアップロード
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const filePath = `${id}/documents/${timestamp}_${randomStr}_${safeFileName}`;
+    const filePath = `${id}/${randomUUID()}.pdf`;
+    const storageBucket = 'project-documents';
 
     const { error: uploadError } = await supabase.storage
-      .from('project-media')
-      .upload(filePath, file, {
+      .from(storageBucket)
+      .upload(filePath, fileBytes, {
         contentType: 'application/pdf',
         upsert: false,
       });
@@ -86,18 +120,15 @@ export async function POST(request: NextRequest, { params }: { params: Params })
       return NextResponse.json({ error: 'ファイルのアップロードに失敗しました' }, { status: 500 });
     }
 
-    // 公開URLを取得
-    const { data: urlData } = supabase.storage
-      .from('project-media')
-      .getPublicUrl(filePath);
-
     // DBにレコードを挿入
     const { data, error } = await supabase
       .from('project_documents')
       .insert({
         project_id: id,
         document_type: documentType,
-        file_url: urlData.publicUrl,
+        file_url: filePath,
+        storage_bucket: storageBucket,
+        storage_path: filePath,
         file_name: file.name,
         file_size: file.size,
         uploaded_by: user.id,
@@ -108,7 +139,7 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     if (error) {
       console.error('Document insert error:', error);
       // アップロードしたファイルを削除
-      await supabase.storage.from('project-media').remove([filePath]);
+      await supabase.storage.from(storageBucket).remove([filePath]);
       return NextResponse.json({ error: 'ドキュメントの登録に失敗しました' }, { status: 500 });
     }
 
@@ -207,8 +238,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
     }
 
     // ストレージからファイルを削除
-    const fileUrl = docData.file_url;
-    if (fileUrl) {
+    if (docData.storage_path) {
+      const bucket = docData.storage_bucket || 'project-documents';
+      await supabase.storage.from(bucket).remove([docData.storage_path]);
+    } else if (docData.file_url) {
+      const fileUrl = docData.file_url;
       const pathMatch = fileUrl.match(/project-media\/(.+)$/);
       if (pathMatch) {
         const filePath = pathMatch[1];

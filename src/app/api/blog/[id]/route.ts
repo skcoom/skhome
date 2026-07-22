@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 type Params = Promise<{ id: string }>;
 
@@ -58,9 +59,9 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
     // 現在の記事を取得
     const { data: currentPost } = await supabase
       .from('blog_posts')
-      .select('status, published_at')
+      .select('status, published_at, slug')
       .eq('id', id)
-      .single() as { data: { status: string; published_at: string | null } | null };
+      .single() as { data: { status: string; published_at: string | null; slug: string } | null };
 
     // スラッグの重複チェック（自分以外）
     if (slug) {
@@ -106,6 +107,10 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
       return NextResponse.json({ error: '更新に失敗しました' }, { status: 500 });
     }
 
+    revalidatePath('/blog');
+    revalidatePath(`/blog/${data.slug}`);
+    if (currentPost?.slug && currentPost.slug !== data.slug) revalidatePath(`/blog/${currentPost.slug}`);
+    revalidatePath('/sitemap.xml');
     return NextResponse.json(data);
   } catch (error) {
     console.error('Blog API error:', error);
@@ -129,16 +134,21 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
 
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('blog_posts')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select('slug')
+      .single();
 
     if (error) {
       console.error('Blog post delete error:', error);
       return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 });
     }
 
+    revalidatePath('/blog');
+    if (deleted?.slug) revalidatePath(`/blog/${deleted.slug}`);
+    revalidatePath('/sitemap.xml');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Blog API error:', error);

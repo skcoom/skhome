@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { ProfitSummary, ProjectStatus } from '@/types/database';
+import { requireAdmin } from '@/lib/auth';
 
 // 利益サマリーを取得
 export async function GET(): Promise<NextResponse> {
   try {
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await requireAdmin();
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
+
+    const supabase = await createClient();
 
     // システム設定を取得
     const { data: settings } = await supabase

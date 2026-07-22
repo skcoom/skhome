@@ -64,6 +64,27 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
       );
     }
 
+    if (id === user.id && role && role !== 'admin') {
+      return NextResponse.json(
+        { error: '自分自身の管理者権限は変更できません' },
+        { status: 409 },
+      );
+    }
+
+    if (role && role !== 'admin') {
+      const adminClient = createAdminClient();
+      const [{ data: target }, { count: adminCount }] = await Promise.all([
+        adminClient.from('users').select('role').eq('id', id).single(),
+        adminClient.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+      ]);
+      if (target?.role === 'admin' && (adminCount || 0) <= 1) {
+        return NextResponse.json(
+          { error: '最後の管理者の役割は変更できません' },
+          { status: 409 },
+        );
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (role !== undefined) updateData.role = role;
@@ -102,25 +123,56 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       );
     }
 
-    const supabase = await createClient();
+    const adminClient = createAdminClient();
+    const { data: target, error: targetError } = await adminClient
+      .from('users')
+      .select('id, auth_user_id, role')
+      .eq('id', id)
+      .single();
 
-    // usersテーブルから削除
-    const { error } = await supabase
+    if (targetError || !target) {
+      return NextResponse.json({ error: 'ユーザーが見つかりません' }, { status: 404 });
+    }
+
+    if (target.id === user.id) {
+      return NextResponse.json(
+        { error: 'ログイン中の自分自身は削除できません' },
+        { status: 409 },
+      );
+    }
+
+    if (target.role === 'admin') {
+      const { count: adminCount } = await adminClient
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'admin');
+      if ((adminCount || 0) <= 1) {
+        return NextResponse.json(
+          { error: '最後の管理者は削除できません' },
+          { status: 409 },
+        );
+      }
+    }
+
+    // 先にログイン資格を削除し、削除途中でも管理画面へ入れない状態を保つ。
+    if (target.auth_user_id) {
+      const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(target.auth_user_id);
+
+      if (authDeleteError) {
+        console.error('Auth user delete error:', authDeleteError);
+        return NextResponse.json({ error: 'ログインアカウントの削除に失敗しました' }, { status: 500 });
+      }
+    }
+
+    // auth_user_idがない旧データ、またはcascadeされなかったプロフィールを削除する。
+    const { error: profileDeleteError } = await adminClient
       .from('users')
       .delete()
       .eq('id', id);
 
-    if (error) {
-      console.error('User delete error:', error);
-      return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 });
-    }
-
-    // Supabase Authからも削除
-    const adminClient = createAdminClient();
-    const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(id);
-
-    if (authDeleteError) {
-      console.error('Auth user delete error:', authDeleteError);
+    if (profileDeleteError) {
+      console.error('User profile delete error:', profileDeleteError);
+      return NextResponse.json({ error: 'ユーザー情報の削除に失敗しました' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

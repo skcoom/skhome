@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { Bell, User as UserIcon, Mail } from 'lucide-react';
 import Link from 'next/link';
+import type { UserRole } from '@/types/database';
 
 interface Notification {
   id: string;
@@ -33,7 +34,7 @@ function getNotificationIcon() {
   return <Mail className="h-4 w-4 text-blue-500" />;
 }
 
-export function Header() {
+export function Header({ role }: { role: UserRole }) {
   const [user, setUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -50,6 +51,10 @@ export function Header() {
   }, []);
 
   useEffect(() => {
+    if (role === 'partner') {
+      return;
+    }
+
     const fetchNotifications = async () => {
       try {
         const res = await fetch('/api/notifications');
@@ -67,7 +72,7 @@ export function Header() {
     // 30秒ごとに通知を更新
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [role]);
 
   // 外側クリックでドロップダウンを閉じる
   useEffect(() => {
@@ -94,7 +99,7 @@ export function Header() {
 
       <div className="flex items-center space-x-4">
         {/* Notifications */}
-        <div className="relative" ref={dropdownRef}>
+        {role !== 'partner' && <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="relative rounded-xl border border-[#ddd7c8] bg-white p-2.5 text-[#756f64] hover:border-[#16766b] hover:text-[#16766b]"
@@ -159,7 +164,7 @@ export function Header() {
               )}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* User info */}
         <div className="flex items-center space-x-3">

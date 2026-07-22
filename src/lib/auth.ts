@@ -40,7 +40,7 @@ export async function getAuthUser(): Promise<AuthResult> {
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id, email, name, role, company_name')
-      .eq('id', authUser.id)
+      .or(`id.eq.${authUser.id},auth_user_id.eq.${authUser.id}`)
       .single();
 
     if (userError || !userData) {

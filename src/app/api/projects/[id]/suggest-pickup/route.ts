@@ -4,28 +4,13 @@ import { createClaudeClient } from '@/lib/claude/client';
 import { requirePermission } from '@/lib/auth';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import type { ProjectMedia } from '@/types/database';
+import { fetchApprovedImage } from '@/lib/safe-media-fetch';
 
 interface SuggestedPair {
   beforeImage: ProjectMedia;
   afterImage: ProjectMedia;
   score: number;
   reason: string;
-}
-
-// 画像URLからBase64を取得
-async function fetchImageAsBase64(url: string): Promise<string> {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString('base64');
-  return base64;
-}
-
-// メディアタイプを判定
-function getMediaType(url: string): 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' {
-  if (url.includes('.webp')) return 'image/webp';
-  if (url.includes('.png')) return 'image/png';
-  if (url.includes('.gif')) return 'image/gif';
-  return 'image/jpeg';
 }
 
 // ピックアップ画像提案（AI機能: スタッフ以上、Rate Limit適用）
@@ -71,6 +56,7 @@ export async function POST(
       .select('*')
       .eq('project_id', projectId)
       .eq('type', 'image')
+      .is('genba_line_event_id', null)
       .order('created_at', { ascending: true });
 
     if (mediaError) {
@@ -112,9 +98,9 @@ export async function POST(
           const beforeUrl = beforeImg.thumbnail_url || beforeImg.file_url;
           const afterUrl = afterImg.thumbnail_url || afterImg.file_url;
 
-          const [beforeBase64, afterBase64] = await Promise.all([
-            fetchImageAsBase64(beforeUrl),
-            fetchImageAsBase64(afterUrl),
+          const [beforeImage, afterImage] = await Promise.all([
+            fetchApprovedImage(beforeUrl, { maxBytes: 5 * 1024 * 1024 }),
+            fetchApprovedImage(afterUrl, { maxBytes: 5 * 1024 * 1024 }),
           ]);
 
           // Claude Vision APIで評価
@@ -148,16 +134,16 @@ export async function POST(
                     type: 'image',
                     source: {
                       type: 'base64',
-                      media_type: getMediaType(beforeUrl),
-                      data: beforeBase64,
+                      media_type: beforeImage.mediaType,
+                      data: beforeImage.base64,
                     },
                   },
                   {
                     type: 'image',
                     source: {
                       type: 'base64',
-                      media_type: getMediaType(afterUrl),
-                      data: afterBase64,
+                      media_type: afterImage.mediaType,
+                      data: afterImage.base64,
                     },
                   },
                 ],

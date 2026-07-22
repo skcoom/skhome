@@ -67,7 +67,7 @@ export async function sendContactNotification(data: ContactNotificationData) {
           </table>
 
           <div style="margin-top: 30px; text-align: center;">
-            <a href="${siteUrl}/contacts"
+            <a href="${siteUrl}/admin/contacts"
                style="display: inline-block; background-color: #1a56db; color: white;
                       padding: 12px 24px; text-decoration: none; border-radius: 6px;">
               管理画面で確認する
@@ -102,70 +102,4 @@ function escapeHtml(text: string): string {
     "'": '&#039;',
   };
   return text.replace(/[&<>"']/g, (char) => map[char]);
-}
-
-// Discord Webhook通知
-export async function sendDiscordNotification(data: ContactNotificationData) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) {
-    console.warn('DISCORD_WEBHOOK_URL is not set. Skipping Discord notification.');
-    return { success: false, error: 'Discord webhook not configured' };
-  }
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
-
-  try {
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        embeds: [
-          {
-            title: '📬 新しいお問い合わせ',
-            color: 0x26a69a,
-            fields: [
-              {
-                name: 'お名前',
-                value: data.name,
-                inline: true,
-              },
-              {
-                name: 'メールアドレス',
-                value: data.email,
-                inline: true,
-              },
-              {
-                name: '電話番号',
-                value: data.phone || '未入力',
-                inline: true,
-              },
-              {
-                name: 'お問い合わせ内容',
-                value: data.message.length > 500 ? data.message.slice(0, 500) + '...' : data.message,
-                inline: false,
-              },
-            ],
-            footer: {
-              text: 'SKコーム お問い合わせ通知',
-            },
-            timestamp: new Date().toISOString(),
-            url: `${siteUrl}/contacts`,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Discord webhook error:', errorText);
-      return { success: false, error: 'Failed to send Discord notification' };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Discord webhook error:', error);
-    return { success: false, error: 'Failed to send Discord notification' };
-  }
 }

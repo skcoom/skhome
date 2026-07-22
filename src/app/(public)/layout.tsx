@@ -1,7 +1,5 @@
 import { PublicChrome } from '@/components/public/public-chrome';
 
-export const dynamic = 'force-dynamic';
-
 export default function PublicLayout({
   children,
 }: {

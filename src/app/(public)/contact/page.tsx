@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Phone, Mail, Clock, MapPin, CheckCircle, ArrowRight } from 'lucide-react';
 import { sendGAEvent } from '@/components/google-analytics';
+import { formatContactMessage } from '@/lib/contact-types';
 
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,9 +42,7 @@ export default function ContactPage() {
           name: formData.name,
           email: formData.email,
           phone: formData.phone || null,
-          message: formData.type
-            ? `【${formData.type}】\n${formData.message}`
-            : formData.message,
+          message: formatContactMessage(formData.type, formData.message),
           // スパム対策フィールド
           website: formData.website,
           _timestamp: formLoadTime,
