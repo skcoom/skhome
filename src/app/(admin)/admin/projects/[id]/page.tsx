@@ -217,6 +217,7 @@ export default function ProjectDetailPage() {
           .from('project_media')
           .select('*')
           .eq('project_id', projectId)
+          .is('genba_line_event_id', null)
           .order('created_at', { ascending: false });
 
         if (mediaError) {
@@ -430,6 +431,7 @@ export default function ProjectDetailPage() {
         .from('project_media')
         .select('*')
         .eq('project_id', projectId)
+        .is('genba_line_event_id', null)
         .order('created_at', { ascending: false });
       setMedia(data || []);
 
@@ -486,6 +488,7 @@ export default function ProjectDetailPage() {
         .from('project_media')
         .select('*')
         .eq('project_id', projectId)
+        .is('genba_line_event_id', null)
         .order('created_at', { ascending: false });
       setMedia(data || []);
 
@@ -992,7 +995,10 @@ export default function ProjectDetailPage() {
           <div>
             <h2 className="text-lg font-medium text-gray-900">施工写真・動画</h2>
             <p className="text-sm text-gray-500">
-              写真をホバーして「掲載しない」を選択できます
+              ここでは、管理画面から追加した公開用の写真・動画を管理します。
+            </p>
+            <p className="mt-1 text-sm text-amber-700">
+              LINEで届いた写真の確認・訂正・公開は、上部の「LINE写真を確認」から行ってください。
             </p>
           </div>
           <Button onClick={() => setShowUploadModal(true)}>
@@ -1224,6 +1230,7 @@ export default function ProjectDetailPage() {
             .from('project_media')
             .select('*')
             .eq('project_id', projectId)
+            .is('genba_line_event_id', null)
             .order('created_at', { ascending: false });
           setMedia(data || []);
         }}

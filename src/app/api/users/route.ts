@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { findAuthUserByEmail } from '@/lib/supabase/auth-users';
 import { requireAdmin } from '@/lib/auth';
 
 // ユーザー一覧取得（管理者のみ）
@@ -50,7 +51,14 @@ export async function POST(request: NextRequest) {
     const { email, name, role, company_name } = body;
 
     // バリデーション
-    if (!email || !name || !role) {
+    if (
+      typeof email !== 'string'
+      || typeof name !== 'string'
+      || typeof role !== 'string'
+      || !email.trim()
+      || !name.trim()
+      || !role
+    ) {
       return NextResponse.json(
         { error: 'メールアドレス、名前、役割は必須です' },
         { status: 400 }
@@ -64,48 +72,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Admin clientを使用して招待メールを送信
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Admin clientを使用して、既存のログイン情報または新規招待と利用者情報を結び付ける
     const adminClient = createAdminClient();
 
-    // Supabase Authにユーザーを招待
-    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: {
-        name,
-        role,
-        company_name: company_name || null,
-      },
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/invite`,
-    });
+    const { data: existingProfiles, error: existingProfileError } = await adminClient
+      .from('users')
+      .select('id, email');
 
-    if (inviteError) {
-      console.error('Invite error:', inviteError);
-      // 重複エラーの場合
-      if (inviteError.message.includes('already been registered')) {
-        return NextResponse.json(
-          { error: 'このメールアドレスは既に登録されています' },
-          { status: 400 }
-        );
-      }
+    if (existingProfileError) {
+      console.error('Existing user profile fetch error:', existingProfileError);
+      return NextResponse.json({ error: 'ユーザー情報の確認に失敗しました' }, { status: 500 });
+    }
+
+    const existingProfile = existingProfiles.find(
+      (profile) => profile.email.trim().toLowerCase() === normalizedEmail,
+    );
+
+    if (existingProfile) {
       return NextResponse.json(
-        { error: `招待メールの送信に失敗しました: ${inviteError.message}` },
-        { status: 500 }
+        { error: 'このメールアドレスは、すでにユーザー管理に登録されています' },
+        { status: 409 }
       );
     }
 
-    if (!inviteData.user) {
-      return NextResponse.json(
-        { error: 'ユーザーの作成に失敗しました' },
-        { status: 500 }
-      );
+    const existingAuthUser = await findAuthUserByEmail(
+      (params) => adminClient.auth.admin.listUsers(params),
+      normalizedEmail,
+    );
+
+    let authUser = existingAuthUser;
+    let invitedNewUser = false;
+
+    if (!authUser) {
+      // Supabase Authにユーザーを招待
+      const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
+        data: {
+          name: name.trim(),
+          role,
+          company_name: company_name || null,
+        },
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/invite`,
+      });
+
+      if (inviteError) {
+        console.error('Invite error:', inviteError);
+        return NextResponse.json(
+          { error: `招待メールの送信に失敗しました: ${inviteError.message}` },
+          { status: 500 }
+        );
+      }
+
+      if (!inviteData.user) {
+        return NextResponse.json(
+          { error: 'ユーザーの作成に失敗しました' },
+          { status: 500 }
+        );
+      }
+
+      authUser = inviteData.user;
+      invitedNewUser = true;
     }
 
     // usersテーブルにも保存（auth.usersのIDと一致させる）
     const { data, error } = await adminClient
       .from('users')
       .insert({
-        id: inviteData.user.id,
-        email,
-        name,
+        id: authUser.id,
+        auth_user_id: authUser.id,
+        email: normalizedEmail,
+        name: name.trim(),
         role,
         company_name: company_name || null,
       })
@@ -114,15 +151,19 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('User insert error:', error);
-      // Authユーザーは作成されたがusersテーブルへの挿入が失敗した場合
-      // ロールバックのためAuthユーザーを削除
-      await adminClient.auth.admin.deleteUser(inviteData.user.id);
-      return NextResponse.json({ error: 'ユーザーの作成に失敗しました' }, { status: 500 });
+      // この処理で新規招待した場合だけ、Authユーザーも削除して元の状態へ戻す。
+      // 既存のログイン情報は消さない。
+      if (invitedNewUser) {
+        await adminClient.auth.admin.deleteUser(authUser.id);
+      }
+      return NextResponse.json({ error: 'ユーザー情報の登録に失敗しました' }, { status: 500 });
     }
 
     return NextResponse.json({
       ...data,
-      message: '招待メールを送信しました。ユーザーがパスワードを設定するとログイン可能になります。',
+      message: existingAuthUser
+        ? '既存のログインアカウントに管理画面の利用権限を設定しました。招待メールは送信していません。'
+        : '招待メールを送信しました。パスワードを設定するとログインできます。',
     }, { status: 201 });
   } catch (error) {
     console.error('Users API error:', error);

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 // メディアのis_featuredを更新（スタッフ以上）
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   try {
-    await params;
+    const { id } = await params;
 
     // 権限チェック
     const { user, error: authError } = await requirePermission('media:write');
@@ -112,19 +112,56 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       return NextResponse.json({ error: 'mediaIdsは配列で指定してください' }, { status: 400 });
     }
 
+    const uniqueMediaIds = [...new Set(mediaIds.filter(
+      (mediaId): mediaId is string => typeof mediaId === 'string' && mediaId.length > 0,
+    ))];
+
+    if (uniqueMediaIds.length === 0) {
+      return NextResponse.json({ error: '変更する写真を指定してください' }, { status: 400 });
+    }
+
+    const { data: targetMedia, error: targetError } = await supabase
+      .from('project_media')
+      .select('id, genba_line_event_id')
+      .eq('project_id', id)
+      .in('id', uniqueMediaIds);
+
+    if (targetError) {
+      console.error('Media target fetch error:', targetError);
+      return NextResponse.json({ error: '写真情報の確認に失敗しました' }, { status: 500 });
+    }
+
+    if (
+      targetMedia.length !== uniqueMediaIds.length
+      || targetMedia.some((media) => media.genba_line_event_id !== null)
+    ) {
+      return NextResponse.json(
+        { error: 'この画面で変更できない写真が含まれています。LINE写真は専用画面から管理してください' },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await supabase
       .from('project_media')
       .update({
         is_featured: is_featured ?? true,
         publication_status: (is_featured ?? true) ? 'internal' : 'published',
       })
-      .in('id', mediaIds)
+      .in('id', uniqueMediaIds)
+      .eq('project_id', id)
       .is('genba_line_event_id', null)
       .select();
 
     if (error) {
       console.error('Media update error:', error);
       return NextResponse.json({ error: 'メディアの更新に失敗しました' }, { status: 500 });
+    }
+
+    if (data.length !== uniqueMediaIds.length) {
+      return NextResponse.json(
+        { error: '写真の状態が変わったため更新できませんでした。画面を再読み込みしてください' },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({
@@ -170,6 +207,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
 
     if (fetchError || !mediaData) {
       return NextResponse.json({ error: 'メディアが見つかりません' }, { status: 404 });
+    }
+
+    if (mediaData.genba_line_event_id) {
+      return NextResponse.json(
+        { error: 'LINE写真は「LINE写真・AI判定」画面から管理してください' },
+        { status: 409 }
+      );
     }
 
     // ストレージからファイルを削除

@@ -15,6 +15,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import { formatGenbaReceivedAt } from '@/lib/genba-date';
 import type { MediaPhase, MediaPublicationStatus } from '@/types/database';
 
 export interface GenbaProjectOption {
@@ -69,15 +70,6 @@ const stateLabels: Record<string, string> = {
 
 function needsAttention(item: GenbaReviewItem): boolean {
   return item.state !== 'recorded' || item.confidence === null || item.confidence < 0.85;
-}
-
-function formatDate(dateString: string): string {
-  return new Intl.DateTimeFormat('ja-JP', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(dateString));
 }
 
 function confidenceText(confidence: number | null): string {
@@ -332,7 +324,7 @@ export function GenbaReviewBoard({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-[#302e28]">{item.projectName || '現場を選んでください'}</p>
-                      <p className="mt-1 text-xs text-[#817b70]">{formatDate(item.receivedAt)}{item.senderName ? ` ・ ${item.senderName}` : ''}</p>
+                      <p className="mt-1 text-xs text-[#817b70]">{formatGenbaReceivedAt(item.receivedAt)}{item.senderName ? ` ・ ${item.senderName}` : ''}</p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${needsAttention(item) ? 'bg-[#fff3d8] text-[#8b5b12]' : 'bg-[#e8f3ef] text-[#176f64]'}`}>
                       {confidenceText(item.confidence)}
