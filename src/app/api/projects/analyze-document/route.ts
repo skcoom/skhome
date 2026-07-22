@@ -5,6 +5,38 @@ import { requirePermission } from '@/lib/auth';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import type { AnalyzeDocumentRequest } from '@/types/document-analysis';
 
+const MAX_TEXT_CHARACTERS = 100_000;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+function decodeBase64(content: string, maxBytes: number): Buffer | null {
+  if (
+    content.length === 0
+    || content.length > Math.ceil(maxBytes / 3) * 4 + 4
+    || content.length % 4 !== 0
+    || !/^[A-Za-z0-9+/]*={0,2}$/.test(content)
+  ) {
+    return null;
+  }
+
+  const bytes = Buffer.from(content, 'base64');
+  return bytes.byteLength > 0 && bytes.byteLength <= maxBytes ? bytes : null;
+}
+
+function detectSupportedImage(bytes: Buffer): 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | null {
+  const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const isPng = bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const isGif = bytes.subarray(0, 6).toString('ascii') === 'GIF87a'
+    || bytes.subarray(0, 6).toString('ascii') === 'GIF89a';
+  const isWebp = bytes.subarray(0, 4).toString('ascii') === 'RIFF'
+    && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+  if (isJpeg) return 'image/jpeg';
+  if (isPng) return 'image/png';
+  if (isGif) return 'image/gif';
+  if (isWebp) return 'image/webp';
+  return null;
+}
+
 // ドキュメント解析（AI機能: スタッフ以上、Rate Limit適用）
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +71,7 @@ export async function POST(request: NextRequest) {
     const body: AnalyzeDocumentRequest = await request.json();
     const { fileType, content, fileName } = body;
 
-    if (!fileType || !content || !fileName) {
+    if (!fileType || typeof content !== 'string' || !content || typeof fileName !== 'string' || !fileName || fileName.length > 255) {
       return NextResponse.json(
         { error: 'ファイル情報が不足しています' },
         { status: 400 }
@@ -48,19 +80,36 @@ export async function POST(request: NextRequest) {
 
     let textContent = '';
     let imageBase64: string | null = null;
+    let imageMediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | null = null;
     let pdfBase64: string | null = null;
 
     switch (fileType) {
       case 'pdf':
         // PDFはClaude Vision APIで直接解析
+        {
+          const bytes = decodeBase64(content, MAX_PDF_BYTES);
+          if (!bytes || bytes.subarray(0, 5).toString('ascii') !== '%PDF-') {
+            return NextResponse.json({ error: '20MB以下のPDFを選んでください' }, { status: 400 });
+          }
+        }
         pdfBase64 = content;
         break;
 
       case 'text':
+        if (content.length > MAX_TEXT_CHARACTERS) {
+          return NextResponse.json({ error: '文章は10万文字以内にしてください' }, { status: 400 });
+        }
         textContent = content;
         break;
 
       case 'image':
+        {
+          const bytes = decodeBase64(content, MAX_IMAGE_BYTES);
+          imageMediaType = bytes ? detectSupportedImage(bytes) : null;
+          if (!bytes || !imageMediaType) {
+            return NextResponse.json({ error: '10MB以下のJPEG、PNG、WebP、GIF画像を選んでください' }, { status: 400 });
+          }
+        }
         imageBase64 = content;
         break;
 
@@ -75,6 +124,7 @@ export async function POST(request: NextRequest) {
     const result = await analyzeWithClaude(claude, {
       text: textContent,
       imageBase64,
+      imageMediaType,
       pdfBase64,
       fileName,
     });

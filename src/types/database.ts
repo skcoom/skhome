@@ -48,6 +48,13 @@ export interface Project {
   description?: string;
   /** 公開ページ向けお客様向け概要文 */
   public_description?: string;
+  /** 施主名を含めない、公開専用の施工実績名 */
+  public_title?: string;
+  /** 市区町村など、公開してよい範囲に丸めた地域名 */
+  public_location?: string;
+  /** 公開項目を人が最終確認した日時 */
+  public_reviewed_at?: string;
+  public_reviewed_by?: string;
   is_public: boolean;
   main_media_id?: string;
   created_by: string;
@@ -81,6 +88,8 @@ export interface ProjectDocument {
   project_id: string;
   document_type: DocumentType;
   file_url: string;
+  storage_bucket?: string;
+  storage_path?: string;
   file_name: string;
   file_size: number;
   ai_summary?: string;
@@ -344,6 +353,7 @@ export interface PendingClassificationFile {
   file_url: string;
   thumbnail_url?: string;
   type: MediaType;
+  storage_paths?: string[];
 }
 
 // Database schema for Supabase

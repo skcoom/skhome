@@ -25,7 +25,7 @@ export default async function GenbaPage({ searchParams }: { searchParams: Search
       .select('id, site_id, phase, confidence, state, action, received_at, sender_name, error, r2_key')
       .not('r2_key', 'is', null)
       .order('received_at', { ascending: false })
-      .limit(80),
+      .limit(200),
     admin
       .from('projects')
       .select('id, name, status')
@@ -42,7 +42,25 @@ export default async function GenbaPage({ searchParams }: { searchParams: Search
     );
   }
 
-  const eventIds = (events || []).map((event) => event.id);
+  // 古い写真でも「公開候補」「公開中」は必ず画面に出し、取り残しを防ぐ。
+  const { data: trackedMedia } = await admin
+    .from('project_media')
+    .select('genba_line_event_id')
+    .not('genba_line_event_id', 'is', null)
+    .in('publication_status', ['selected', 'published'])
+    .limit(1000);
+  const recentEventIds = new Set((events || []).map((event) => event.id));
+  const missingTrackedEventIds = (trackedMedia || [])
+    .map((media) => media.genba_line_event_id)
+    .filter((eventId): eventId is string => Boolean(eventId) && !recentEventIds.has(eventId));
+  const { data: trackedEvents } = missingTrackedEventIds.length > 0
+    ? await admin
+      .from('line_events')
+      .select('id, site_id, phase, confidence, state, action, received_at, sender_name, error, r2_key')
+      .in('id', missingTrackedEventIds)
+    : { data: [] };
+  const combinedEvents = [...(events || []), ...(trackedEvents || [])];
+  const eventIds = combinedEvents.map((event) => event.id);
   const { data: mediaRows } = eventIds.length > 0
     ? await admin
       .from('project_media')
@@ -53,7 +71,7 @@ export default async function GenbaPage({ searchParams }: { searchParams: Search
   const projectById = new Map((projects || []).map((project) => [project.id, project]));
   const mediaByEvent = new Map((mediaRows || []).map((media) => [media.genba_line_event_id, media]));
 
-  const initialItems: GenbaReviewItem[] = (events || []).map((event) => {
+  const initialItems: GenbaReviewItem[] = combinedEvents.map((event) => {
     const media = mediaByEvent.get(event.id);
     const projectId = media?.project_id || event.site_id || null;
     const phase = event.phase === 'before' || event.phase === 'after' ? event.phase : 'during';

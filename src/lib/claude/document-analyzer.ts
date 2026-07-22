@@ -4,6 +4,7 @@ import type { ExtractedProjectData } from '@/types/document-analysis';
 interface AnalyzeInput {
   text: string;
   imageBase64: string | null;
+  imageMediaType?: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | null;
   pdfBase64?: string | null;
   fileName: string;
 }
@@ -70,22 +71,6 @@ const EXTRACTION_PROMPT = `あなたは建設会社の見積書・請求書か�
 - tagsは必ず配列形式で、指定された選択肢のみ使用してください
 - confidenceは抽出の確信度を0.0〜1.0で表現してください`;
 
-function detectImageMediaType(
-  fileName: string
-): 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' {
-  const ext = fileName.toLowerCase().split('.').pop();
-  switch (ext) {
-    case 'png':
-      return 'image/png';
-    case 'webp':
-      return 'image/webp';
-    case 'gif':
-      return 'image/gif';
-    default:
-      return 'image/jpeg';
-  }
-}
-
 export async function analyzeWithClaude(
   client: Anthropic,
   input: AnalyzeInput
@@ -106,13 +91,13 @@ export async function analyzeWithClaude(
   }
 
   if (input.imageBase64) {
-    const mediaType = detectImageMediaType(input.fileName);
+    if (!input.imageMediaType) throw new Error('画像形式を確認できませんでした');
 
     messageContent.push({
       type: 'image',
       source: {
         type: 'base64',
-        media_type: mediaType,
+        media_type: input.imageMediaType,
         data: input.imageBase64,
       },
     });

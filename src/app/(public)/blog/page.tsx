@@ -198,39 +198,6 @@ export default function BlogPage() {
         </div>
       </section>
 
-      {/* Featured topics */}
-      <section className="py-16 lg:py-24 bg-[#F0EFE9]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-sm tracking-widest text-[#26A69A] mb-4">TOPICS</p>
-            <h2 className="text-2xl lg:text-3xl font-medium text-[#333333]">
-              人気のトピック
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: 'キッチンリフォーム', count: 12 },
-              { label: 'マンション', count: 8 },
-              { label: '浴室・お風呂', count: 6 },
-              { label: 'トイレ', count: 5 },
-              { label: '内装工事', count: 10 },
-              { label: '新築', count: 4 },
-              { label: '店舗', count: 3 },
-              { label: '外構', count: 2 },
-            ].map((topic, index) => (
-              <button
-                key={index}
-                className="bg-[#FAF9F6] rounded-lg p-4 text-left hover:bg-white transition-colors"
-              >
-                <p className="text-sm font-medium text-[#333333] mb-1">{topic.label}</p>
-                <p className="text-xs text-[#999999]">{topic.count}件の記事</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA section */}
       <section className="py-24 lg:py-32 bg-[#F0EFE9]">
         <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">

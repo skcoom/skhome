@@ -8,9 +8,10 @@ import type { ProjectWithDocumentStatus, ProjectStatus } from '@/types/database'
 
 interface ProjectListProps {
   projects: ProjectWithDocumentStatus[];
+  canEdit?: boolean;
 }
 
-export function ProjectList({ projects }: ProjectListProps) {
+export function ProjectList({ projects, canEdit = true }: ProjectListProps) {
   const router = useRouter();
 
   return (
@@ -68,21 +69,21 @@ export function ProjectList({ projects }: ProjectListProps) {
                   {tag}
                 </span>
               ))}
-              <StatusChanger
+              {canEdit && <StatusChanger
                 projectId={project.id}
                 currentStatus={project.status as ProjectStatus}
-              />
-              {project.hasEstimate && (
+              />}
+              {canEdit && project.hasEstimate && (
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DOCUMENT_TYPE_LABELS.estimate.color}`}>
                   {DOCUMENT_TYPE_LABELS.estimate.badge}
                 </span>
               )}
-              {project.hasContract && (
+              {canEdit && project.hasContract && (
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DOCUMENT_TYPE_LABELS.contract.color}`}>
                   {DOCUMENT_TYPE_LABELS.contract.badge}
                 </span>
               )}
-              {project.hasInvoice && (
+              {canEdit && project.hasInvoice && (
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DOCUMENT_TYPE_LABELS.invoice.color}`}>
                   {DOCUMENT_TYPE_LABELS.invoice.badge}
                 </span>

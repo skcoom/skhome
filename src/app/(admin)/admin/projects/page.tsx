@@ -6,6 +6,7 @@ import { ProjectList } from '@/components/admin/project-list';
 import { ProjectFilters } from '@/components/admin/project-filters';
 import { createClient } from '@/lib/supabase/server';
 import type { ProjectWithDocumentStatus, DocumentType } from '@/types/database';
+import { getAuthUser } from '@/lib/auth';
 
 interface PageProps {
   searchParams: Promise<{ status?: string; tag?: string; docStatus?: string }>;
@@ -14,6 +15,8 @@ interface PageProps {
 export default async function ProjectsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const supabase = await createClient();
+  const { user } = await getAuthUser();
+  const canEdit = user?.role === 'admin' || user?.role === 'staff';
 
   let query = supabase
     .from('projects')
@@ -92,12 +95,14 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
             施工現場の登録・管理を行います
           </p>
         </div>
-        <Link href="/admin/projects/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            新規現場を登録
-          </Button>
-        </Link>
+        {canEdit && (
+          <Link href="/admin/projects/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              新規現場を登録
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -110,7 +115,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       </Suspense>
 
       {/* Project list */}
-      {projectList.length > 0 && <ProjectList projects={projectList} />}
+      {projectList.length > 0 && <ProjectList projects={projectList} canEdit={canEdit} />}
 
       {/* Empty state */}
       {projectList.length === 0 && (
@@ -122,14 +127,14 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
           <p className="mt-1 text-sm text-gray-500">
             新しい現場を登録して管理を始めましょう
           </p>
-          <div className="mt-6">
+          {canEdit && <div className="mt-6">
             <Link href="/admin/projects/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 新規現場を登録
               </Button>
             </Link>
-          </div>
+          </div>}
         </div>
       )}
     </div>

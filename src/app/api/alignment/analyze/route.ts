@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { requirePermission } from '@/lib/auth';
+import { fetchApprovedImage } from '@/lib/safe-media-fetch';
 
 const client = new Anthropic();
 
@@ -8,17 +9,6 @@ interface AlignmentResult {
   before: { offsetX: number; offsetY: number; scale: number };
   after: { offsetX: number; offsetY: number; scale: number };
   explanation: string;
-}
-
-async function fetchImageAsBase64(url: string): Promise<{ base64: string; mediaType: string }> {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString('base64');
-
-  const contentType = response.headers.get('content-type') || 'image/jpeg';
-  const mediaType = contentType.split(';')[0].trim();
-
-  return { base64, mediaType };
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -42,8 +32,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const [beforeImage, afterImage] = await Promise.all([
-      fetchImageAsBase64(beforeImageUrl),
-      fetchImageAsBase64(afterImageUrl),
+      fetchApprovedImage(beforeImageUrl),
+      fetchApprovedImage(afterImageUrl),
     ]);
 
     const response = await client.messages.create({

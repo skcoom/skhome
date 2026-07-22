@@ -74,7 +74,7 @@ function needsAttention(item: GenbaReviewItem): boolean {
 
 function confidenceText(confidence: number | null): string {
   if (confidence === null) return 'AIによる判定なし';
-  return `AI判定の確信度 ${Math.round(confidence * 100)}%`;
+  return `AI判定の確かさ ${Math.round(confidence * 100)}%`;
 }
 
 export function GenbaReviewBoard({
@@ -168,27 +168,43 @@ export function GenbaReviewBoard({
   const publishSelected = async () => {
     setPublishing(true);
     setNotice(null);
+    const publishedIds = new Set<string>();
+    const failures: Array<{ eventId: string; reason: string }> = [];
     try {
-      const response = await fetch('/api/genba-ai/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventIds: selectedItems.map((item) => item.id) }),
-      });
-      const payload = await response.json();
-      if (!response.ok && response.status !== 207) throw new Error(payload.error || '公開できませんでした');
+      const eventIds = selectedItems.map((item) => item.id);
+      for (let index = 0; index < eventIds.length; index += 12) {
+        const response = await fetch('/api/genba-ai/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventIds: eventIds.slice(index, index + 12) }),
+        });
+        const payload = await response.json();
+        if (!response.ok && response.status !== 207) {
+          throw new Error(payload.error || '公開できませんでした');
+        }
+        (payload.published || []).forEach((eventId: string) => publishedIds.add(eventId));
+        failures.push(...(payload.failed || []));
+      }
 
-      const publishedIds = new Set<string>(payload.published || []);
       setItems((current) => current.map((item) => publishedIds.has(item.id)
         ? { ...item, publicationStatus: 'published', publishedAt: new Date().toISOString() }
         : item));
       setConfirmOpen(false);
-      if (payload.failed?.length) {
-        setNotice(`${publishedIds.size}枚を公開しました。${payload.failed.length}枚は公開できなかったため、公開候補のまま残っています。`);
+      if (failures.length) {
+        setNotice(`${publishedIds.size}枚を公開しました。${failures.length}枚は公開できなかったため、公開候補のまま残っています。`);
       } else {
         setNotice(`${publishedIds.size}枚を公開サイトに掲載しました。`);
       }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '公開できませんでした');
+      if (publishedIds.size > 0) {
+        setItems((current) => current.map((item) => publishedIds.has(item.id)
+          ? { ...item, publicationStatus: 'published', publishedAt: new Date().toISOString() }
+          : item));
+        setConfirmOpen(false);
+        setNotice(`${publishedIds.size}枚は公開済みです。残りは公開候補のままです。もう一度お試しください。`);
+      } else {
+        setNotice(error instanceof Error ? error.message : '公開できませんでした');
+      }
     } finally {
       setPublishing(false);
     }

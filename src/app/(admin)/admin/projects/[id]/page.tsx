@@ -29,12 +29,13 @@ import {
   Sparkles,
   Images,
 } from 'lucide-react';
-import type { Project, ProjectMedia, MediaType, MediaPhase, PendingClassificationFile } from '@/types/database';
+import type { Project, ProjectMedia, MediaType, MediaPhase, PendingClassificationFile, UserRole } from '@/types/database';
 import { PickupSuggestions } from '@/components/admin/pickup-suggestions';
 import { DocumentManager } from '@/components/admin/document-manager';
 import { PhotoClassifier } from '@/components/admin/photo-classifier';
 import { InfoIntegrator } from '@/components/admin/info-integrator';
 import { BeforeAfterPairing } from '@/components/admin/before-after-pairing';
+import { ProjectMembersManager } from '@/components/admin/project-members-manager';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
@@ -183,6 +184,8 @@ export default function ProjectDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
 
   // 動画再生モーダル
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
@@ -198,6 +201,20 @@ export default function ProjectDetailPage() {
       try {
         setLoading(true);
         setError(null);
+
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData.user) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role')
+            .or(`id.eq.${authData.user.id},auth_user_id.eq.${authData.user.id}`)
+            .single();
+          const profileRole = (profile as { role?: string } | null)?.role;
+          if (profileRole === 'admin' || profileRole === 'staff' || profileRole === 'partner') {
+            setUserRole(profileRole);
+          }
+          setCanEdit(profileRole === 'admin' || profileRole === 'staff');
+        }
 
         // プロジェクト情報を取得
         const { data: projectData, error: projectError } = await supabase
@@ -248,8 +265,16 @@ export default function ProjectDetailPage() {
     const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
     let fileUrl: string;
     let thumbnailUrl: string | undefined;
+    const uploadedStoragePaths: string[] = [];
 
     try {
+      if (mediaType === 'image' && (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 20 * 1024 * 1024)) {
+        throw new Error('画像はJPEG・PNG・WebP形式、20MB以下にしてください');
+      }
+      if (mediaType === 'video' && (!['video/mp4', 'video/webm'].includes(file.type) || file.size > 50 * 1024 * 1024)) {
+        throw new Error('動画はMP4・WebM形式、50MB以下にしてください');
+      }
+
       if (mediaType === 'image') {
         const formData = new FormData();
         formData.append('file', file);
@@ -268,6 +293,11 @@ export default function ProjectDetailPage() {
         const result = await response.json();
         fileUrl = result.file_url;
         thumbnailUrl = result.thumbnail_url;
+        uploadedStoragePaths.push(
+          ...Object.values(result.images || {})
+            .map((image) => (image as { path?: string }).path)
+            .filter((path): path is string => Boolean(path)),
+        );
       } else {
         // 動画: クライアントから直接Supabaseにアップロード（Vercelの4.5MB制限回避）
         console.log('[Upload] Starting video upload for:', file.name);
@@ -277,8 +307,8 @@ export default function ProjectDetailPage() {
         console.log('[Upload] Thumbnail generation result:', thumbnailBlob ? `Blob size: ${thumbnailBlob.size}` : 'null');
 
         const timestamp = Date.now();
-        const randomStr = Math.random().toString(36).slice(2, 10);
-        const fileExt = file.name.split('.').pop() || 'mp4';
+        const randomStr = crypto.randomUUID().slice(0, 8);
+        const fileExt = file.type === 'video/webm' ? 'webm' : 'mp4';
 
         // 動画を直接Supabase Storageにアップロード
         const videoFileName = `${projectId}/${timestamp}_${randomStr}.${fileExt}`;
@@ -291,6 +321,7 @@ export default function ProjectDetailPage() {
         if (videoUploadError) {
           throw new Error(`動画アップロードに失敗しました: ${videoUploadError.message}`);
         }
+        uploadedStoragePaths.push(videoFileName);
 
         const { data: videoUrlData } = supabase.storage
           .from('project-media')
@@ -308,6 +339,7 @@ export default function ProjectDetailPage() {
             });
 
           if (!thumbUploadError) {
+            uploadedStoragePaths.push(thumbFileName);
             const { data: thumbUrlData } = supabase.storage
               .from('project-media')
               .getPublicUrl(thumbFileName);
@@ -328,6 +360,7 @@ export default function ProjectDetailPage() {
           file_url: fileUrl,
           thumbnail_url: thumbnailUrl,
           type: mediaType,
+          storage_paths: uploadedStoragePaths,
         };
         onSuccess(file.name, pendingFile);
         return;
@@ -339,7 +372,10 @@ export default function ProjectDetailPage() {
         phase: selectedPhase as MediaPhase,
         file_url: fileUrl,
         thumbnail_url: thumbnailUrl,
-        is_featured: false,
+        // 新しい写真は必ず「社内のみ」から始め、人が確認してから掲載する。
+        is_featured: true,
+        source_origin: 'manual',
+        publication_status: 'internal',
       };
       const { error: insertError } = await supabase
         .from('project_media')
@@ -351,6 +387,9 @@ export default function ProjectDetailPage() {
 
       onSuccess(file.name);
     } catch (fileError) {
+      if (uploadedStoragePaths.length > 0) {
+        await supabase.storage.from('project-media').remove(uploadedStoragePaths);
+      }
       const errorMessage = fileError instanceof Error ? fileError.message : '不明なエラー';
       onError(file.name, errorMessage);
     }
@@ -455,7 +494,7 @@ export default function ProjectDetailPage() {
 
   // AI分類結果を確定してDBに保存
   const handleClassificationConfirm = async (
-    results: { tempId: string; phase: MediaPhase; is_featured: boolean }[]
+    results: { tempId: string; phase: MediaPhase }[]
   ) => {
     try {
       // pendingFilesから該当するファイルを取得してDBに登録
@@ -469,7 +508,10 @@ export default function ProjectDetailPage() {
           phase: result.phase,
           file_url: file.file_url,
           thumbnail_url: file.thumbnail_url,
-          is_featured: result.is_featured,
+          // AIの提案だけで公開せず、一覧から人が明示的に掲載する。
+          is_featured: true,
+          source_origin: 'manual',
+          publication_status: 'internal',
         };
       }).filter((d): d is NonNullable<typeof d> => d !== null);
 
@@ -502,9 +544,16 @@ export default function ProjectDetailPage() {
   };
 
   // AI分類をキャンセル（アップロード済みファイルは残る）
-  const handleClassificationCancel = () => {
-    // pendingFilesのファイルはストレージにアップロード済みだが、DBには未登録
-    // キャンセル時はそのままストレージに残す（手動で再分類可能にするため）
+  const handleClassificationCancel = async () => {
+    const storagePaths = pendingFiles.flatMap((file) => file.storage_paths || []);
+    if (storagePaths.length > 0) {
+      const { error: cleanupError } = await supabase.storage.from('project-media').remove(storagePaths);
+      if (cleanupError) {
+        console.error('Classification upload cleanup error:', cleanupError);
+        alert('アップロードを取り消した写真の削除に失敗しました。管理者に連絡してください');
+        return;
+      }
+    }
     setPendingFiles([]);
     setShowClassifier(false);
   };
@@ -514,17 +563,27 @@ export default function ProjectDetailPage() {
 
     const newIsPublic = !project.is_public;
 
+    if (newIsPublic) {
+      const confirmed = window.confirm(
+        `次の内容をホームページに公開します。\n\n案件名：${project.public_title || '未入力'}\n地域：${project.public_location || '未入力'}\n概要：${project.public_description || '未入力'}\n\n施主名・番地を含む住所・管理用メモは公開されません。内容を確認して公開しますか？`,
+      );
+      if (!confirmed) return;
+    }
+
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_public: newIsPublic }),
+        body: JSON.stringify({
+          is_public: newIsPublic,
+          confirm_publication: newIsPublic,
+        }),
       });
 
       if (!response.ok) {
         const data = await response.json();
         console.error('Update error:', data.error);
-        alert('公開設定の変更に失敗しました');
+        alert(data.error || '公開設定の変更に失敗しました');
         return;
       }
 
@@ -536,6 +595,13 @@ export default function ProjectDetailPage() {
   };
 
   const toggleFeatured = async (mediaId: string, currentFeatured: boolean) => {
+    if (currentFeatured) {
+      const confirmed = window.confirm(
+        'この写真をホームページ掲載対象にします。施工実績そのものが公開中の場合は、保存後に写真が表示されます。掲載してよい写真ですか？',
+      );
+      if (!confirmed) return;
+    }
+
     try {
       const response = await fetch(`/api/projects/${projectId}/media`, {
         method: 'PATCH',
@@ -553,7 +619,11 @@ export default function ProjectDetailPage() {
       // ローカルstateを更新
       setMedia((prev) =>
         prev.map((m) =>
-          m.id === mediaId ? { ...m, is_featured: !currentFeatured } : m
+          m.id === mediaId ? {
+            ...m,
+            is_featured: !currentFeatured,
+            publication_status: currentFeatured ? 'published' : 'internal',
+          } : m
         )
       );
     } catch (err) {
@@ -565,14 +635,12 @@ export default function ProjectDetailPage() {
     if (!project) return;
 
     try {
-      const { error: updateError } = await supabase
-        .from('projects')
-        .update({ main_media_id: mediaId } as never)
-        .eq('id', project.id);
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ main_media_id: mediaId }),
+      });
+      if (!response.ok) throw new Error((await response.json()).error || 'メイン画像の設定に失敗しました');
 
       setProject({ ...project, main_media_id: mediaId });
     } catch (err) {
@@ -585,14 +653,12 @@ export default function ProjectDetailPage() {
     if (!project) return;
 
     try {
-      const { error: updateError } = await supabase
-        .from('projects')
-        .update({ main_media_id: null } as never)
-        .eq('id', project.id);
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ main_media_id: null }),
+      });
+      if (!response.ok) throw new Error((await response.json()).error || 'メイン画像の解除に失敗しました');
 
       setProject({ ...project, main_media_id: undefined });
     } catch (err) {
@@ -712,7 +778,7 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        {canEdit && <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Link href={`/admin/genba?project=${project.id}`}>
             <Button variant="outline">
               <Images className="mr-2 h-4 w-4" />
@@ -738,14 +804,14 @@ export default function ProjectDetailPage() {
               編集
             </Button>
           </Link>
-        </div>
+        </div>}
       </div>
 
       {/* Project info */}
       <div className="rounded-lg bg-white p-6 shadow">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">基本情報</h2>
-          <InfoIntegrator
+          {canEdit && <InfoIntegrator
             projectId={projectId}
             currentProject={project}
             onUpdate={async (updatedData) => {
@@ -762,7 +828,7 @@ export default function ProjectDetailPage() {
               // プロジェクト情報を更新
               setProject({ ...project, ...updatedData });
             }}
-          />
+          />}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {project.client_name && (
@@ -813,13 +879,51 @@ export default function ProjectDetailPage() {
             <Globe className="h-4 w-4 text-green-600" />
             <p className="text-sm font-medium text-green-800">公開ページ用概要</p>
           </div>
-          {project.public_description ? (
-            <p className="text-sm text-green-900 whitespace-pre-wrap">{project.public_description}</p>
+          {project.public_title || project.public_description ? (
+            <div className="space-y-2 text-sm text-green-900">
+              <p><span className="font-medium">案件名：</span>{project.public_title || '未設定'}</p>
+              <p><span className="font-medium">地域：</span>{project.public_location || '未設定'}</p>
+              <p className="whitespace-pre-wrap"><span className="font-medium">概要：</span>{project.public_description || '未設定'}</p>
+            </div>
           ) : (
-            <p className="text-sm text-gray-500 italic">未設定（ドキュメントのAI解析で自動生成できます）</p>
+            <p className="text-sm text-gray-500 italic">未設定（編集画面で公開用の3項目を入力してください）</p>
           )}
         </div>
       </div>
+
+      {!canEdit && (
+        <div className="rounded-lg bg-white p-6 shadow">
+          <h2 className="text-lg font-medium text-gray-900">施工写真・動画</h2>
+          <p className="mt-1 text-sm text-gray-500">担当している現場の記録を閲覧できます。</p>
+          {media.length > 0 ? (
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              {media.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => item.type === 'video' && setPlayingVideo(item.file_url)}
+                  className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-left"
+                >
+                  {item.type === 'image' ? (
+                    <img src={item.thumbnail_url || item.file_url} alt={item.caption || ''} className="aspect-[4/3] w-full object-cover" />
+                  ) : (
+                    <div className="flex aspect-[4/3] items-center justify-center bg-gray-900 text-white">
+                      <Play className="h-10 w-10" />
+                    </div>
+                  )}
+                  <span className="block px-3 py-2 text-xs text-gray-600">{phaseLabels[item.phase]}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-gray-500">閲覧できる写真・動画はありません。</p>
+          )}
+        </div>
+      )}
+
+      {userRole === 'admin' && <ProjectMembersManager projectId={projectId} />}
+
+      {canEdit && <>
 
       {/* Document management section */}
       <div className="rounded-lg bg-white p-6 shadow">
@@ -894,12 +998,12 @@ export default function ProjectDetailPage() {
               </span>
             </div>
             <p className="text-sm text-gray-500 mb-3">
-              「掲載しない」に設定した写真はホームページに表示されません
+              ここにある写真は、施工実績を公開してもホームページには表示されません
             </p>
             <div className="flex flex-wrap gap-2">
               {media.filter((m) => m.is_featured).length === 0 ? (
                 <p className="text-sm text-green-600">
-                  すべての写真がホームページに表示されます
+                  非掲載に設定した写真はありません
                 </p>
               ) : (
                 media
@@ -969,23 +1073,6 @@ export default function ProjectDetailPage() {
             )}
           </div>
 
-          {/* ファーストビュー設定へのリンク */}
-          <div className="p-4 rounded-lg border border-gray-200 bg-blue-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900">トップページのファーストビュー</p>
-                <p className="text-sm text-gray-600">
-                  この現場の写真をトップページのメイン画像に設定できます
-                </p>
-              </div>
-              <Link href="/admin/settings">
-                <Button variant="outline" size="sm">
-                  サイト設定で変更
-                  <ExternalLink className="ml-1 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -995,7 +1082,7 @@ export default function ProjectDetailPage() {
           <div>
             <h2 className="text-lg font-medium text-gray-900">施工写真・動画</h2>
             <p className="text-sm text-gray-500">
-              ここでは、管理画面から追加した公開用の写真・動画を管理します。
+              管理画面から追加した写真・動画を管理します。追加直後はすべて非掲載です。
             </p>
             <p className="mt-1 text-sm text-amber-700">
               LINEで届いた写真の確認・訂正・公開は、上部の「LINE写真を確認」から行ってください。
@@ -1136,7 +1223,7 @@ export default function ProjectDetailPage() {
                     e.stopPropagation();
                     deleteMedia(item.id);
                   }}
-                  className="absolute top-2 left-2 z-30 p-1.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity"
+                  className="absolute top-2 left-2 z-30 p-1.5 rounded-full bg-red-500 text-white opacity-100 hover:bg-red-600 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
                   title="削除"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -1144,7 +1231,7 @@ export default function ProjectDetailPage() {
                 {/* ホバー時の掲載トグルボタン */}
                 {item.type === 'image' ? (
                   // 画像の場合：中央に表示
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/35 opacity-100 transition-all sm:bg-black/0 sm:opacity-0 sm:group-hover:bg-black/40 sm:group-hover:opacity-100">
                     {/* メインに設定ボタン */}
                     {project.main_media_id !== item.id && !item.is_featured && (
                       <button
@@ -1179,7 +1266,7 @@ export default function ProjectDetailPage() {
                   </div>
                 ) : (
                   // 動画の場合：下部に表示（再生ボタンと重ならないように）
-                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                  <div className="absolute bottom-0 left-0 right-0 z-30 p-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1261,7 +1348,7 @@ export default function ProjectDetailPage() {
                       <span className="font-medium text-purple-900">AIで自動分類する</span>
                     </div>
                     <p className="mt-1 text-xs text-purple-700">
-                      施工前/施工中/施工後をAIが自動で判定し、HP掲載に適した写真も提案します
+                      施工前・施工中・施工後をAIが自動で判定し、ホームページ掲載に適した写真も提案します
                     </p>
                   </div>
                 </label>
@@ -1336,6 +1423,9 @@ export default function ProjectDetailPage() {
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
                       画像・動画ファイルを選択（複数可）
+                    </p>
+                    <p className="mt-2 text-xs font-medium text-amber-700">
+                      アップロード直後は「社内のみ」です。内容を確認してから「掲載する」を押してください。
                     </p>
                   </div>
                 </div>
@@ -1433,6 +1523,7 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       )}
+      </>}
 
       {/* 動画再生モーダル */}
       {playingVideo && (
@@ -1463,7 +1554,7 @@ export default function ProjectDetailPage() {
       )}
 
       {/* AI分類モーダル */}
-      {showClassifier && pendingFiles.length > 0 && (
+      {canEdit && showClassifier && pendingFiles.length > 0 && (
         <PhotoClassifier
           projectId={projectId}
           files={pendingFiles}

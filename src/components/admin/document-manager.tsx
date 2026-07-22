@@ -323,6 +323,7 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
           {documents.map((doc) => {
             const docTypeInfo = DOCUMENT_TYPE_LABELS[doc.document_type] || DOCUMENT_TYPE_LABELS.other;
             const isUpdatingType = updatingTypeId === doc.id;
+            const isSecurelyStored = Boolean(doc.storage_path);
             return (
             <div key={doc.id} className="flex items-center justify-between p-4">
               <div className="flex items-center space-x-3">
@@ -348,25 +349,32 @@ export function DocumentManager({ projectId, onDescriptionUpdate, onPublicDescri
                     {formatFileSize(doc.file_size)} • {formatDate(doc.created_at)}
                     {doc.ai_summary && ' • 解析済み'}
                   </p>
+                  {!isSecurelyStored && (
+                    <p className="mt-1 text-xs font-medium text-amber-700">
+                      安全な保管場所への移行が必要です
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-2">
                 {/* 表示ボタン */}
-                <a
-                  href={doc.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                  title="PDFを開く"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </a>
+                {isSecurelyStored && doc.file_url && (
+                  <a
+                    href={doc.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    title="PDFを開く"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                )}
 
                 {/* AI解析ボタン */}
                 <button
                   type="button"
                   onClick={() => handleAnalyze(doc.id)}
-                  disabled={analyzingId === doc.id}
+                  disabled={analyzingId === doc.id || !isSecurelyStored}
                   className="rounded p-2 text-blue-500 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50"
                   title="AI解析"
                 >

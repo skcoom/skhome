@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Phone } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
-import type { Project, ProjectMedia } from '@/types/database';
+import { createPublicClient } from '@/lib/supabase/server';
+import type { ProjectMedia } from '@/types/database';
 import { WorksGrid } from './works-grid';
 import { PROJECT_TAGS } from '@/lib/constants';
 
@@ -15,18 +15,36 @@ export interface WorkItem {
   thumbnailUrl: string | null;
 }
 
+export const revalidate = 300;
+
 export default async function WorksPage() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // 公開されているプロジェクトを取得
   // project_media_project_id_fkey を明示的に指定（main_media_id との関係と区別するため）
   const { data: projects, error } = await supabase
     .from('projects')
     .select(`
-      *,
-      project_media!project_media_project_id_fkey (*)
+      id,
+      public_title,
+      public_location,
+      public_description,
+      tags,
+      start_date,
+      created_at,
+      main_media_id,
+      project_media!project_media_project_id_fkey (
+        id,
+        type,
+        phase,
+        file_url,
+        thumbnail_url,
+        is_featured,
+        publication_status
+      )
     `)
     .eq('is_public', true)
+    .not('public_reviewed_at', 'is', null)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -34,9 +52,11 @@ export default async function WorksPage() {
   }
 
   // WorkItem形式に変換
-  const works: WorkItem[] = (projects || []).map((project: Project & { project_media: ProjectMedia[] }) => {
-    // 掲載対象のメディアのみ（is_featured: trueは非掲載）
-    const publishedMedia = project.project_media?.filter((m) => !m.is_featured) || [];
+  const works: WorkItem[] = (projects || []).map((project) => {
+    // ログイン中に公開ページを見ても、社内限定写真を混ぜない。
+    const publishedMedia = (project.project_media as ProjectMedia[] | null)?.filter(
+      (media) => !media.is_featured && media.publication_status === 'published',
+    ) || [];
     // 1. main_media_idが設定されていればその画像を優先
     // 2. なければ施工後 > 施工中 > 施工前 > 最初の画像
     const designatedMainMedia = project.main_media_id
@@ -50,10 +70,10 @@ export default async function WorksPage() {
 
     return {
       id: project.id,
-      name: project.name,
+      name: project.public_title || '施工事例',
       tags: project.tags || [],
-      address: project.address || null,
-      description: project.description || null,
+      address: project.public_location || null,
+      description: project.public_description || null,
       year: project.start_date ? new Date(project.start_date).getFullYear().toString() : new Date(project.created_at).getFullYear().toString(),
       thumbnailUrl: thumbnail?.thumbnail_url || thumbnail?.file_url || null,
     };

@@ -43,7 +43,12 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  return await updateSession(request);
+  // セッション更新と権限判定は管理画面・ログイン画面だけで行う。
+  if (pathname.startsWith('/admin') || pathname === '/auth/login') {
+    return await updateSession(request);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

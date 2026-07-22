@@ -1,9 +1,11 @@
 import { MetadataRoute } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
+
+export const revalidate = 300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // 静的ページ
   const staticPages: MetadataRoute.Sitemap = [
@@ -14,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
-      url: `${baseUrl}/about`,
+      url: `${baseUrl}/company`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
@@ -58,6 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from('projects')
     .select('id, updated_at, created_at')
     .eq('is_public', true)
+    .not('public_reviewed_at', 'is', null)
     .order('created_at', { ascending: false });
 
   const projectPages: MetadataRoute.Sitemap = (projects || []).map((project) => ({

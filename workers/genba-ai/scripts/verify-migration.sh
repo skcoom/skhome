@@ -97,4 +97,13 @@ run_sql "${REPO_ROOT}/supabase/migrations/20260717000000_genba_admin_review.sql"
 echo "Verifying private-to-public media workflow..."
 run_sql "${WORKER_DIR}/test/fixtures/migration-admin-review-assertions.sql"
 
+echo "Preparing the security-review migration contract..."
+run_sql "${WORKER_DIR}/test/fixtures/security-review-prelude.sql"
+
+echo "Applying security-review remediation migration..."
+run_sql "${REPO_ROOT}/supabase/migrations/20260722000000_security_review_remediation.sql"
+
+echo "Verifying public-data, role, and private-document boundaries..."
+run_sql "${WORKER_DIR}/test/fixtures/security-review-assertions.sql"
+
 echo "PostgreSQL 15 migration contract test passed."

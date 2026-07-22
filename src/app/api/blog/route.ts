@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 // ブログ記事一覧取得（公開ページからも使用されるため認証不要）
 export async function GET(request: NextRequest) {
@@ -102,6 +103,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ブログ記事の作成に失敗しました' }, { status: 500 });
     }
 
+    revalidatePath('/blog');
+    revalidatePath(`/blog/${data.slug}`);
+    revalidatePath('/sitemap.xml');
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Blog API error:', error);

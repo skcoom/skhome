@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { ProjectProgressExtended, ProgressPhase } from '@/types/database';
+import { requirePermission } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -13,13 +14,14 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id: projectId } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await requirePermission('projects:read');
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
+    const supabase = await createClient();
 
     const { data: progress, error } = await supabase
       .from('project_progress')
@@ -53,24 +55,14 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     const { id: projectId } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await requirePermission('projects:write');
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（admin/staffのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser || !['admin', 'staff'].includes(currentUser.role)) {
-      return NextResponse.json({ error: '権限がありません' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     const body = await request.json();
     const { date, description, phase, progress_percentage } = body as {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requirePermission } from '@/lib/auth';
 import { currentAccessToken, fetchPrivateGenbaMedia } from '@/lib/genba-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidatePath } from 'next/cache';
 
 const publishSchema = z.object({
   eventIds: z.array(z.string().uuid()).min(1).max(12).transform((ids) => [...new Set(ids)]),
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
 
   const ledgerByEvent = new Map((ledger || []).map((row) => [row.genba_line_event_id, row]));
   const published: string[] = [];
+  const changedProjectIds = new Set<string>();
   const failed: Array<{ eventId: string; reason: string }> = [];
 
   for (const eventId of parsed.data.eventIds) {
@@ -92,6 +94,12 @@ export async function POST(request: Request) {
     }
 
     published.push(eventId);
+    changedProjectIds.add(media.project_id);
+  }
+
+  if (published.length > 0) {
+    revalidatePath('/works');
+    changedProjectIds.forEach((projectId) => revalidatePath(`/works/${projectId}`));
   }
 
   return NextResponse.json({ published, failed }, { status: failed.length > 0 ? 207 : 200 });

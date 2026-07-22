@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Share2, Phone, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Calendar, Phone, ArrowRight } from 'lucide-react';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/server';
 import type { Metadata } from 'next';
 import { generateBlogPostingData, generateBreadcrumbData } from '@/lib/structured-data';
+import { ShareButton } from './share-button';
 
 interface BlogPost {
   id: string;
@@ -19,6 +20,7 @@ interface BlogPost {
 }
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skcoom.co.jp';
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,
@@ -26,7 +28,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: post } = await supabase
     .from('blog_posts')
@@ -80,13 +82,26 @@ const categoryLabels: Record<string, string> = {
   case_study: '施工事例',
 };
 
+function renderInlineBold(line: string) {
+  return line.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-medium text-[#333333]">{part.slice(2, -2)}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
+function serializeJsonLd(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
 export default async function BlogPostPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // 記事をスラッグで取得
   const { data: post, error } = await supabase
@@ -133,11 +148,11 @@ export default async function BlogPostPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(blogPostingJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
     <div className="bg-[#FAF9F6]">
       {/* Hero section */}
@@ -179,10 +194,7 @@ export default async function BlogPostPage({
                   day: 'numeric',
                 }) : ''}
               </span>
-              <button className="flex items-center hover:text-[#26A69A] transition-colors">
-                <Share2 className="mr-1.5 h-4 w-4" />
-                シェア
-              </button>
+              <ShareButton title={blogPost.title} />
             </div>
           </header>
         </div>
@@ -255,17 +267,10 @@ export default async function BlogPostPage({
               if (line.trim() === '') {
                 return <div key={index} className="h-4" />;
               }
-              // **太字** の処理
-              const boldText = line.replace(
-                /\*\*(.*?)\*\*/g,
-                '<strong class="font-medium text-[#333333]">$1</strong>'
-              );
               return (
-                <p
-                  key={index}
-                  className="text-[#666666] leading-loose mb-4"
-                  dangerouslySetInnerHTML={{ __html: boldText }}
-                />
+                <p key={index} className="text-[#666666] leading-loose mb-4">
+                  {renderInlineBold(line)}
+                </p>
               );
             })}
           </article>
@@ -278,10 +283,9 @@ export default async function BlogPostPage({
                 {categoryLabels[blogPost.category] || blogPost.category}
               </span>
             </div>
-            <button className="flex items-center text-sm text-[#666666] hover:text-[#26A69A] transition-colors">
-              <Share2 className="mr-1.5 h-4 w-4" />
-              この記事をシェア
-            </button>
+            <div className="text-sm text-[#666666]">
+              <ShareButton title={blogPost.title} />
+            </div>
           </div>
         </div>
       </section>
@@ -390,6 +394,3 @@ export default async function BlogPostPage({
     </>
   );
 }
-
-// 動的レンダリングを使用
-export const dynamic = 'force-dynamic';

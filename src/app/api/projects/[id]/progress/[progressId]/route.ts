@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { ProgressPhase } from '@/types/database';
+import { requirePermission } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string; progressId: string }>;
@@ -12,25 +13,15 @@ export async function PUT(
   { params }: RouteParams
 ): Promise<NextResponse> {
   try {
-    const { progressId } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { id: projectId, progressId } = await params;
+    const { user, error: authError } = await requirePermission('projects:write');
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（admin/staffのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser || !['admin', 'staff'].includes(currentUser.role)) {
-      return NextResponse.json({ error: '権限がありません' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     const body = await request.json();
     const { date, description, phase, progress_percentage } = body as {
@@ -56,6 +47,7 @@ export async function PUT(
       .from('project_progress')
       .update(updateData)
       .eq('id', progressId)
+      .eq('project_id', projectId)
       .select()
       .single();
 
@@ -77,30 +69,21 @@ export async function DELETE(
   { params }: RouteParams
 ): Promise<NextResponse> {
   try {
-    const { progressId } = await params;
-    const supabase = await createClient();
-
-    // 認証確認
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { id: projectId, progressId } = await params;
+    const { user, error: authError } = await requirePermission('projects:write');
     if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      return NextResponse.json(
+        { error: authError || '認証が必要です' },
+        { status: authError?.includes('権限') ? 403 : 401 },
+      );
     }
-
-    // 権限確認（admin/staffのみ）
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser || !['admin', 'staff'].includes(currentUser.role)) {
-      return NextResponse.json({ error: '権限がありません' }, { status: 403 });
-    }
+    const supabase = await createClient();
 
     const { error } = await supabase
       .from('project_progress')
       .delete()
-      .eq('id', progressId);
+      .eq('id', progressId)
+      .eq('project_id', projectId);
 
     if (error) {
       console.error('Progress delete error:', error);

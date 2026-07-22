@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { ProjectTag } from '@/types/database';
 import type { PhotoAnalysisResult } from '@/types/info-integration';
+import { fetchApprovedImage } from '@/lib/safe-media-fetch';
 
 interface ImageData {
   base64: string;
@@ -54,19 +55,6 @@ const ANALYSIS_PROMPT = `あなたは建設・リフォーム会社の施工写�
 }
 
 写真から判断できない情報はnullとしてください。`;
-
-function getMediaType(url: string): 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' {
-  if (url.includes('.webp')) return 'image/webp';
-  if (url.includes('.png')) return 'image/png';
-  if (url.includes('.gif')) return 'image/gif';
-  return 'image/jpeg';
-}
-
-async function fetchImageAsBase64(url: string): Promise<string> {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer).toString('base64');
-}
 
 /**
  * 施工写真を分析し、工事情報を推測する
@@ -194,10 +182,9 @@ export async function preparePhotosForAnalysis(
   const imagePromises = selected.map(async (photo) => {
     const url = photo.thumbnail_url || photo.file_url;
     try {
-      const base64 = await fetchImageAsBase64(url);
+      const image = await fetchApprovedImage(url, { maxBytes: 5 * 1024 * 1024 });
       return {
-        base64,
-        mediaType: getMediaType(url),
+        ...image,
         phase: photo.phase,
       };
     } catch (error) {
