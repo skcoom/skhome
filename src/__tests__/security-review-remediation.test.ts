@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fetchApprovedImage } from '@/lib/safe-media-fetch';
+import {
+  formatContactMessage,
+  localizeStoredContactMessage,
+} from '@/lib/contact-types';
 
 function source(relativePath: string): string {
   return fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
@@ -103,5 +107,15 @@ describe('外部レビュー指摘の再発防止', () => {
     expect(email).not.toContain('DISCORD_WEBHOOK_URL');
     expect(route).toContain('const contactId = randomUUID()');
     expect(route).not.toContain('.insert(sanitizedData)\n      .select()');
+  });
+
+  it('お問い合わせ種別は内部コードではなく自然な日本語で表示する', () => {
+    expect(formatContactMessage('estimate', '工事の相談です')).toBe(
+      '【見積もりのご依頼】\n工事の相談です',
+    );
+    expect(localizeStoredContactMessage('【other】\n質問があります')).toBe(
+      '【その他のお問い合わせ】\n質問があります',
+    );
+    expect(localizeStoredContactMessage('通常のお問い合わせ')).toBe('通常のお問い合わせ');
   });
 });

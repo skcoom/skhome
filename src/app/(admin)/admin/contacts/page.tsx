@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { MessageSquare, Mail, Phone, Clock, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Contact, ContactStatus } from '@/types/database';
+import { localizeStoredContactMessage } from '@/lib/contact-types';
 
 const statusConfig: Record<ContactStatus, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: '未対応', color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle },
@@ -178,7 +179,7 @@ export default function ContactsPage() {
                         {contact.email}
                       </p>
                       <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-                        {contact.message}
+                        {localizeStoredContactMessage(contact.message)}
                       </p>
                     </div>
                     <span className={`ml-2 flex-shrink-0 inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${statusConfig[contact.status].color}`}>
@@ -259,7 +260,7 @@ export default function ContactsPage() {
                 </h3>
                 <div className="rounded-lg bg-gray-50 p-4">
                   <p className="text-gray-900 whitespace-pre-wrap">
-                    {selectedContact.message}
+                    {localizeStoredContactMessage(selectedContact.message)}
                   </p>
                 </div>
               </div>
