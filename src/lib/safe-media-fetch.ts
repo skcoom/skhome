@@ -16,6 +16,8 @@ function approvedMediaUrl(rawUrl: string): URL {
   const allowedPathPrefixes = [
     '/storage/v1/object/public/project-media/',
     '/storage/v1/render/image/public/project-media/',
+    '/storage/v1/object/sign/project-media-private/',
+    '/storage/v1/render/image/sign/project-media-private/',
   ];
 
   if (

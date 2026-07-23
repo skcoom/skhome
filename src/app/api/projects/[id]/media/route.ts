@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthUser, requirePermission } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import type { ProjectMedia } from '@/types/database';
+import {
+  PRIVATE_MEDIA_BUCKET,
+  createPrivateMediaCopy,
+  createPublicMediaCopy,
+  internalMediaUrl,
+  removePrivateMediaCopies,
+  removePublicMediaCopies,
+  signPrivateMedia,
+} from '@/lib/media-storage';
 
 type Params = Promise<{ id: string }>;
 
@@ -55,7 +65,13 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
       return NextResponse.json({ error: 'メディアの取得に失敗しました' }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    if (!user) return NextResponse.json(data);
+
+    const admin = createAdminClient();
+    const signedMedia = await Promise.all(
+      ((data || []) as unknown as ProjectMedia[]).map((media) => signPrivateMedia(admin, media)),
+    );
+    return NextResponse.json(signedMedia);
   } catch (error) {
     console.error('Media API error:', error);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
@@ -78,11 +94,25 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 
     const supabase = await createClient();
     const body = await request.json();
-    const { type, phase, file_url, thumbnail_url, caption } = body;
+    const {
+      type,
+      phase,
+      file_url,
+      thumbnail_url,
+      caption,
+      private_storage_path,
+      private_thumbnail_path,
+      private_large_path,
+    } = body;
 
     // バリデーション
-    if (!file_url) {
+    if (!file_url && !private_storage_path) {
       return NextResponse.json({ error: 'ファイルURLは必須です' }, { status: 400 });
+    }
+    const privatePaths = [private_storage_path, private_thumbnail_path, private_large_path]
+      .filter((path): path is string => typeof path === 'string' && path.length > 0);
+    if (privatePaths.some((path) => !path.startsWith(`${id}/`) || path.includes('../'))) {
+      return NextResponse.json({ error: '別の現場の写真は登録できません' }, { status: 400 });
     }
 
     const { data, error } = await supabase
@@ -91,8 +121,14 @@ export async function POST(request: NextRequest, { params }: { params: Params })
         project_id: id,
         type: type || 'image',
         phase: phase || 'during',
-        file_url,
-        thumbnail_url: thumbnail_url || null,
+        file_url: private_storage_path ? internalMediaUrl(private_storage_path) : file_url,
+        thumbnail_url: private_thumbnail_path
+          ? internalMediaUrl(private_thumbnail_path)
+          : thumbnail_url || null,
+        private_storage_bucket: private_storage_path ? PRIVATE_MEDIA_BUCKET : null,
+        private_storage_path: private_storage_path || null,
+        private_thumbnail_path: private_thumbnail_path || null,
+        private_large_path: private_large_path || null,
         caption: caption || null,
         uploaded_by: user.id,
         // 登録直後は必ず社内限定。公開はPATCHの明示操作だけで行う。
@@ -129,7 +165,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const { mediaIds, is_featured } = body;
 
@@ -144,10 +180,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     if (uniqueMediaIds.length === 0) {
       return NextResponse.json({ error: '変更する写真を指定してください' }, { status: 400 });
     }
+    if (uniqueMediaIds.length > 100) {
+      return NextResponse.json({ error: '1回に変更できる写真は100件までです' }, { status: 400 });
+    }
 
     const { data: targetMedia, error: targetError } = await supabase
       .from('project_media')
-      .select('id, genba_line_event_id')
+      .select('*')
       .eq('project_id', id)
       .in('id', uniqueMediaIds);
 
@@ -157,8 +196,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     }
 
     if (
-      targetMedia.length !== uniqueMediaIds.length
-      || targetMedia.some((media) => media.genba_line_event_id !== null)
+      (targetMedia || []).length !== uniqueMediaIds.length
+      || (targetMedia || []).some((media) => media.genba_line_event_id !== null)
     ) {
       return NextResponse.json(
         { error: 'この画面で変更できない写真が含まれています。LINE写真は専用画面から管理してください' },
@@ -166,35 +205,67 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       );
     }
 
-    const { data, error } = await supabase
-      .from('project_media')
-      .update({
-        is_featured,
-        publication_status: is_featured ? 'internal' : 'published',
-      })
-      .in('id', uniqueMediaIds)
-      .eq('project_id', id)
-      .is('genba_line_event_id', null)
-      .select();
+    const updated: ProjectMedia[] = [];
+    for (const rawMedia of (targetMedia || []) as ProjectMedia[]) {
+      const privateFields = await createPrivateMediaCopy(supabase, rawMedia);
+      const media = { ...rawMedia, ...privateFields };
+      const publicationFields = is_featured
+        ? {
+          file_url: internalMediaUrl(media.private_storage_path!),
+          thumbnail_url: media.private_thumbnail_path
+            ? internalMediaUrl(media.private_thumbnail_path)
+            : null,
+          public_storage_path: null,
+          public_thumbnail_path: null,
+        }
+        : await createPublicMediaCopy(supabase, media);
 
-    if (error) {
-      console.error('Media update error:', error);
-      return NextResponse.json({ error: 'メディアの更新に失敗しました' }, { status: 500 });
-    }
+      const { data: updatedMedia, error: updateError } = await supabase
+        .from('project_media')
+        .update({
+          ...privateFields,
+          ...publicationFields,
+          is_featured,
+          publication_status: is_featured ? 'internal' : 'published',
+        })
+        .eq('id', media.id)
+        .eq('project_id', id)
+        .is('genba_line_event_id', null)
+        .select()
+        .single();
 
-    if (data.length !== uniqueMediaIds.length) {
-      return NextResponse.json(
-        { error: '写真の状態が変わったため更新できませんでした。画面を再読み込みしてください' },
-        { status: 409 }
-      );
+      if (updateError || !updatedMedia) {
+        console.error('Media update error:', updateError);
+        if (!is_featured) {
+          try {
+            await removePublicMediaCopies(supabase, { ...media, ...publicationFields });
+          } catch (cleanupError) {
+            console.error('Failed publication cleanup error:', cleanupError);
+          }
+        }
+        return NextResponse.json({ error: 'メディアの更新に失敗しました' }, { status: 500 });
+      }
+
+      if (is_featured) {
+        try {
+          await removePublicMediaCopies(supabase, rawMedia);
+        } catch (deleteError) {
+          console.error('Public media cleanup error:', deleteError);
+          return NextResponse.json(
+            { error: '写真は非掲載になりましたが、公開コピーの削除に失敗しました。管理者へ連絡してください' },
+            { status: 500 },
+          );
+        }
+      }
+      updated.push(updatedMedia as ProjectMedia);
     }
 
     revalidatePath('/works');
     revalidatePath(`/works/${id}`);
     return NextResponse.json({
       success: true,
-      updated: data,
-      message: `${data.length}件のメディアを更新しました`,
+      updated,
+      message: `${updated.length}件のメディアを更新しました`,
     });
   } catch (error) {
     console.error('Media PATCH error:', error);
@@ -216,7 +287,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { searchParams } = new URL(request.url);
     const mediaId = searchParams.get('mediaId');
 
@@ -243,24 +314,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       );
     }
 
-    // ストレージからファイルを削除
-    const fileUrl = mediaData.file_url;
-    if (fileUrl) {
-      const pathMatch = fileUrl.match(/project-media\/(.+)$/);
-      if (pathMatch) {
-        const filePath = pathMatch[1];
-        await supabase.storage.from('project-media').remove([filePath]);
-      }
-    }
-
-    // サムネイルも削除
-    const thumbnailUrl = mediaData.thumbnail_url;
-    if (thumbnailUrl) {
-      const thumbMatch = thumbnailUrl.match(/project-media\/(.+)$/);
-      if (thumbMatch) {
-        const thumbPath = thumbMatch[1];
-        await supabase.storage.from('project-media').remove([thumbPath]);
-      }
+    try {
+      await Promise.all([
+        removePublicMediaCopies(supabase, mediaData as ProjectMedia),
+        removePrivateMediaCopies(supabase, mediaData as ProjectMedia),
+      ]);
+    } catch (storageError) {
+      console.error('Media storage delete error:', storageError);
+      return NextResponse.json({ error: '写真ファイルを削除できませんでした' }, { status: 500 });
     }
 
     // DBからレコードを削除

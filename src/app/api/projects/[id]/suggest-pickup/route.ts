@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { createClaudeClient } from '@/lib/claude/client';
 import { requirePermission } from '@/lib/auth';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import type { ProjectMedia } from '@/types/database';
 import { fetchApprovedImage } from '@/lib/safe-media-fetch';
+import { signPrivateMedia } from '@/lib/media-storage';
 
 interface SuggestedPair {
   beforeImage: ProjectMedia;
@@ -66,7 +67,10 @@ export async function POST(
       );
     }
 
-    const media = mediaData as ProjectMedia[];
+    const admin = createAdminClient();
+    const media = await Promise.all(
+      ((mediaData || []) as ProjectMedia[]).map((item) => signPrivateMedia(admin, item)),
+    );
 
     // before/after画像を分類
     const beforeImages = media.filter((m) => m.phase === 'before');

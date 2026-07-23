@@ -11,6 +11,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "migrate:private-documents": "node scripts/migrate-project-documents.mjs",
+    "migrate:private-media": "node scripts/migrate-project-media.mjs",
+    "cleanup:test-users": "node scripts/cleanup-test-users.mjs",
     "prepare": "husky"
   },
   "dependencies": {

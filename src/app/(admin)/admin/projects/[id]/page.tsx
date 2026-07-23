@@ -36,6 +36,11 @@ import { PhotoClassifier } from '@/components/admin/photo-classifier';
 import { InfoIntegrator } from '@/components/admin/info-integrator';
 import { BeforeAfterPairing } from '@/components/admin/before-after-pairing';
 import { ProjectMembersManager } from '@/components/admin/project-members-manager';
+import {
+  MEDIA_SIGNED_URL_TTL_SECONDS,
+  PRIVATE_MEDIA_BUCKET,
+  internalMediaUrl,
+} from '@/lib/media-storage';
 
 const statusLabels = {
   planning: { label: '計画中', color: 'bg-yellow-100 text-yellow-800' },
@@ -55,6 +60,12 @@ const phaseLabels = {
   during: '施工中',
   after: '施工後',
 };
+
+async function fetchProjectMedia(projectId: string): Promise<ProjectMedia[]> {
+  const response = await fetch(`/api/projects/${projectId}/media`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('写真の取得に失敗しました');
+  return response.json();
+}
 
 // クライアントサイドで動画からサムネイルを生成
 async function generateVideoThumbnail(file: File): Promise<Blob | null> {
@@ -230,18 +241,7 @@ export default function ProjectDetailPage() {
         setProject(projectData);
 
         // メディア情報を取得
-        const { data: mediaData, error: mediaError } = await supabase
-          .from('project_media')
-          .select('*')
-          .eq('project_id', projectId)
-          .is('genba_line_event_id', null)
-          .order('created_at', { ascending: false });
-
-        if (mediaError) {
-          console.error('Media fetch error:', mediaError);
-        }
-
-        setMedia(mediaData || []);
+        setMedia(await fetchProjectMedia(projectId));
       } catch (err) {
         console.error('Fetch error:', err);
         setError(err instanceof Error ? err.message : '読み込みに失敗しました');
@@ -265,6 +265,9 @@ export default function ProjectDetailPage() {
     const mediaType: MediaType = file.type.startsWith('video/') ? 'video' : 'image';
     let fileUrl: string;
     let thumbnailUrl: string | undefined;
+    let privateStoragePath: string | undefined;
+    let privateThumbnailPath: string | undefined;
+    let privateLargePath: string | undefined;
     const uploadedStoragePaths: string[] = [];
 
     try {
@@ -293,6 +296,9 @@ export default function ProjectDetailPage() {
         const result = await response.json();
         fileUrl = result.file_url;
         thumbnailUrl = result.thumbnail_url;
+        privateStoragePath = result.storage_path;
+        privateThumbnailPath = result.thumbnail_storage_path;
+        privateLargePath = result.large_storage_path;
         uploadedStoragePaths.push(
           ...Object.values(result.images || {})
             .map((image) => (image as { path?: string }).path)
@@ -313,7 +319,7 @@ export default function ProjectDetailPage() {
         // 動画を直接Supabase Storageにアップロード
         const videoFileName = `${projectId}/${timestamp}_${randomStr}.${fileExt}`;
         const { error: videoUploadError } = await supabase.storage
-          .from('project-media')
+          .from(PRIVATE_MEDIA_BUCKET)
           .upload(videoFileName, file, {
             contentType: file.type,
           });
@@ -323,28 +329,30 @@ export default function ProjectDetailPage() {
         }
         uploadedStoragePaths.push(videoFileName);
 
-        const { data: videoUrlData } = supabase.storage
-          .from('project-media')
-          .getPublicUrl(videoFileName);
-        fileUrl = videoUrlData.publicUrl;
-        console.log('[Upload] Video uploaded:', fileUrl);
+        const { data: videoUrlData, error: videoUrlError } = await supabase.storage
+          .from(PRIVATE_MEDIA_BUCKET)
+          .createSignedUrl(videoFileName, MEDIA_SIGNED_URL_TTL_SECONDS);
+        if (videoUrlError) throw videoUrlError;
+        fileUrl = videoUrlData.signedUrl;
+        privateStoragePath = videoFileName;
 
         // サムネイルをアップロード（生成成功した場合）
         if (thumbnailBlob && thumbnailBlob.size > 1000) {
           const thumbFileName = `${projectId}/${timestamp}_${randomStr}_thumb.jpg`;
           const { error: thumbUploadError } = await supabase.storage
-            .from('project-media')
+            .from(PRIVATE_MEDIA_BUCKET)
             .upload(thumbFileName, thumbnailBlob, {
               contentType: 'image/jpeg',
             });
 
           if (!thumbUploadError) {
             uploadedStoragePaths.push(thumbFileName);
-            const { data: thumbUrlData } = supabase.storage
-              .from('project-media')
-              .getPublicUrl(thumbFileName);
-            thumbnailUrl = thumbUrlData.publicUrl;
-            console.log('[Upload] Thumbnail uploaded:', thumbnailUrl);
+            const { data: thumbUrlData, error: thumbUrlError } = await supabase.storage
+              .from(PRIVATE_MEDIA_BUCKET)
+              .createSignedUrl(thumbFileName, MEDIA_SIGNED_URL_TTL_SECONDS);
+            if (thumbUrlError) throw thumbUrlError;
+            thumbnailUrl = thumbUrlData.signedUrl;
+            privateThumbnailPath = thumbFileName;
           } else {
             console.warn('[Upload] Thumbnail upload failed:', thumbUploadError);
           }
@@ -361,6 +369,9 @@ export default function ProjectDetailPage() {
           thumbnail_url: thumbnailUrl,
           type: mediaType,
           storage_paths: uploadedStoragePaths,
+          private_storage_path: privateStoragePath,
+          private_thumbnail_path: privateThumbnailPath,
+          private_large_path: privateLargePath,
         };
         onSuccess(file.name, pendingFile);
         return;
@@ -370,8 +381,12 @@ export default function ProjectDetailPage() {
         project_id: projectId,
         type: mediaType,
         phase: selectedPhase as MediaPhase,
-        file_url: fileUrl,
-        thumbnail_url: thumbnailUrl,
+        file_url: privateStoragePath ? internalMediaUrl(privateStoragePath) : fileUrl,
+        thumbnail_url: privateThumbnailPath ? internalMediaUrl(privateThumbnailPath) : thumbnailUrl,
+        private_storage_bucket: privateStoragePath ? PRIVATE_MEDIA_BUCKET : null,
+        private_storage_path: privateStoragePath || null,
+        private_thumbnail_path: privateThumbnailPath || null,
+        private_large_path: privateLargePath || null,
         // 新しい写真は必ず「社内のみ」から始め、人が確認してから掲載する。
         is_featured: true,
         source_origin: 'manual',
@@ -388,7 +403,7 @@ export default function ProjectDetailPage() {
       onSuccess(file.name);
     } catch (fileError) {
       if (uploadedStoragePaths.length > 0) {
-        await supabase.storage.from('project-media').remove(uploadedStoragePaths);
+        await supabase.storage.from(PRIVATE_MEDIA_BUCKET).remove(uploadedStoragePaths);
       }
       const errorMessage = fileError instanceof Error ? fileError.message : '不明なエラー';
       onError(file.name, errorMessage);
@@ -466,13 +481,7 @@ export default function ProjectDetailPage() {
       }
 
       // 通常モード: メディア一覧を再取得
-      const { data } = await supabase
-        .from('project_media')
-        .select('*')
-        .eq('project_id', projectId)
-        .is('genba_line_event_id', null)
-        .order('created_at', { ascending: false });
-      setMedia(data || []);
+      setMedia(await fetchProjectMedia(projectId));
 
       // 結果に応じてモーダルを閉じるか、エラー表示
       if (failedFilesList.length === 0) {
@@ -506,8 +515,16 @@ export default function ProjectDetailPage() {
           project_id: projectId,
           type: file.type,
           phase: result.phase,
-          file_url: file.file_url,
-          thumbnail_url: file.thumbnail_url,
+          file_url: file.private_storage_path
+            ? internalMediaUrl(file.private_storage_path)
+            : file.file_url,
+          thumbnail_url: file.private_thumbnail_path
+            ? internalMediaUrl(file.private_thumbnail_path)
+            : file.thumbnail_url,
+          private_storage_bucket: file.private_storage_path ? PRIVATE_MEDIA_BUCKET : null,
+          private_storage_path: file.private_storage_path || null,
+          private_thumbnail_path: file.private_thumbnail_path || null,
+          private_large_path: file.private_large_path || null,
           // AIの提案だけで公開せず、一覧から人が明示的に掲載する。
           is_featured: true,
           source_origin: 'manual',
@@ -526,13 +543,7 @@ export default function ProjectDetailPage() {
       }
 
       // メディア一覧を再取得
-      const { data } = await supabase
-        .from('project_media')
-        .select('*')
-        .eq('project_id', projectId)
-        .is('genba_line_event_id', null)
-        .order('created_at', { ascending: false });
-      setMedia(data || []);
+      setMedia(await fetchProjectMedia(projectId));
 
       // 状態をリセット
       setPendingFiles([]);
@@ -547,7 +558,7 @@ export default function ProjectDetailPage() {
   const handleClassificationCancel = async () => {
     const storagePaths = pendingFiles.flatMap((file) => file.storage_paths || []);
     if (storagePaths.length > 0) {
-      const { error: cleanupError } = await supabase.storage.from('project-media').remove(storagePaths);
+      const { error: cleanupError } = await supabase.storage.from(PRIVATE_MEDIA_BUCKET).remove(storagePaths);
       if (cleanupError) {
         console.error('Classification upload cleanup error:', cleanupError);
         alert('アップロードを取り消した写真の削除に失敗しました。管理者に連絡してください');

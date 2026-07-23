@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
+import type { ProjectMedia } from '@/types/database';
+import { signPrivateMedia } from '@/lib/media-storage';
 
 // ビルド時の静的生成を無効化（cookiesを使用するため）
 export const dynamic = 'force-dynamic';
@@ -34,7 +36,14 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ heroMedia: heroMedia || [] });
+    const admin = createAdminClient();
+    const signedHeroMedia = await Promise.all(
+      (heroMedia || []).map(async (item) => ({
+        ...item,
+        ...(await signPrivateMedia(admin, item as ProjectMedia)),
+      })),
+    );
+    return NextResponse.json({ heroMedia: signedHeroMedia });
   } catch (error) {
     console.error('Error fetching hero settings:', error);
     return NextResponse.json({ error: 'メイン画像の設定を取得できませんでした' }, { status: 500 });
