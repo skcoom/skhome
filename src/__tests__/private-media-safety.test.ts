@@ -1,12 +1,31 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { internalMediaUrl, publicStoragePath } from '@/lib/media-storage';
+import {
+  internalMediaUrl,
+  publicStoragePath,
+  signPrivateMedia,
+} from '@/lib/media-storage';
+import type { ProjectMedia } from '@/types/database';
 
 function source(relativePath: string): string {
   return fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
 }
 
 describe('現場写真の非公開保管', () => {
+  const privateMedia: ProjectMedia = {
+    id: 'media-id',
+    project_id: 'project-id',
+    type: 'image',
+    phase: 'before',
+    file_url: 'internal://project-media-private/project-id/photo.webp',
+    thumbnail_url: 'internal://project-media-private/project-id/photo_thumbnail.webp',
+    is_featured: true,
+    private_storage_bucket: 'project-media-private',
+    private_storage_path: 'project-id/photo.webp',
+    private_thumbnail_path: 'project-id/photo_thumbnail.webp',
+    created_at: '2026-07-23T00:00:00.000Z',
+  };
+
   it('管理画面用の固定値は公開URLにならない', () => {
     expect(internalMediaUrl('project-id/photo.webp')).toBe(
       'internal://project-media-private/project-id/photo.webp',
@@ -46,11 +65,59 @@ describe('現場写真の非公開保管', () => {
     }
   });
 
+  it('非公開写真はファイルごとに署名し、管理画面用URLへ置き換える', async () => {
+    const createSignedUrl = jest.fn(async (path: string) => ({
+      data: { signedUrl: `https://example.supabase.co/signed/${path}?token=test` },
+      error: null,
+    }));
+    const supabase = {
+      storage: {
+        from: jest.fn(() => ({ createSignedUrl })),
+      },
+    };
+
+    await expect(signPrivateMedia(supabase as never, privateMedia)).resolves.toEqual(
+      expect.objectContaining({
+        file_url: 'https://example.supabase.co/signed/project-id/photo.webp?token=test',
+        thumbnail_url: 'https://example.supabase.co/signed/project-id/photo_thumbnail.webp?token=test',
+      }),
+    );
+    expect(createSignedUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('署名に失敗した画像URLを管理画面へ渡さない', async () => {
+    const createSignedUrl = jest.fn(async (path: string) => path.includes('thumbnail')
+      ? { data: null, error: { message: 'not found' } }
+      : {
+        data: { signedUrl: `https://example.supabase.co/signed/${path}?token=test` },
+        error: null,
+      });
+    const supabase = {
+      storage: {
+        from: jest.fn(() => ({ createSignedUrl })),
+      },
+    };
+
+    await expect(signPrivateMedia(supabase as never, privateMedia)).resolves.toEqual(
+      expect.objectContaining({
+        file_url: 'https://example.supabase.co/signed/project-id/photo.webp?token=test',
+        thumbnail_url: undefined,
+      }),
+    );
+  });
+
   it('公開は明示操作でコピーし、非掲載化で公開コピーを削除する', () => {
     const route = source('src/app/api/projects/[id]/media/route.ts');
     expect(route).toContain('createPublicMediaCopy');
     expect(route).toContain('removePublicMediaCopies');
     expect(route).toContain("publication_status: is_featured ? 'internal' : 'published'");
+  });
+
+  it('写真を確認できない状態では掲載操作を無効にする', () => {
+    const projectPage = source('src/app/(admin)/admin/projects/[id]/page.tsx');
+    expect(projectPage).toContain("!reviewableMediaIds.has(mediaId)");
+    expect(projectPage).toContain('写真を表示できていないため、掲載できません');
+    expect(projectPage).toContain('写真を表示できません。再読み込みしてください');
   });
 
   it('移行と重複ユーザー整理はドライランが初期値', () => {

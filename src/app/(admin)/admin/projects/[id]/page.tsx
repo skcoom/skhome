@@ -197,6 +197,8 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [reviewableMediaIds, setReviewableMediaIds] = useState<Set<string>>(new Set());
+  const [mediaImageErrors, setMediaImageErrors] = useState<Set<string>>(new Set());
 
   // 動画再生モーダル
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
@@ -607,6 +609,13 @@ export default function ProjectDetailPage() {
 
   const toggleFeatured = async (mediaId: string, currentFeatured: boolean) => {
     if (currentFeatured) {
+      const target = media.find((item) => item.id === mediaId);
+      if (target?.type === 'image' && !reviewableMediaIds.has(mediaId)) {
+        alert(
+          '写真を表示できていないため、掲載できません。画面を再読み込みし、写真の内容を確認してからもう一度操作してください。',
+        );
+        return;
+      }
       const confirmed = window.confirm(
         'この写真をホームページ掲載対象にします。施工実績そのものが公開中の場合は、保存後に写真が表示されます。掲載してよい写真ですか？',
       );
@@ -624,7 +633,8 @@ export default function ProjectDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error('更新に失敗しました');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || '掲載状態の変更に失敗しました');
       }
 
       // ローカルstateを更新
@@ -639,7 +649,28 @@ export default function ProjectDetailPage() {
       );
     } catch (err) {
       console.error('Toggle featured error:', err);
+      alert(err instanceof Error ? err.message : '掲載状態の変更に失敗しました');
     }
+  };
+
+  const markMediaImageLoaded = (mediaId: string) => {
+    setReviewableMediaIds((previous) => new Set(previous).add(mediaId));
+    setMediaImageErrors((previous) => {
+      if (!previous.has(mediaId)) return previous;
+      const next = new Set(previous);
+      next.delete(mediaId);
+      return next;
+    });
+  };
+
+  const markMediaImageFailed = (mediaId: string) => {
+    setReviewableMediaIds((previous) => {
+      if (!previous.has(mediaId)) return previous;
+      const next = new Set(previous);
+      next.delete(mediaId);
+      return next;
+    });
+    setMediaImageErrors((previous) => new Set(previous).add(mediaId));
   };
 
   const setMainImage = async (mediaId: string) => {
@@ -1022,13 +1053,15 @@ export default function ProjectDetailPage() {
                   .map((m) => (
                     <button
                       key={m.id}
-                      onClick={() => toggleFeatured(m.id, m.is_featured)}
-                      className="h-12 w-12 rounded overflow-hidden opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
-                      title="クリックで掲載する"
+                      type="button"
+                      onClick={() => setSelectedPhase(m.phase)}
+                      className="h-12 w-12 cursor-pointer overflow-hidden rounded opacity-50 transition-opacity hover:opacity-100"
+                      title="写真一覧で内容を確認する"
                     >
                       <img
                         src={m.thumbnail_url || m.file_url}
                         alt=""
+                        onError={() => markMediaImageFailed(m.id)}
                         className="h-full w-full object-cover"
                       />
                     </button>
@@ -1171,6 +1204,8 @@ export default function ProjectDetailPage() {
                     <img
                       src={item.thumbnail_url || item.file_url}
                       alt={item.caption || '施工写真'}
+                      onLoad={() => markMediaImageLoaded(item.id)}
+                      onError={() => markMediaImageFailed(item.id)}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -1204,6 +1239,11 @@ export default function ProjectDetailPage() {
                       <Video className="h-12 w-12 text-gray-400" />
                     </div>
                   )
+                )}
+                {item.type === 'image' && mediaImageErrors.has(item.id) && (
+                  <div className="absolute inset-x-2 bottom-2 z-20 rounded bg-red-700/90 px-2 py-1 text-center text-xs font-medium text-white">
+                    写真を表示できません。再読み込みしてください
+                  </div>
                 )}
                 {item.caption && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
@@ -1256,9 +1296,10 @@ export default function ProjectDetailPage() {
                     {/* 掲載トグルボタン */}
                     <button
                       onClick={() => toggleFeatured(item.id, item.is_featured)}
+                      disabled={item.is_featured && !reviewableMediaIds.has(item.id)}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                         item.is_featured
-                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400'
                           : 'bg-gray-600 text-white hover:bg-gray-700'
                       }`}
                     >
