@@ -9,6 +9,27 @@ export function internalMediaUrl(path: string): string {
   return `internal://${PRIVATE_MEDIA_BUCKET}/${path}`;
 }
 
+function privateMediaContentUrl(
+  media: ProjectMedia,
+  variant: 'file' | 'thumbnail',
+): string {
+  const projectId = encodeURIComponent(media.project_id);
+  const mediaId = encodeURIComponent(media.id);
+  return `/api/projects/${projectId}/media/${mediaId}/content?variant=${variant}`;
+}
+
+export function privateMediaViewerUrls(media: ProjectMedia): ProjectMedia {
+  if (!media.private_storage_path || media.type !== 'image') return media;
+
+  return {
+    ...media,
+    file_url: privateMediaContentUrl(media, 'file'),
+    thumbnail_url: media.private_thumbnail_path
+      ? privateMediaContentUrl(media, 'thumbnail')
+      : privateMediaContentUrl(media, 'file'),
+  };
+}
+
 export function publicStoragePath(rawUrl: string | null | undefined): string | null {
   if (!rawUrl) return null;
   try {
@@ -56,6 +77,25 @@ export async function signPrivateMedia(
     thumbnail_url: media.private_thumbnail_path
       ? signedByPath.get(media.private_thumbnail_path) || undefined
       : undefined,
+  };
+}
+
+export async function preparePrivateMediaForBrowser(
+  supabase: SupabaseClient,
+  media: ProjectMedia,
+): Promise<ProjectMedia> {
+  if (!media.private_storage_path) return media;
+
+  if (media.type === 'image') {
+    return privateMediaViewerUrls(media);
+  }
+
+  const signedMedia = await signPrivateMedia(supabase, media);
+  return {
+    ...signedMedia,
+    thumbnail_url: media.private_thumbnail_path
+      ? privateMediaContentUrl(media, 'thumbnail')
+      : signedMedia.thumbnail_url,
   };
 }
 

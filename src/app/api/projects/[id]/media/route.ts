@@ -8,9 +8,9 @@ import {
   createPrivateMediaCopy,
   createPublicMediaCopy,
   internalMediaUrl,
+  preparePrivateMediaForBrowser,
   removePrivateMediaCopies,
   removePublicMediaCopies,
-  signPrivateMedia,
 } from '@/lib/media-storage';
 
 type Params = Promise<{ id: string }>;
@@ -68,10 +68,12 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
     if (!user) return NextResponse.json(data);
 
     const admin = createAdminClient();
-    const signedMedia = await Promise.all(
-      ((data || []) as unknown as ProjectMedia[]).map((media) => signPrivateMedia(admin, media)),
+    const browserMedia = await Promise.all(
+      ((data || []) as unknown as ProjectMedia[]).map(
+        (media) => preparePrivateMediaForBrowser(admin, media),
+      ),
     );
-    return NextResponse.json(signedMedia);
+    return NextResponse.json(browserMedia);
   } catch (error) {
     console.error('Media API error:', error);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
