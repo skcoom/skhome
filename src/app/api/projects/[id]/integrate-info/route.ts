@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClaudeClient } from '@/lib/claude/client';
 import { requirePermission } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { analyzePhotosForProjectInfo, preparePhotosForAnalysis } from '@/lib/claude/photo-analyzer';
 import type { Project, ProjectMedia, ProjectDocument, ProjectTag, ProjectStatus } from '@/types/database';
@@ -11,6 +11,7 @@ import type {
   InfoSource,
   PhotoAnalysisResult,
 } from '@/types/info-integration';
+import { signPrivateMedia } from '@/lib/media-storage';
 
 const HP_DESCRIPTION_PROMPT = `あなたは建設会社のホームページに掲載する施工実績の説明文を作成するライターです。
 
@@ -136,7 +137,10 @@ export async function POST(
       .eq('project_id', projectId)
       .eq('type', 'image');
 
-    const photos = (mediaData as ProjectMedia[] | null) || [];
+    const admin = createAdminClient();
+    const photos = await Promise.all(
+      (((mediaData as ProjectMedia[] | null) || [])).map((item) => signPrivateMedia(admin, item)),
+    );
 
     // ドキュメント情報を取得
     const { data: documentData } = await supabase
@@ -182,7 +186,7 @@ export async function POST(
         const imageData = await preparePhotosForAnalysis(
           photos.map((p) => ({
             file_url: p.file_url,
-            thumbnail_url: p.thumbnail_url,
+            thumbnail_url: p.thumbnail_url || undefined,
             phase: p.phase,
           }))
         );

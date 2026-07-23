@@ -69,7 +69,7 @@ export interface ProjectMedia {
   type: MediaType;
   phase: MediaPhase;
   file_url: string;
-  thumbnail_url?: string;
+  thumbnail_url?: string | null;
   caption?: string;
   uploaded_by?: string;
   is_featured: boolean;
@@ -77,6 +77,11 @@ export interface ProjectMedia {
   source_origin?: MediaSourceOrigin | null;
   publication_status?: MediaPublicationStatus | null;
   public_storage_path?: string | null;
+  public_thumbnail_path?: string | null;
+  private_storage_bucket?: string | null;
+  private_storage_path?: string | null;
+  private_thumbnail_path?: string | null;
+  private_large_path?: string | null;
   published_at?: string | null;
   published_by?: string | null;
   hero_position?: 1 | 2 | 3 | null;
@@ -354,6 +359,9 @@ export interface PendingClassificationFile {
   thumbnail_url?: string;
   type: MediaType;
   storage_paths?: string[];
+  private_storage_path?: string;
+  private_thumbnail_path?: string;
+  private_large_path?: string;
 }
 
 // Database schema for Supabase

@@ -3,6 +3,11 @@ import sharp from 'sharp';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
 import { randomUUID } from 'crypto';
+import {
+  MEDIA_SIGNED_URL_TTL_SECONDS,
+  PRIVATE_MEDIA_BUCKET,
+  internalMediaUrl,
+} from '@/lib/media-storage';
 
 // 画像サイズ設定
 const IMAGE_SIZES = {
@@ -103,12 +108,12 @@ export async function POST(request: NextRequest) {
           .webp({ quality: WEBP_QUALITY })
           .toBuffer();
 
-      // ファイルパスを生成（ランダム文字列で重複を防ぐ）
+        // ファイルパスを生成（ランダム文字列で重複を防ぐ）
         const filePath = `${projectId}/${timestamp}_${randomStr}_${size}.webp`;
 
-      // Supabase Storageにアップロード
+        // Supabase Storageにアップロード
         const { error: uploadError } = await supabase.storage
-          .from('project-media')
+          .from(PRIVATE_MEDIA_BUCKET)
           .upload(filePath, processedBuffer, {
             contentType: 'image/webp',
             upsert: false,
@@ -120,19 +125,19 @@ export async function POST(request: NextRequest) {
         }
         uploadedPaths.push(filePath);
 
-      // 公開URLを取得
-        const { data: publicUrlData } = supabase.storage
-          .from('project-media')
-          .getPublicUrl(filePath);
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+          .from(PRIVATE_MEDIA_BUCKET)
+          .createSignedUrl(filePath, MEDIA_SIGNED_URL_TTL_SECONDS);
+        if (signedUrlError) throw signedUrlError;
 
         processedImages[size] = {
-          url: publicUrlData.publicUrl,
+          url: signedUrlData.signedUrl,
           path: filePath,
         };
       }
     } catch (uploadError) {
       if (uploadedPaths.length > 0) {
-        await supabase.storage.from('project-media').remove(uploadedPaths);
+        await supabase.storage.from(PRIVATE_MEDIA_BUCKET).remove(uploadedPaths);
       }
       throw uploadError;
     }
@@ -140,10 +145,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       images: processedImages,
-      // DB保存用のURL（既存フィールドに合わせる）
+      // 署名URLは直後の画面プレビュー専用。DBには下の固定パスを保存する。
       file_url: processedImages.medium.url,
       thumbnail_url: processedImages.thumbnail.url,
       large_url: processedImages.large.url,
+      storage_bucket: PRIVATE_MEDIA_BUCKET,
+      storage_path: processedImages.medium.path,
+      thumbnail_storage_path: processedImages.thumbnail.path,
+      large_storage_path: processedImages.large.path,
+      internal_file_url: internalMediaUrl(processedImages.medium.path),
+      internal_thumbnail_url: internalMediaUrl(processedImages.thumbnail.path),
     });
   } catch (error) {
     console.error('Image processing error:', error);

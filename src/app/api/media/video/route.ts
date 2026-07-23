@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { randomUUID } from 'crypto';
 import { requirePermission } from '@/lib/auth';
+import {
+  MEDIA_SIGNED_URL_TTL_SECONDS,
+  PRIVATE_MEDIA_BUCKET,
+  internalMediaUrl,
+} from '@/lib/media-storage';
 
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
@@ -72,7 +77,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const buffer = Buffer.from(arrayBuffer);
 
     const { error: videoUploadError } = await supabase.storage
-      .from('project-media')
+      .from(PRIVATE_MEDIA_BUCKET)
       .upload(videoFileName, buffer, {
         contentType: file.type,
       });
@@ -81,12 +86,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       throw new Error(`動画アップロードに失敗しました: ${videoUploadError.message}`);
     }
 
-    const { data: videoUrlData } = supabase.storage
-      .from('project-media')
-      .getPublicUrl(videoFileName);
+    const { data: videoUrlData, error: videoUrlError } = await supabase.storage
+      .from(PRIVATE_MEDIA_BUCKET)
+      .createSignedUrl(videoFileName, MEDIA_SIGNED_URL_TTL_SECONDS);
+    if (videoUrlError) {
+      await supabase.storage.from(PRIVATE_MEDIA_BUCKET).remove([videoFileName]);
+      throw videoUrlError;
+    }
 
     // サムネイルをアップロード（クライアントから送信された場合）
     let thumbnailUrl: string | null = null;
+    let thumbnailPath: string | null = null;
     if (thumbnailBlob && thumbnailBlob.size > 0) {
       try {
         const thumbnailFileName = `${projectId}/${timestamp}_${randomStr}_thumb.jpg`;
@@ -95,7 +105,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const thumbBuffer = Buffer.from(thumbArrayBuffer);
 
         const { error: thumbUploadError } = await supabase.storage
-          .from('project-media')
+          .from(PRIVATE_MEDIA_BUCKET)
           .upload(thumbnailFileName, thumbBuffer, {
             contentType: 'image/jpeg',
           });
@@ -103,10 +113,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (thumbUploadError) {
           console.error('[VideoAPI] Thumbnail upload error:', thumbUploadError);
         } else {
-          const { data: thumbUrlData } = supabase.storage
-            .from('project-media')
-            .getPublicUrl(thumbnailFileName);
-          thumbnailUrl = thumbUrlData.publicUrl;
+          const { data: thumbUrlData, error: thumbUrlError } = await supabase.storage
+            .from(PRIVATE_MEDIA_BUCKET)
+            .createSignedUrl(thumbnailFileName, MEDIA_SIGNED_URL_TTL_SECONDS);
+          if (thumbUrlError) {
+            await supabase.storage.from(PRIVATE_MEDIA_BUCKET).remove([thumbnailFileName]);
+            throw thumbUrlError;
+          }
+          thumbnailUrl = thumbUrlData.signedUrl;
+          thumbnailPath = thumbnailFileName;
         }
       } catch (err) {
         console.error('[VideoAPI] Thumbnail upload exception:', err);
@@ -115,8 +130,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const responseData = {
       success: true,
-      file_url: videoUrlData.publicUrl,
+      file_url: videoUrlData.signedUrl,
       thumbnail_url: thumbnailUrl,
+      storage_bucket: PRIVATE_MEDIA_BUCKET,
+      storage_path: videoFileName,
+      thumbnail_storage_path: thumbnailPath,
+      internal_file_url: internalMediaUrl(videoFileName),
+      internal_thumbnail_url: thumbnailPath ? internalMediaUrl(thumbnailPath) : null,
     };
     return NextResponse.json(responseData);
   } catch (error) {

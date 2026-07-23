@@ -98,22 +98,28 @@ export function GenbaReviewBoard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
-  const counts = useMemo(() => ({
-    attention: items.filter(needsAttention).length,
-    internal: items.filter((item) => item.publicationStatus === 'internal').length,
-    selected: items.filter((item) => item.publicationStatus === 'selected').length,
-    published: items.filter((item) => item.publicationStatus === 'published').length,
-    all: items.length,
-  }), [items]);
+  const projectItems = useMemo(
+    () => projectFilter === 'all'
+      ? items
+      : items.filter((item) => item.projectId === projectFilter),
+    [items, projectFilter],
+  );
 
-  const visibleItems = useMemo(() => items.filter((item) => {
-    if (projectFilter !== 'all' && item.projectId !== projectFilter) return false;
+  const counts = useMemo(() => ({
+    attention: projectItems.filter(needsAttention).length,
+    internal: projectItems.filter((item) => item.publicationStatus === 'internal').length,
+    selected: projectItems.filter((item) => item.publicationStatus === 'selected').length,
+    published: projectItems.filter((item) => item.publicationStatus === 'published').length,
+    all: projectItems.length,
+  }), [projectItems]);
+
+  const visibleItems = useMemo(() => projectItems.filter((item) => {
     if (filter === 'attention') return needsAttention(item);
     if (filter === 'all') return true;
     return item.publicationStatus === filter;
-  }), [filter, items, projectFilter]);
+  }), [filter, projectItems]);
 
-  const selectedItems = items.filter((item) => item.publicationStatus === 'selected');
+  const selectedItems = projectItems.filter((item) => item.publicationStatus === 'selected');
 
   const updateDraft = (eventId: string, patch: Partial<{ projectId: string; phase: MediaPhase }>) => {
     setDrafts((current) => {

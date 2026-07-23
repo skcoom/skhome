@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthUser, requirePermission } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import type { ProjectMedia } from '@/types/database';
+import { signPrivateMedia } from '@/lib/media-storage';
 
 type Params = Promise<{ id: string }>;
 
@@ -76,7 +78,11 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
       return NextResponse.json({ error: '現場が見つかりません' }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    const admin = createAdminClient();
+    const projectMedia = await Promise.all(
+      ((data.project_media || []) as ProjectMedia[]).map((media) => signPrivateMedia(admin, media)),
+    );
+    return NextResponse.json({ ...data, project_media: projectMedia });
   } catch (error) {
     console.error('Project API error:', error);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
