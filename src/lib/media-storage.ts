@@ -32,18 +32,24 @@ export async function signPrivateMedia(
   if (!media.private_storage_path) return media;
 
   const bucket = media.private_storage_bucket || PRIVATE_MEDIA_BUCKET;
-  const paths = [media.private_storage_path, media.private_thumbnail_path].filter(
-    (path): path is string => Boolean(path),
+  const paths = [
+    ...new Set(
+      [media.private_storage_path, media.private_thumbnail_path].filter(
+        (path): path is string => Boolean(path),
+      ),
+    ),
+  ];
+  // 一括署名の応答は項目ごとの失敗を含み得る。個別に署名して、
+  // 表示できないURLを有効なURLとして管理画面へ渡さない。
+  const signedEntries = await Promise.all(
+    paths.map(async (path) => {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(path, MEDIA_SIGNED_URL_TTL_SECONDS);
+      return [path, error ? null : data?.signedUrl || null] as const;
+    }),
   );
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrls(paths, MEDIA_SIGNED_URL_TTL_SECONDS);
-
-  if (error || !data) {
-    return { ...media, file_url: '', thumbnail_url: undefined };
-  }
-
-  const signedByPath = new Map(data.map((item) => [item.path, item.signedUrl]));
+  const signedByPath = new Map(signedEntries);
   return {
     ...media,
     file_url: signedByPath.get(media.private_storage_path) || '',
