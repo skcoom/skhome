@@ -1,0 +1,10 @@
+正式表記,既知の表記揺れ,確認状態,根拠
+SKコーム,SK工務,確認済み,ユーザーが「SKコーム」と明示
+SKHOME,SKHOME管理システム,確認済み,リポジトリ名・本番管理画面の表記
+末武 來,末武來,確認済み,ユーザーが追加対象として明示・承認済み公開デザインの表記
+LINE,Line,確認済み,LINE公式表記
+Cloudflare R2,R2,確認済み,既存システム設計とCloudflare製品名
+Supabase,supabase,確認済み,Supabase公式表記
+Vercel,vercel,確認済み,Vercel公式表記
+Claude Haiku 4.5,Claude Haiku4.5,確認済み,ユーザー確認済みの現場判定モデル
+NotebookLM,Notebook LM,確認済み,Google公式製品名
