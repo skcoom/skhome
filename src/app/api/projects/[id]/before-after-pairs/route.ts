@@ -3,19 +3,19 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
 import type { AlignmentSettings, BeforeAfterPair, ProjectMedia } from '@/types/database';
 import { revalidatePath } from 'next/cache';
-import { signPrivateMedia } from '@/lib/media-storage';
+import { preparePrivateMediaForBrowser } from '@/lib/media-storage';
 
 type Params = Promise<{ id: string }>;
 
-async function signPairMedia(pair: BeforeAfterPair): Promise<BeforeAfterPair> {
+async function preparePairMediaForBrowser(pair: BeforeAfterPair): Promise<BeforeAfterPair> {
   const admin = createAdminClient();
   return {
     ...pair,
     before_media: pair.before_media
-      ? await signPrivateMedia(admin, pair.before_media as ProjectMedia)
+      ? await preparePrivateMediaForBrowser(admin, pair.before_media as ProjectMedia)
       : undefined,
     after_media: pair.after_media
-      ? await signPrivateMedia(admin, pair.after_media as ProjectMedia)
+      ? await preparePrivateMediaForBrowser(admin, pair.after_media as ProjectMedia)
       : undefined,
   };
 }
@@ -48,7 +48,9 @@ export async function GET(request: NextRequest, { params }: { params: Params }):
       return NextResponse.json({ error: 'ペア情報の取得に失敗しました' }, { status: 500 });
     }
 
-    return NextResponse.json(await Promise.all(((data || []) as BeforeAfterPair[]).map(signPairMedia)));
+    return NextResponse.json(
+      await Promise.all(((data || []) as BeforeAfterPair[]).map(preparePairMediaForBrowser)),
+    );
   } catch (error) {
     console.error('Before-after pairs API error:', error);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
@@ -119,7 +121,10 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     }
 
     revalidatePath(`/works/${id}`);
-    return NextResponse.json(await signPairMedia(data as BeforeAfterPair), { status: 201 });
+    return NextResponse.json(
+      await preparePairMediaForBrowser(data as BeforeAfterPair),
+      { status: 201 },
+    );
   } catch (error) {
     console.error('Before-after pair API error:', error);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });

@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   internalMediaUrl,
+  preparePrivateMediaForBrowser,
+  privateMediaViewerUrls,
   publicStoragePath,
   signPrivateMedia,
 } from '@/lib/media-storage';
@@ -65,7 +67,7 @@ describe('現場写真の非公開保管', () => {
     }
   });
 
-  it('非公開写真はファイルごとに署名し、管理画面用URLへ置き換える', async () => {
+  it('AI処理などで必要な非公開写真はファイルごとに署名する', async () => {
     const createSignedUrl = jest.fn(async (path: string) => ({
       data: { signedUrl: `https://example.supabase.co/signed/${path}?token=test` },
       error: null,
@@ -83,6 +85,41 @@ describe('現場写真の非公開保管', () => {
       }),
     );
     expect(createSignedUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('通常の管理画面表示では署名を露出せず、認証付きの同一サイトURLを使う', async () => {
+    expect(privateMediaViewerUrls(privateMedia)).toEqual(
+      expect.objectContaining({
+        file_url: '/api/projects/project-id/media/media-id/content?variant=file',
+        thumbnail_url: '/api/projects/project-id/media/media-id/content?variant=thumbnail',
+      }),
+    );
+
+    const createSignedUrl = jest.fn();
+    const supabase = {
+      storage: {
+        from: jest.fn(() => ({ createSignedUrl })),
+      },
+    };
+    await expect(
+      preparePrivateMediaForBrowser(supabase as never, privateMedia),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        file_url: '/api/projects/project-id/media/media-id/content?variant=file',
+        thumbnail_url: '/api/projects/project-id/media/media-id/content?variant=thumbnail',
+      }),
+    );
+    expect(createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('写真の配信時にログイン権限と現場の閲覧制限を再確認する', () => {
+    const route = source('src/app/api/projects/[id]/media/[mediaId]/content/route.ts');
+    expect(route).toContain("requirePermission('media:read')");
+    expect(route).toContain('const supabase = await createClient()');
+    expect(route).toContain(".eq('id', mediaId)");
+    expect(route).toContain(".eq('project_id', id)");
+    expect(route).toContain("bucket !== PRIVATE_MEDIA_BUCKET");
+    expect(route).toContain("'Cache-Control': 'private, no-store, max-age=0'");
   });
 
   it('署名に失敗した画像URLを管理画面へ渡さない', async () => {
