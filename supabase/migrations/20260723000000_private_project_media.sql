@@ -9,33 +9,69 @@ ALTER TABLE public.project_media
   ADD COLUMN IF NOT EXISTS private_large_path TEXT,
   ADD COLUMN IF NOT EXISTS public_thumbnail_path TEXT;
 
-ALTER TABLE public.project_media
-  ADD CONSTRAINT project_media_private_bucket_check
-    CHECK (private_storage_bucket IS NULL OR private_storage_bucket = 'project-media-private'),
-  ADD CONSTRAINT project_media_private_path_check
-    CHECK (
-      private_storage_path IS NULL
-      OR (
-        private_storage_path LIKE project_id::TEXT || '/%'
-        AND position('../' IN private_storage_path) = 0
-      )
-    ),
-  ADD CONSTRAINT project_media_private_thumbnail_path_check
-    CHECK (
-      private_thumbnail_path IS NULL
-      OR (
-        private_thumbnail_path LIKE project_id::TEXT || '/%'
-        AND position('../' IN private_thumbnail_path) = 0
-      )
-    ),
-  ADD CONSTRAINT project_media_private_large_path_check
-    CHECK (
-      private_large_path IS NULL
-      OR (
-        private_large_path LIKE project_id::TEXT || '/%'
-        AND position('../' IN private_large_path) = 0
-      )
-    );
+-- SQL Editorから事前適用した環境でも、後日のdb pushが安全に完走できるよう
+-- 制約は存在確認をしてから追加する。
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.project_media'::regclass
+      AND conname = 'project_media_private_bucket_check'
+  ) THEN
+    ALTER TABLE public.project_media
+      ADD CONSTRAINT project_media_private_bucket_check
+      CHECK (private_storage_bucket IS NULL OR private_storage_bucket = 'project-media-private');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.project_media'::regclass
+      AND conname = 'project_media_private_path_check'
+  ) THEN
+    ALTER TABLE public.project_media
+      ADD CONSTRAINT project_media_private_path_check
+      CHECK (
+        private_storage_path IS NULL
+        OR (
+          private_storage_path LIKE project_id::TEXT || '/%'
+          AND position('../' IN private_storage_path) = 0
+        )
+      );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.project_media'::regclass
+      AND conname = 'project_media_private_thumbnail_path_check'
+  ) THEN
+    ALTER TABLE public.project_media
+      ADD CONSTRAINT project_media_private_thumbnail_path_check
+      CHECK (
+        private_thumbnail_path IS NULL
+        OR (
+          private_thumbnail_path LIKE project_id::TEXT || '/%'
+          AND position('../' IN private_thumbnail_path) = 0
+        )
+      );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.project_media'::regclass
+      AND conname = 'project_media_private_large_path_check'
+  ) THEN
+    ALTER TABLE public.project_media
+      ADD CONSTRAINT project_media_private_large_path_check
+      CHECK (
+        private_large_path IS NULL
+        OR (
+          private_large_path LIKE project_id::TEXT || '/%'
+          AND position('../' IN private_large_path) = 0
+        )
+      );
+  END IF;
+END
+$$;
 
 COMMENT ON COLUMN public.project_media.private_storage_bucket IS '社内用原本を保存する非公開Storageバケット';
 COMMENT ON COLUMN public.project_media.private_storage_path IS '社内用原本（画面表示用）の非公開Storageパス';

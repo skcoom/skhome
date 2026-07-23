@@ -31,6 +31,7 @@ describe('現場写真の非公開保管', () => {
     expect(migration).toContain('public.is_app_staff()');
     expect(migration).toContain('project_media_private_path_check');
     expect(migration).toContain("private_storage_path LIKE project_id::TEXT || '/%'");
+    expect(migration).toContain("IF NOT EXISTS (\n    SELECT 1 FROM pg_constraint");
   });
 
   it('画像・動画の新規登録で公開URLを発行しない', () => {
