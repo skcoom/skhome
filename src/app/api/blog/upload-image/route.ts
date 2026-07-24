@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/auth';
 import { randomUUID } from 'crypto';
+import { toStorageUploadBody } from '@/lib/storage-upload';
 
 const IMAGE_SIZES = {
   thumbnail: { width: 400, height: 300 },
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
 
         const { error: uploadError } = await supabase.storage
           .from('project-media')
-          .upload(filePath, processedBuffer, {
+          .upload(filePath, toStorageUploadBody(processedBuffer), {
             contentType: 'image/webp',
             upsert: false,
           });

@@ -7,6 +7,7 @@ import {
   PRIVATE_MEDIA_BUCKET,
   internalMediaUrl,
 } from '@/lib/media-storage';
+import { toStorageUploadBody } from '@/lib/storage-upload';
 
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
@@ -73,12 +74,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // 動画をSupabase Storageにアップロード
     const videoFileName = `${projectId}/${timestamp}_${randomStr}.${fileExt}`;
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const videoBytes = new Uint8Array(await file.arrayBuffer());
 
     const { error: videoUploadError } = await supabase.storage
       .from(PRIVATE_MEDIA_BUCKET)
-      .upload(videoFileName, buffer, {
+      .upload(videoFileName, toStorageUploadBody(videoBytes), {
         contentType: file.type,
       });
 
@@ -101,12 +101,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       try {
         const thumbnailFileName = `${projectId}/${timestamp}_${randomStr}_thumb.jpg`;
 
-        const thumbArrayBuffer = await thumbnailBlob.arrayBuffer();
-        const thumbBuffer = Buffer.from(thumbArrayBuffer);
+        const thumbnailBytes = new Uint8Array(await thumbnailBlob.arrayBuffer());
 
         const { error: thumbUploadError } = await supabase.storage
           .from(PRIVATE_MEDIA_BUCKET)
-          .upload(thumbnailFileName, thumbBuffer, {
+          .upload(thumbnailFileName, toStorageUploadBody(thumbnailBytes), {
             contentType: 'image/jpeg',
           });
 

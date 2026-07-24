@@ -8,6 +8,7 @@ import {
   PRIVATE_MEDIA_BUCKET,
   internalMediaUrl,
 } from '@/lib/media-storage';
+import { toStorageUploadBody } from '@/lib/storage-upload';
 
 // 画像サイズ設定
 const IMAGE_SIZES = {
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
         // Supabase Storageにアップロード
         const { error: uploadError } = await supabase.storage
           .from(PRIVATE_MEDIA_BUCKET)
-          .upload(filePath, processedBuffer, {
+          .upload(filePath, toStorageUploadBody(processedBuffer), {
             contentType: 'image/webp',
             upsert: false,
           });
