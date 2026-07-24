@@ -119,7 +119,11 @@ describe('現場写真の非公開保管', () => {
     expect(route).toContain(".eq('id', mediaId)");
     expect(route).toContain(".eq('project_id', id)");
     expect(route).toContain("bucket !== PRIVATE_MEDIA_BUCKET");
-    expect(route).toContain("'Cache-Control': 'private, no-store, max-age=0'");
+    expect(route).toContain('PRIVATE_MEDIA_VIEW_TTL_SECONDS = 60');
+    expect(route).toContain('.createSignedUrl(storagePath, PRIVATE_MEDIA_VIEW_TTL_SECONDS)');
+    expect(route).toContain('NextResponse.redirect(signedData.signedUrl, 307)');
+    expect(route).not.toContain('.download(storagePath)');
+    expect(route).toContain("'Cache-Control', 'private, no-store, max-age=0'");
   });
 
   it('署名に失敗した画像URLを管理画面へ渡さない', async () => {

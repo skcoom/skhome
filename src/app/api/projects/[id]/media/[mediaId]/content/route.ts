@@ -8,6 +8,8 @@ type Params = Promise<{ id: string; mediaId: string }>;
 
 export const dynamic = 'force-dynamic';
 
+const PRIVATE_MEDIA_VIEW_TTL_SECONDS = 60;
+
 function isProjectMediaPath(projectId: string, path: string): boolean {
   return path.startsWith(`${projectId}/`) && !path.includes('../');
 }
@@ -79,25 +81,23 @@ export async function GET(
     }
 
     const admin = createAdminClient();
-    const { data: file, error: downloadError } = await admin.storage
+    const { data: signedData, error: signedUrlError } = await admin.storage
       .from(bucket)
-      .download(storagePath);
+      .createSignedUrl(storagePath, PRIVATE_MEDIA_VIEW_TTL_SECONDS);
 
-    if (downloadError || !file) {
-      console.error('Private media download error:', downloadError);
+    if (signedUrlError || !signedData?.signedUrl) {
+      console.error('Private media signed URL error:', signedUrlError);
       return NextResponse.json({ error: '写真を読み込めませんでした' }, { status: 502 });
     }
 
-    return new NextResponse(file, {
-      status: 200,
-      headers: {
-        'Cache-Control': 'private, no-store, max-age=0',
-        'Content-Type': file.type || 'application/octet-stream',
-        'Content-Length': String(file.size),
-        'Content-Disposition': 'inline',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    });
+    // Vercelで画像本体を中継せず、権限確認の直後に短時間だけ有効な
+    // Supabaseの署名付きURLへ転送する。署名はDBや画面のデータに保存しない。
+    const response = NextResponse.redirect(signedData.signedUrl, 307);
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    return response;
   } catch (error) {
     console.error('Private media content error:', error);
     return NextResponse.json({ error: '写真を読み込めませんでした' }, { status: 500 });
