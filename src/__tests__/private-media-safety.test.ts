@@ -7,6 +7,7 @@ import {
   publicStoragePath,
   signPrivateMedia,
 } from '@/lib/media-storage';
+import { toStorageUploadBody } from '@/lib/storage-upload';
 import type { ProjectMedia } from '@/types/database';
 
 function source(relativePath: string): string {
@@ -65,6 +66,37 @@ describe('現場写真の非公開保管', () => {
       expect(code).toContain('.createSignedUrl(');
       expect(code).not.toContain('.getPublicUrl(');
     }
+  });
+
+  it('画像・動画のバイナリを文字列化せず、正確な長さのArrayBufferへコピーする', () => {
+    const sourceBytes = Buffer.from([
+      0x52, 0x49, 0x46, 0x46, 0xa2, 0x0f, 0x00, 0x00,
+      0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x20,
+      0x96, 0x0f, 0x00, 0x00, 0x9d, 0x01, 0x2a,
+    ]);
+
+    const uploadBody = toStorageUploadBody(sourceBytes);
+    sourceBytes.fill(0);
+
+    expect(uploadBody).toBeInstanceOf(ArrayBuffer);
+    expect(uploadBody.byteLength).toBe(23);
+    expect(Array.from(new Uint8Array(uploadBody))).toEqual([
+      0x52, 0x49, 0x46, 0x46, 0xa2, 0x0f, 0x00, 0x00,
+      0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x20,
+      0x96, 0x0f, 0x00, 0x00, 0x9d, 0x01, 0x2a,
+    ]);
+  });
+
+  it.each([
+    'src/app/api/media/process/route.ts',
+    'src/app/api/media/video/route.ts',
+    'src/app/api/blog/upload-image/route.ts',
+  ])('%s はBufferをStorageへ直接渡さない', (relativePath) => {
+    const code = source(relativePath);
+    expect(code).toContain('toStorageUploadBody(');
+    expect(code).not.toContain('.upload(filePath, processedBuffer');
+    expect(code).not.toContain('.upload(videoFileName, buffer');
+    expect(code).not.toContain('.upload(thumbnailFileName, thumbBuffer');
   });
 
   it('AI処理などで必要な非公開写真はファイルごとに署名する', async () => {
